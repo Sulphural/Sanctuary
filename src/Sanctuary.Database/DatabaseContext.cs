@@ -76,7 +76,7 @@ public sealed class DatabaseContext : DbContext
                 var name = a.GetName().Name;
                 return name is not null
                        && name.StartsWith(prefix, StringComparison.Ordinal)
-                       && (name.EndsWith(".MySql", StringComparison.Ordinal) || name.EndsWith(".Sqlite", StringComparison.Ordinal));
+                       && (name.EndsWith(".MySql", StringComparison.Ordinal) || name.EndsWith(".SqLite", StringComparison.Ordinal));
             });
     }
 }
