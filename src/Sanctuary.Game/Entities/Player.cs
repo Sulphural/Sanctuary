@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Collections.Generic;
@@ -51,6 +51,12 @@ public sealed class Player : ClientPcData, IEntity
     public List<CoinStoreTransactionRecord> CoinStoreTransactions { get; set; } = [];
 
     public int TimezoneOffset { get; set; }
+
+    public Dictionary<int, Dictionary<int, int>> ActionBarItemGuids { get; set; } = new();
+
+    public int TemporaryAppearance { get; set; }
+    public DateTimeOffset? TemporaryAppearanceExpiresAt { get; set; }
+
 
     public Vector4 StartingZonePosition { get; set; }
     public Quaternion StartingZoneRotation { get; set; }
@@ -121,6 +127,11 @@ public sealed class Player : ClientPcData, IEntity
 
     public void UpdateEveryTick()
     {
+        if (TemporaryAppearanceExpiresAt.HasValue &&
+            TemporaryAppearanceExpiresAt.Value <= DateTimeOffset.UtcNow)
+        {
+            RemoveTemporaryAppearance();
+        }
     }
 
     public void UpdateEverySecond()
@@ -166,7 +177,6 @@ public sealed class Player : ClientPcData, IEntity
         if (Mount is not null)
             Mount.TeleportToZone(zone, position, rotation);
 
-        // Alert/Remove visible entities
         foreach (var visiblePlayer in VisiblePlayers)
             visiblePlayer.Value.OnRemoveVisiblePlayers([this]);
 
@@ -177,11 +187,9 @@ public sealed class Player : ClientPcData, IEntity
 
         Zone.TryRemovePlayer(Guid);
 
-        // Add to new zone/zonetile
 
         zone.TryAddPlayer(this);
 
-        // Teleport to new zone
 
         Visible = false;
 
@@ -442,7 +450,6 @@ public sealed class Player : ClientPcData, IEntity
 
         var compositeEffectId = clientItemDefinition.CompositeEffectId;
 
-        // Update the Weapon composite effect if we have a Flair Shard equipped.
         if (slot == 7)
         {
             var flairShardcompositeEffectId = GetFlairShardCompositeEffect();
@@ -497,7 +504,7 @@ public sealed class Player : ClientPcData, IEntity
             IsUnderage = Age < 18,
             IsMember = MembershipStatus != 0,
 
-            // playerUpdatePacketAddPc.TemporaryAppearance = 277;
+            TemporaryAppearance = TemporaryAppearance,
 
             ActiveProfileId = ActiveProfileId,
 
@@ -520,6 +527,38 @@ public sealed class Player : ClientPcData, IEntity
         }
 
         return packet;
+    }
+
+
+    public void ApplyTemporaryAppearance(int modelId, int durationMs)
+    {
+        TemporaryAppearance = modelId;
+
+        if (durationMs > 0)
+        {
+            TemporaryAppearanceExpiresAt = DateTimeOffset.UtcNow.AddMilliseconds(durationMs);
+        }
+
+        var appearancePacket = new PlayerUpdatePacketUpdateTemporaryAppearance
+        {
+            Guid = Guid,
+            TemporaryAppearance = modelId
+        };
+
+        SendTunneledToVisible(appearancePacket, true);
+    }
+
+    public void RemoveTemporaryAppearance()
+    {
+        TemporaryAppearance = 0;
+        TemporaryAppearanceExpiresAt = null;
+
+        var removePacket = new PlayerUpdatePacketRemoveTemporaryAppearance
+        {
+            Guid = Guid
+        };
+
+        SendTunneledToVisible(removePacket, true);
     }
 
     #region Equatable

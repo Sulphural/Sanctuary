@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Collections.Generic;
@@ -159,7 +159,6 @@ public abstract class BaseZone : IZone, IDisposable
     {
         var tiles = new Dictionary<int, ZoneTile>();
 
-        // Generate all tiles
         for (var longitude = _zoneDefinition.StartLongitude; longitude < _zoneDefinition.EndLongitude; longitude++)
         {
             for (var latitude = _zoneDefinition.StartLatitude; latitude < _zoneDefinition.EndLatitude; latitude++)
@@ -170,7 +169,6 @@ public abstract class BaseZone : IZone, IDisposable
             }
         }
 
-        // Calcualte visible tiles
         for (var rootLongitude = _zoneDefinition.StartLongitude; rootLongitude < _zoneDefinition.EndLongitude; rootLongitude++)
         {
             for (var rootLatitude = _zoneDefinition.StartLatitude; rootLatitude < _zoneDefinition.EndLatitude; rootLatitude++)
