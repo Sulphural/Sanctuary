@@ -12,20 +12,6 @@ namespace Sanctuary.Database.MySql.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
-                name: "Tint",
-                table: "Mounts",
-                type: "int",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Definition",
-                table: "Mounts",
-                type: "int",
-                nullable: false,
-                defaultValue: 0);
-
             migrationBuilder.CreateTable(
                 name: "Pets",
                 columns: table => new
@@ -51,12 +37,6 @@ namespace Sanctuary.Database.MySql.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Mounts_Tint_Definition_CharacterGuid",
-                table: "Mounts",
-                columns: new[] { "Tint", "Definition", "CharacterGuid" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Pets_CharacterGuid",
                 table: "Pets",
                 column: "CharacterGuid");
@@ -73,18 +53,6 @@ namespace Sanctuary.Database.MySql.Migrations
         {
             migrationBuilder.DropTable(
                 name: "Pets");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Mounts_Tint_Definition_CharacterGuid",
-                table: "Mounts");
-
-            migrationBuilder.DropColumn(
-                name: "Tint",
-                table: "Mounts");
-
-            migrationBuilder.DropColumn(
-                name: "Definition",
-                table: "Mounts");
         }
     }
 }
