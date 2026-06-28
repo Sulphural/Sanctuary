@@ -12,20 +12,6 @@ namespace Sanctuary.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<int>(
-                name: "Tint",
-                table: "Mounts",
-                type: "INTEGER",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Definition",
-                table: "Mounts",
-                type: "INTEGER",
-                nullable: false,
-                defaultValue: 0);
-
             migrationBuilder.CreateTable(
                 name: "Pets",
                 columns: table => new
@@ -49,12 +35,6 @@ namespace Sanctuary.Database.Sqlite.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Mounts_Tint_Definition_CharacterId",
-                table: "Mounts",
-                columns: new[] { "Tint", "Definition", "CharacterId" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Pets_CharacterId",
                 table: "Pets",
                 column: "CharacterId");
@@ -71,18 +51,6 @@ namespace Sanctuary.Database.Sqlite.Migrations
         {
             migrationBuilder.DropTable(
                 name: "Pets");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Mounts_Tint_Definition_CharacterId",
-                table: "Mounts");
-
-            migrationBuilder.DropColumn(
-                name: "Tint",
-                table: "Mounts");
-
-            migrationBuilder.DropColumn(
-                name: "Definition",
-                table: "Mounts");
         }
     }
 }
