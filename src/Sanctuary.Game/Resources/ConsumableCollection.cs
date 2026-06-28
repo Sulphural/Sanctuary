@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -13,6 +14,7 @@ public class ConsumableCollection
     private readonly ILogger _logger;
 
     public BoomboxDefinitionCollection Boomboxes { get; }
+    public Dictionary<int, CakeItemDefinition> Cakes { get; } = new();
     public FoodEffectCollection FoodEffects { get; }
     public TransformAbilityCollection Transformations { get; }
 
@@ -59,6 +61,16 @@ public class ConsumableCollection
             }
             _logger.LogInformation("Loaded {count} Boombox definitions.", Boomboxes.Count);
 
+            foreach (var entry in consumables.Cakes)
+            {
+                if (!Cakes.TryAdd(entry.ItemId, entry))
+                {
+                    _logger.LogWarning("Failed to add Cake entry. ItemId={id} \"{file}\"", entry.ItemId, filePath);
+                    return false;
+                }
+            }
+            _logger.LogInformation("Loaded {count} Cake definitions.", Cakes.Count);
+
             foreach (var entry in consumables.FoodEffects)
             {
                 if (!FoodEffects.TryAdd(entry.AbilityId, entry))
@@ -85,7 +97,7 @@ public class ConsumableCollection
             return false;
         }
 
-        if (Boomboxes.Count == 0 && FoodEffects.Count == 0 && Transformations.Count == 0)
+        if (Boomboxes.Count == 0 && Cakes.Count == 0 && FoodEffects.Count == 0 && Transformations.Count == 0)
         {
             _logger.LogError("No data was loaded from \"{file}\"", filePath);
             return false;
