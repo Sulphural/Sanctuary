@@ -162,6 +162,10 @@ public class PlayerUpdatePacketAddNpc : BasePlayerUpdatePacket, ISerializablePac
 
     public int NameplateImageId;
 
+    public int NotificationImageSetId;
+
+    public NotificationInfo? NotificationData;
+
     public PlayerUpdatePacketAddNpc() : base(OpCode)
     {
     }
@@ -304,6 +308,10 @@ public class PlayerUpdatePacketAddNpc : BasePlayerUpdatePacket, ISerializablePac
         writer.Write(NameScale);
 
         writer.Write(NameplateImageId);
+
+        writer.Write(NotificationImageSetId);
+
+        NotificationData?.Serialize(writer);
 
         return writer.Buffer;
     }

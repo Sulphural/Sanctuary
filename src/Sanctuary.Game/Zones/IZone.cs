@@ -13,10 +13,14 @@ public interface IZone
     int Id { get; }
     string Name { get; }
 
+    Vector4 SpawnPosition { get; }
+    Quaternion SpawnRotation { get; }
+
     #region Events
 
     void OnClientIsReady(Player entity);
     void OnClientFinishedLoading(Player entity);
+    void RefreshPlayerCustomizations(Player player);
 
     #endregion
 
@@ -30,10 +34,14 @@ public interface IZone
     bool TryGetEntity(ulong guid, [MaybeNullWhen(false)] out IEntity entity);
 
     bool TryAddMount(Mount mount);
+    bool TryAddPet(Pet pet);
     bool TryAddPlayer(Player player);
 
     bool TryCreateNpc([MaybeNullWhen(false)] out Npc npc);
+    bool TryCreateNpc(ulong guid, [MaybeNullWhen(false)] out Npc npc);
     bool TryCreateMount(Player rider, MountDefinition definition, [MaybeNullWhen(false)] out Mount mount);
+    bool TryCreatePet(Player owner, Resources.Definitions.PetDefinition definition, [MaybeNullWhen(false)] out Pet pet);
+    bool TryCreateCombatNpc([MaybeNullWhen(false)] out CombatNpc combatNpc);
     bool TryCreatePlayer(ulong guid, UdpConnection connection, [MaybeNullWhen(false)] out Player player);
 
     bool TryRemoveNpc(ulong guid);

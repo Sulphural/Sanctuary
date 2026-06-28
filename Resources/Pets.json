@@ -1,0 +1,109 @@
+[
+  {
+    "Comment": "Fluffy Dog Pet",
+    "Id": 20001,
+    "NameId": 10001,
+    "ImageSetId": 5001,
+    "TextureAlias": "",
+    "TintAlias": "dyetint",
+    "TintId": 0,
+    "MembersOnly": false,
+    "ModelId": 3339,
+    "IsNameable": true,
+    "Stats": {
+      "MaxMovementSpeed": 8.0
+    }
+  },
+  {
+    "Comment": "Orange Tabby Cat Pet",
+    "Id": 20003,
+    "NameId": 10003,
+    "ImageSetId": 5003,
+    "TextureAlias": "",
+    "TintAlias": "dyetint",
+    "TintId": 0,
+    "MembersOnly": false,
+    "ModelId": 2064,
+    "IsNameable": true,
+    "Stats": {
+      "MaxMovementSpeed": 8.0
+    }
+  },
+  {
+    "Comment": "Baby Dragon (Red) Pet",
+    "Id": 20005,
+    "NameId": 10005,
+    "ImageSetId": 5005,
+    "TextureAlias": "",
+    "TintAlias": "dyetint",
+    "TintId": 0,
+    "MembersOnly": false,
+    "ModelId": 3480,
+    "IsNameable": true,
+    "Stats": {
+      "MaxMovementSpeed": 8.0
+    }
+  },
+  {
+    "Comment": "White Rabbit Pet",
+    "Id": 20008,
+    "NameId": 10008,
+    "ImageSetId": 5008,
+    "TextureAlias": "",
+    "TintAlias": "dyetint",
+    "TintId": 0,
+    "MembersOnly": false,
+    "ModelId": 3500,
+    "IsNameable": true,
+    "Stats": {
+      "MaxMovementSpeed": 7.5
+    }
+  },
+  {
+    "Comment": "Phoenix Hatchling Pet",
+    "Id": 20017,
+    "NameId": 10017,
+    "ImageSetId": 5017,
+    "TextureAlias": "",
+    "TintAlias": "dyetint",
+    "TintId": 0,
+    "MembersOnly": false,
+    "ModelId": 3600,
+    "IsNameable": true,
+    "Stats": {
+      "MaxMovementSpeed": 8.5
+    }
+  }
+  ,
+  {
+    "Comment": "Wolf Pet",
+    "Id": 1088,
+    "NameId": 6270,
+    "ImageSetId": 6873,
+    "TextureAlias": "base",
+    "TintAlias": "base_metal",
+    "TintId": 0,
+    "MembersOnly": false,
+    "ModelId": 3284,
+    "IsNameable": true,
+    "Stats": {
+      "MaxMovementSpeed": 8.0
+    }
+  }
+  ,
+  {
+    "Comment": "Lava Tiger Pet",
+    "Id": 4243,
+    "NameId": 6369,
+    "ImageSetId": 7058,
+    "TextureAlias": "lava-tiger",
+    "TintAlias": "dyetint",
+    "TintId": 0,
+    "MembersOnly": false,
+    "ModelId": 3479,
+    "IsNameable": true,
+    "Stats": {
+      "MaxMovementSpeed": 8.5
+    }
+  }
+]

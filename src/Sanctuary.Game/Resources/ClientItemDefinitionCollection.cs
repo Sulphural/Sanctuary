@@ -45,13 +45,7 @@ public class ClientItemDefinitionCollection : ObservableConcurrentDictionary<int
             }
 
             foreach (var entry in entries)
-            {
-                if (!TryAdd(entry.Id, entry))
-                {
-                    _logger.LogWarning("Failed to add entry. {id} \"{file}\"", entry.Id, filePath);
-                    continue;
-                }
-            }
+                this[entry.Id] = entry;
         }
         catch (Exception ex)
         {

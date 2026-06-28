@@ -27,21 +27,21 @@
   ],
 
   "FoodEffects": [
-    { "AbilityId": 1956, "CompositeEffectId": 47 },
-    { "AbilityId": 1957, "CompositeEffectId": 5032 },
-    { "AbilityId": 1958, "CompositeEffectId": 1 },
-    { "AbilityId": 1960, "CompositeEffectId": 5 },
-    { "AbilityId": 1961, "CompositeEffectId": 5102 },
-    { "AbilityId": 1962, "CompositeEffectId": 174 },
-    { "AbilityId": 1963, "CompositeEffectId": 1115 },
-    { "AbilityId": 1965, "CompositeEffectId": 5298 },
-    { "AbilityId": 1966, "CompositeEffectId": 12 },
-    { "AbilityId": 1967, "CompositeEffectId": 5370 },
-    { "AbilityId": 1968, "CompositeEffectId": 5732 },
-    { "AbilityId": 1969, "CompositeEffectId": 1107 },
-    { "AbilityId": 1970, "CompositeEffectId": 630 },
-    { "AbilityId": 1973, "CompositeEffectId": 15173 },
-    { "AbilityId": 2004, "CompositeEffectId": 4013 }
+    { "AbilityId": 1956, "CompositeEffectId": 47,    "Comment": "Electric Veal Meat" },
+    { "AbilityId": 1957, "CompositeEffectId": 5032,  "Comment": "Rocking Road Mix" },
+    { "AbilityId": 1958, "CompositeEffectId": 1,     "Comment": "Fiery Fury Candy" },
+    { "AbilityId": 1960, "CompositeEffectId": 5,     "Comment": "Mr. Gleam's Granola Bar" },
+    { "AbilityId": 1961, "CompositeEffectId": 5102,  "Comment": "Silver Surf 'n Turf" },
+    { "AbilityId": 1962, "CompositeEffectId": 174,   "Comment": "Deep Mines Delight" },
+    { "AbilityId": 1963, "CompositeEffectId": 1115,  "Comment": "Roaring Rapids Roast" },
+    { "AbilityId": 1965, "CompositeEffectId": 5298,  "Comment": "Noxious Pork Chops" },
+    { "AbilityId": 1966, "CompositeEffectId": 12,    "Comment": "Firefrog Legs" },
+    { "AbilityId": 1967, "CompositeEffectId": 5370,  "Comment": "Hot Sauce Buns" },
+    { "AbilityId": 1968, "CompositeEffectId": 5732,  "Comment": "Arbor Buttercake" },
+    { "AbilityId": 1969, "CompositeEffectId": 1107,  "Comment": "Pixiedust Pie" },
+    { "AbilityId": 1970, "CompositeEffectId": 630,   "Comment": "Frosty Flakes" },
+    { "AbilityId": 1973, "CompositeEffectId": 15173, "Comment": "Scrumptious Soup" },
+    { "AbilityId": 2004, "CompositeEffectId": 4013,  "Comment": "Steaming Pretzels" }
   ],
 
   "Transformations": [
@@ -111,9 +111,9 @@
     { "AbilityId": 3038, "ModelId": 130, "DurationMs": 10000, "CooldownMs": 10000 },
     { "AbilityId": 286,  "ModelId": 22,  "DurationMs": 10000, "CooldownMs": 10000 },
     { "AbilityId": 3070, "ModelId": 177, "DurationMs": 10000, "CooldownMs": 10000 },
-    { "AbilityId": 4370, "ModelId": 2055, "DurationMs": 30000, "CooldownMs": 10000 },
-    { "AbilityId": 4371, "ModelId": 1944, "DurationMs": 30000, "CooldownMs": 10000 },
-    { "AbilityId": 4372, "ModelId": 1702, "DurationMs": 30000, "CooldownMs": 10000 },
-    { "AbilityId": 4373, "ModelId": 22,   "DurationMs": 30000, "CooldownMs": 10000 }
+    { "AbilityId": 4370, "ModelId": 2055, "DurationMs": 30000, "CooldownMs": 10000, "Comment": "Boss Cake - Stone Heart" },
+    { "AbilityId": 4371, "ModelId": 1944, "DurationMs": 30000, "CooldownMs": 10000, "Comment": "Boss Cake - Abominable Snowman" },
+    { "AbilityId": 4372, "ModelId": 1702, "DurationMs": 30000, "CooldownMs": 10000, "Comment": "Boss Cake - Pumpkin Prince" },
+    { "AbilityId": 4373, "ModelId": 22,   "DurationMs": 30000, "CooldownMs": 10000, "Comment": "Boss Cake - Cakenstein" }
   ]
 }

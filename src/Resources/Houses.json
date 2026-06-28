@@ -2,7 +2,7 @@
   {
     "Id": 1,
     "NameId": 6514,
-    "ZoneId": 1,
+    "ZoneId": 101,
     "Icon": 33439,
     "SpawnPosition": [444.3, 5.2, 429.3, 0],
     "SpawnRotation": [-1, 0, 0, 0],
@@ -30,7 +30,7 @@
   {
     "Id": 3,
     "NameId": 69974,
-    "ZoneId": 3,
+    "ZoneId": 103,
     "Icon": 33593,
     "SpawnPosition": [520.5, 0, 513.1, 0],
     "SpawnRotation": [0, 1, 0, 0],
@@ -44,7 +44,7 @@
   {
     "Id": 4,
     "NameId": 69975,
-    "ZoneId": 4,
+    "ZoneId": 104,
     "Icon": 33596,
     "SpawnPosition": [585.7, 0, 545.5, 0],
     "SpawnRotation": [-1, 0, 0, 0],
@@ -86,9 +86,9 @@
   {
     "Id": 7,
     "NameId": 510215,
-    "ZoneId": 7,
+    "ZoneId": 107,
     "Icon": 31263,
-    "SpawnPosition": [675.4, 0, 410.4, 0],
+    "SpawnPosition": [675.4, 5, 410.4, 0],
     "SpawnRotation": [-1, 0, 0, 0],
     "BuildAreas": [
       {
@@ -430,6 +430,34 @@
       {
         "Min": [1356, -100, 778.2],
         "Max": [1406, 60, 723.4]
+      }
+    ]
+  },
+  {
+    "Id": 49,
+    "NameId": 6775,
+    "ZoneId": 149,
+    "Icon": 7000,
+    "SpawnPosition": [444.3, 5.2, 429.3, 0],
+    "SpawnRotation": [-1, 0, 0, 0],
+    "BuildAreas": [
+      {
+        "Min": [322.0, -100, 392.1],
+        "Max": [443.3, 60.0, 477.8]
+      }
+    ]
+  },
+  {
+    "Id": 55,
+    "NameId": 26345,
+    "ZoneId": 155,
+    "Icon": 7724,
+    "SpawnPosition": [444.3, 5.2, 429.3, 0],
+    "SpawnRotation": [-1, 0, 0, 0],
+    "BuildAreas": [
+      {
+        "Min": [322.0, -100, 392.1],
+        "Max": [443.3, 60.0, 477.8]
       }
     ]
   }

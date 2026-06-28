@@ -83,6 +83,7 @@ public static class PacketLoginHandler
             .Include(x => x.Items)
             .Include(x => x.Titles)
             .Include(x => x.Mounts)
+            .Include(x => x.Pets)
             .Include(x => x.Friends)
                 .ThenInclude(x => x.FriendCharacter)
             .Include(x => x.Ignores)
@@ -147,6 +148,8 @@ public static class PacketLoginHandler
         // AchievementObjectiveActivatedPacket - Part 2?
 
         connection.SendSelfToClient();
+
+        // NOTE: PetListPacket (OpCode 5) is sent later in StartingZone.cs after zone initialization completes
 
         return true;
     }

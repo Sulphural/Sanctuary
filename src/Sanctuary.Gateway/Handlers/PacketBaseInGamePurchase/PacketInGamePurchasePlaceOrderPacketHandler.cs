@@ -240,6 +240,7 @@ public static class PacketInGamePurchasePlaceOrderPacketHandler
                     NameId = mountDefinition.NameId,
                     ImageSetId = mountDefinition.ImageSetId,
                     TintId = orderDetailTint,
+                    TintAlias = mountDefinition.TintAlias ?? string.Empty,
                     MembersOnly = mountDefinition.MembersOnly,
                     IsUpgradable = mountDefinition.IsUpgradable,
                     IsUpgraded = dbMount.IsUpgraded
@@ -251,6 +252,139 @@ public static class PacketInGamePurchasePlaceOrderPacketHandler
                 };
 
                 connection.Player.SendTunneled(packetMountList);
+            }
+            else if (clientItemDefinition.Type == 2) // Pets
+            {
+                _logger.LogInformation("Attempting to purchase pet. Item ID: {ItemId}, Param1 (Pet Def ID): {Param1}", clientItemDefinition.Id, clientItemDefinition.Param1);
+
+                if (!_resourceManager.Pets.TryGetValue(clientItemDefinition.Param1, out var petDefinition))
+                {
+                    _logger.LogError("Pet definition {PetDefId} not found in Pets.json", clientItemDefinition.Param1);
+                    packetInGamePurchasePlaceOrderResponse.Result = 2;
+
+                    connection.SendTunneled(packetInGamePurchasePlaceOrderResponse);
+
+                    return true;
+                }
+
+                if (connection.Player.Pets.Any(x => x.Definition == petDefinition.Id && x.TintId == orderDetailTint))
+                {
+                    packetInGamePurchasePlaceOrderResponse.Result = 2;
+
+                    connection.SendTunneled(packetInGamePurchasePlaceOrderResponse);
+
+                    return true;
+                }
+
+                var lastPetId = dbContext.Pets.Where(x => x.CharacterId == dbCharacter.Id)
+                    .Select(x => (int?)x.Id)
+                    .Max() ?? 0;
+
+                var dbPet = new DbPet
+                {
+                    Id = lastPetId + 1,
+                    Name = petDefinition.IsNameable ? "New Pet" : string.Empty,
+                    Tint = orderDetailTint,
+                    Definition = petDefinition.Id,
+                    Created = DateTimeOffset.UtcNow,
+                    CharacterId = dbCharacter.Id
+                };
+
+                dbCharacter.Pets.Add(dbPet);
+
+                if (dbContext.SaveChanges() <= 0)
+                {
+                    _logger.LogError("Failed to save new pet to database. CharacterId={characterId}, PetDefId={petDefId}", dbCharacter.Id, petDefinition.Id);
+                    packetInGamePurchasePlaceOrderResponse.Result = 2;
+                    connection.SendTunneled(packetInGamePurchasePlaceOrderResponse);
+                    return true;
+                }
+
+                var petInfo = new PacketPetInfo
+                {
+                    Id = dbPet.Id,
+                    Definition = petDefinition.Id,
+                    NameId = petDefinition.NameId,
+                    ImageSetId = petDefinition.ImageSetId,
+                    TintId = orderDetailTint,
+                    TintAlias = petDefinition.TintAlias ?? string.Empty,
+                    MembersOnly = petDefinition.MembersOnly,
+                    IsNameable = petDefinition.IsNameable, // Server-side only
+                    IsUpgradable = false, // Match mount structure - pets don't upgrade
+                    IsUpgraded = false, // Match mount structure
+                    Guid = 0 // Keep at 0 in ClientPcData (like mounts), calculate only when needed for world spawning
+                };
+
+                connection.Player.Pets.Add(petInfo);
+
+                _logger.LogInformation("Pet purchased successfully. PetId={petId}, Definition={definition}, NameId={nameId}, ImageSetId={imageSetId}, Guid={guid}, TintId={tintId}, IsNameable={isNameable}",
+                    petInfo.Id, petInfo.Definition, petInfo.NameId, petInfo.ImageSetId, petInfo.Guid, petInfo.TintId, petInfo.IsNameable);
+
+                var petListPacket = new PetListPacket { Pets = connection.Player.Pets };
+                _logger.LogInformation("Sending PetListPacket after purchase. TotalPetsCount={count}, PacketOpCode={opCode}, SubOpCode={subOpCode}",
+                    petListPacket.Pets.Count, PetBasePacket.OpCode, PetListPacket.OpCode);
+                connection.Player.SendTunneled(petListPacket);
+            }
+            else if (clientItemDefinition.Type == 16) // Houses
+            {
+                _logger.LogInformation("Attempting to purchase house. Item ID: {ItemId}, Param1 (House Def ID): {Param1}", clientItemDefinition.Id, clientItemDefinition.Param1);
+
+                if (!_resourceManager.Houses.TryGetValue(clientItemDefinition.Param1, out var houseDefinition))
+                {
+                    _logger.LogError("House definition {HouseDefId} not found in Houses.json", clientItemDefinition.Param1);
+                    packetInGamePurchasePlaceOrderResponse.Result = 2;
+
+                    connection.SendTunneled(packetInGamePurchasePlaceOrderResponse);
+
+                    return true;
+                }
+
+                // Check if player already owns this house type
+                var existingHouse = dbContext.Houses.FirstOrDefault(h => h.OwnerId == dbCharacter.Id && h.HouseDefinitionId == houseDefinition.Id);
+                if (existingHouse != null)
+                {
+                    _logger.LogWarning("Player {CharacterId} already owns house type {HouseDefId}", dbCharacter.Id, houseDefinition.Id);
+                    packetInGamePurchasePlaceOrderResponse.Result = 2;
+
+                    connection.SendTunneled(packetInGamePurchasePlaceOrderResponse);
+
+                    return true;
+                }
+
+                // Create new house for player
+                var dbHouse = new DbHouse
+                {
+                    OwnerId = dbCharacter.Id,
+                    HouseDefinitionId = houseDefinition.Id,
+                    NameId = 0,
+                    CustomName = null,
+                    IsLocked = false,
+                    IsMembersOnly = false,
+                    IsFloraAllowed = true,
+                    PetAutospawn = false,
+                    MaxFixtureCount = 200,
+                    MaxLandmarkCount = 0,
+                    IconId = 33439,
+                    Description = null,
+                    KeywordList = null,
+                    Rating = 0,
+                    Votes = 0,
+                    Created = DateTimeOffset.UtcNow,
+                    LastVisited = DateTimeOffset.UtcNow
+                };
+
+                dbContext.Houses.Add(dbHouse);
+
+                if (dbContext.SaveChanges() <= 0)
+                {
+                    _logger.LogError("Failed to save new house to database. CharacterId={characterId}, HouseDefId={houseDefId}", dbCharacter.Id, houseDefinition.Id);
+                    packetInGamePurchasePlaceOrderResponse.Result = 2;
+                    connection.SendTunneled(packetInGamePurchasePlaceOrderResponse);
+                    return true;
+                }
+
+                _logger.LogInformation("House purchased successfully. HouseId={houseId}, Definition={definition}, OwnerId={ownerId}", 
+                    dbHouse.Id, dbHouse.HouseDefinitionId, dbHouse.OwnerId);
             }
             else
             {

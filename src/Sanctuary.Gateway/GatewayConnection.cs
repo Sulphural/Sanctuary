@@ -194,6 +194,7 @@ public class GatewayConnection : UdpConnection
         }
 
         Player = player;
+        Player.CharacterId = dbCharacter.Id; // Store database character ID
 
         // Start - ClientPcData
 
@@ -329,6 +330,42 @@ public class GatewayConnection : UdpConnection
             });
         }
 
+        _logger.LogInformation("Loading pets for character {characterId}. DbPets count: {dbPetsCount}", dbCharacter.Id, dbCharacter.Pets.Count);
+
+        foreach (var dbPet in dbCharacter.Pets)
+        {
+            if (!_resourceManager.Pets.TryGetValue(dbPet.Definition, out var petDefinition))
+            {
+                _logger.LogWarning("Pet definition {definition} not found in Pets.json for DbPet {petId}", dbPet.Definition, dbPet.Id);
+                continue;
+            }
+
+            var petInfo = new PacketPetInfo
+            {
+                Id = dbPet.Id,
+                Definition = petDefinition.Id,
+                NameId = petDefinition.NameId,
+                ImageSetId = petDefinition.ImageSetId,
+                TintId = dbPet.Tint,
+                TintAlias = petDefinition.TintAlias ?? string.Empty,
+                MembersOnly = petDefinition.MembersOnly,
+                IsNameable = petDefinition.IsNameable, // Server-side only
+                IsUpgradable = false, // Match mount structure - pets don't upgrade
+                IsUpgraded = false, // Match mount structure
+                Guid = 0 // Keep at 0 in ClientPcData (like mounts), calculate only when needed for world spawning
+            };
+
+            Player.Pets.Add(petInfo);
+
+            _logger.LogInformation("Loaded pet: PetId={petId}, Definition={definition}, NameId={nameId}, ImageSetId={imageSetId}, Guid={guid}, TintId={tintId}, TintAlias={tintAlias}",
+                petInfo.Id, petInfo.Definition, petInfo.NameId, petInfo.ImageSetId, petInfo.Guid, petInfo.TintId, petInfo.TintAlias);
+        }
+
+        _logger.LogInformation("Pets loaded and will be sent via PetListPacket. TotalPetsCount={count}", Player.Pets.Count);
+
+        // Note: Pets are sent via PetListPacket (OpCode 5) in StartingZone.cs after zone initialization
+        // PetListPacket is also sent after purchase or when client explicitly requests it
+
         // TODO
 
         // Start - Store on DB
@@ -408,54 +445,77 @@ public class GatewayConnection : UdpConnection
 
     private void SavePlayerToDatabase()
     {
-        using var dbContext = _dbContextFactory.CreateDbContext();
-
-        var dbCharacter = dbContext.Characters.FirstOrDefault(x => x.Id == GuidHelper.GetPlayerId(Player.Guid));
-
-        if (dbCharacter is null)
+        try
         {
-            _logger.LogError("Failed to get character data from database.");
-            return;
+            using var dbContext = _dbContextFactory.CreateDbContext();
+
+            var dbCharacter = dbContext.Characters
+                .Include(c => c.Profiles)
+                .FirstOrDefault(x => x.Id == GuidHelper.GetPlayerId(Player.Guid));
+
+            if (dbCharacter is null)
+            {
+                _logger.LogError("Failed to get character data from database. Character ID: {characterId}", GuidHelper.GetPlayerId(Player.Guid));
+                return;
+            }
+
+            // Start - ClientPcData
+
+            Vector4 position;
+            Quaternion rotation;
+
+            if (Player.Zone == _zoneManager.StartingZone)
+            {
+                position = Player.Position;
+                rotation = Player.Rotation;
+            }
+            else
+            {
+                position = Player.StartingZonePosition;
+                rotation = Player.StartingZoneRotation;
+            }
+
+            dbCharacter.PositionX = float.IsNaN(position.X) ? null : position.X;
+            dbCharacter.PositionY = float.IsNaN(position.Y) ? null : position.Y;
+            dbCharacter.PositionZ = float.IsNaN(position.Z) ? null : position.Z;
+
+            dbCharacter.RotationX = float.IsNaN(rotation.X) ? null : rotation.X;
+            dbCharacter.RotationZ = float.IsNaN(rotation.Z) ? null : rotation.Z;
+
+            dbCharacter.ActiveProfileId = Player.ActiveProfileId;
+
+            dbCharacter.ActiveTitleId = Player.ActiveTitle;
+
+            // End ClientPcData
+
+            dbCharacter.ChatBubbleForegroundColor = Player.ChatBubbleForegroundColor;
+            dbCharacter.ChatBubbleBackgroundColor = Player.ChatBubbleBackgroundColor;
+            dbCharacter.ChatBubbleSize = Player.ChatBubbleSize;
+
+            // Save profile levels/XP
+            foreach (var profile in Player.Profiles)
+            {
+                var dbProfile = dbCharacter.Profiles.FirstOrDefault(p => p.Id == profile.Id);
+                if (dbProfile is not null)
+                {
+                    dbProfile.Level = profile.Rank;
+                    dbProfile.LevelXP = profile.RankPercent;
+                }
+            }
+
+            var changesSaved = dbContext.SaveChanges();
+
+            if (changesSaved <= 0)
+                _logger.LogWarning("No changes saved to database for character {characterId}", GuidHelper.GetPlayerId(Player.Guid));
+            else
+                _logger.LogDebug("Successfully saved {changeCount} changes for character {characterId}", changesSaved, GuidHelper.GetPlayerId(Player.Guid));
         }
-
-        // Start - ClientPcData
-
-        Vector4 position;
-        Quaternion rotation;
-
-        if (Player.Zone == _zoneManager.StartingZone)
+        catch (Exception ex)
         {
-            position = Player.Position;
-            rotation = Player.Rotation;
+            _logger.LogError(ex, "Exception occurred while saving character data to database. Character ID: {characterId}, Name: {characterName}",
+                GuidHelper.GetPlayerId(Player.Guid),
+                Player.Name.FirstName);
         }
-        else
-        {
-            position = Player.StartingZonePosition;
-            rotation = Player.StartingZoneRotation;
-        }
-
-        dbCharacter.PositionX = float.IsNaN(position.X) ? null : position.X;
-        dbCharacter.PositionY = float.IsNaN(position.Y) ? null : position.Y;
-        dbCharacter.PositionZ = float.IsNaN(position.Z) ? null : position.Z;
-
-        dbCharacter.RotationX = float.IsNaN(rotation.X) ? null : rotation.X;
-        dbCharacter.RotationZ = float.IsNaN(rotation.Z) ? null : rotation.Z;
-
-        dbCharacter.ActiveProfileId = Player.ActiveProfileId;
-
-        dbCharacter.ActiveTitleId = Player.ActiveTitle;
-
-        if (dbCharacter.LastLogin.HasValue)
-            dbCharacter.PlayTime += (int)(DateTimeOffset.UtcNow - dbCharacter.LastLogin.Value).TotalMinutes;
-
-        // End ClientPcData
-
-        dbCharacter.ChatBubbleForegroundColor = Player.ChatBubbleForegroundColor;
-        dbCharacter.ChatBubbleBackgroundColor = Player.ChatBubbleBackgroundColor;
-        dbCharacter.ChatBubbleSize = Player.ChatBubbleSize;
-
-        if (dbContext.SaveChanges() <= 0)
-            _logger.LogError("Failed to save character data to database");
     }
 
     public void SendInitializationParameters()
@@ -522,6 +582,75 @@ public class GatewayConnection : UdpConnection
         packetSendSelfToClient.Payload = Player.Serialize();
 
         SendTunneled(packetSendSelfToClient);
+
+        // TEST: Send PetListPacket immediately after ClientPcData, mimicking how mounts are sent
+        // Try assigning unique Guids to pets (maybe Guid=0 prevents display?)
+        ulong baseGuid = 999000000000; // Use a high base number for pet collection Guids
+        int guidOffset = 0;
+        foreach (var pet in Player.Pets)
+        {
+            // Generate a unique Guid for this pet for the collection UI
+            pet.Guid = baseGuid + (ulong)guidOffset++;
+        }
+        var petListPacket = new PetListPacket { Pets = Player.Pets };
+        Player.SendTunneled(petListPacket);
+
+        // Send housing list immediately after pets
+        SendHousingList();
+    }
+
+    private void SendHousingList()
+    {
+        using var dbContext = _dbContextFactory.CreateDbContext();
+
+        var playerId = GuidHelper.GetPlayerId(Player.Guid);
+
+        // Load all houses owned by this player
+        var dbHouses = dbContext.Houses
+            .Where(h => h.OwnerId == playerId)
+            .ToList();
+
+        var housingPacketInstanceList = new HousingPacketInstanceList
+        {
+            PlayerGuid = Player.Guid
+        };
+
+        foreach (var dbHouse in dbHouses)
+        {
+            // Get house definition to populate display info
+            var houseDefinition = _resourceManager.Houses.TryGetValue(dbHouse.HouseDefinitionId, out var def) ? def : null;
+
+            var instanceInfo = new PlayerHousingInstanceInfo
+            {
+                OwnerGuid = Player.Guid,
+                InstanceGuid = dbHouse.Id,
+                NameId = dbHouse.NameId,
+                OwnerName = Player.Name.FirstName,
+                HouseName = dbHouse.CustomName,
+                IconId = dbHouse.IconId,
+                FixtureCount = dbHouse.MaxFixtureCount, // Current fixture count
+                FurnitureScore = 0, // TODO: Calculate furniture score
+                LastVisited = dbHouse.LastVisited.DateTime,
+                IsLocked = dbHouse.IsLocked,
+                IsMembersOnly = dbHouse.IsMembersOnly,
+                IsFloraAllowed = dbHouse.IsFloraAllowed,
+                Description = dbHouse.Description,
+                KeywordList = dbHouse.KeywordList,
+                Rating = dbHouse.Rating,
+                Votes = dbHouse.Votes,
+                HasRating = dbHouse.Rating > 0,
+                CanVote = false,
+                FactoryPlotId = 0,
+                WhenCreated = dbHouse.Created
+            };
+
+            housingPacketInstanceList.Instances.Add(instanceInfo);
+        }
+
+        _logger.LogInformation("Sending housing list with {count} houses to player {name}",
+            housingPacketInstanceList.Instances.Count, Player.Name.FirstName);
+
+        Player.SendTunneled(housingPacketInstanceList);
     }
 
     public void SendFriendOffline()
@@ -543,6 +672,35 @@ public class GatewayConnection : UdpConnection
             otherFriendPlayer.Online = false;
 
             friendPlayer.SendTunneled(friendOfflinePacket);
+        }
+    }
+
+    public bool SaveItemToDatabase(ClientItem item)
+    {
+        try
+        {
+            using var dbContext = _dbContextFactory.CreateDbContext();
+
+            var dbItem = new DbItem
+            {
+                Tint = item.Tint,
+                Count = item.Count,
+                Definition = item.Definition,
+                CharacterId = Player.CharacterId
+            };
+
+            dbContext.Items.Add(dbItem);
+            dbContext.SaveChanges();
+
+            item.Id = dbItem.Id;
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save item {definition} to database for character {characterId}",
+                item.Definition, Player.CharacterId);
+            return false;
         }
     }
 

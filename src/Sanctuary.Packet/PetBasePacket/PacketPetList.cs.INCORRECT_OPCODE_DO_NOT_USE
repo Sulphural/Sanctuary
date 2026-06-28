@@ -1,0 +1,38 @@
+using System;
+using System.Collections.Generic;
+
+using Sanctuary.Core.IO;
+using Sanctuary.Packet.Common;
+
+namespace Sanctuary.Packet;
+
+public class PacketPetList : PetBasePacket, ISerializablePacket
+{
+    public new const byte OpCode = 35; // IDA analysis: case 34 in switch (subOpCode - 1)
+
+    public List<PacketPetInfo> Pets = new List<PacketPetInfo>();
+
+    public PacketPetList() : base(OpCode)
+    {
+    }
+
+    public byte[] Serialize()
+    {
+        using var writer = new PacketWriter();
+
+        Write(writer);
+
+        Console.WriteLine($"[PacketPetList] Serializing pet list. Count={Pets.Count}, BaseOpCode={PetBasePacket.OpCode}, SubOpCode={OpCode}");
+
+        foreach (var pet in Pets)
+        {
+            Console.WriteLine($"[PacketPetList] Serializing Pet: Id={pet.Id}, Definition={pet.Definition}, NameId={pet.NameId}, ImageSetId={pet.ImageSetId}, Guid={pet.Guid}, TintId={pet.TintId}, IsUpgradable={pet.IsUpgradable}, IsUpgraded={pet.IsUpgraded}");
+        }
+
+        writer.Write(Pets);
+
+        Console.WriteLine($"[PacketPetList] Serialization complete. BufferSize={writer.Buffer.Length} bytes");
+
+        return writer.Buffer;
+    }
+}

@@ -10,6 +10,7 @@ public class FixtureDefinition : ISerializableType
     public int ItemDefinitionId;
 
     public int Unknown3;
+    public int Unknown4;
 
     public int ModelId;
 

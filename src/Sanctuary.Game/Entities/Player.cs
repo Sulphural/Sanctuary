@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
@@ -43,8 +44,6 @@ public sealed class Player : ClientPcData, IEntity
     public List<FriendData> Friends { get; set; } = [];
     public List<IgnoreData> Ignores { get; set; } = [];
 
-    public ConcurrentSet<ulong> IncomingFriendRequests { get; } = [];
-
     public ConcurrentDictionary<ChatChannel, bool> ChatChannelStatus { get; set; } = [];
 
     public int StationCash { get; set; }
@@ -54,8 +53,25 @@ public sealed class Player : ClientPcData, IEntity
 
     public Dictionary<int, Dictionary<int, int>> ActionBarItemGuids { get; set; } = new();
 
-    public int TemporaryAppearance { get; set; }
+    public new int TemporaryAppearance { get; set; }
     public DateTimeOffset? TemporaryAppearanceExpiresAt { get; set; }
+
+    public bool IsDead { get; set; }
+    public int CurrentHitpoints { get; set; } = 2500;
+    public int CurrentMana { get; set; } = 100;
+
+    public ConcurrentSet<ulong> IncomingFriendRequests { get; } = [];
+
+    public ulong CharacterId { get; set; }
+    public bool InCombat { get; set; }
+    public ulong CombatTargetGuid { get; set; }
+    public ulong ActiveMerchantGuid { get; set; }
+    public ulong CurrentHouseGuid { get; set; }
+    public DateTime LastCombatTime { get; set; }
+
+    public Pet? Pet { get; set; }
+
+    public void Disconnect() => _connection.Disconnect();
 
 
     public Vector4 StartingZonePosition { get; set; }
@@ -136,6 +152,49 @@ public sealed class Player : ClientPcData, IEntity
 
     public void UpdateEverySecond()
     {
+    }
+
+    public void Respawn()
+    {
+        IsDead = false;
+        CurrentHitpoints = Stats[CharacterStatId.MaxHealth].Int;
+
+        var hpPacket = new ClientUpdatePacketHitpoints
+        {
+            CurrentHitpoints = CurrentHitpoints,
+            MaxHitpoints = CurrentHitpoints
+        };
+        SendTunneled(hpPacket);
+    }
+
+    public void TakeDamage(int amount, CombatNpc source)
+    {
+        if (IsDead)
+            return;
+
+        CurrentHitpoints = Math.Max(0, CurrentHitpoints - amount);
+
+        var hpPacket = new ClientUpdatePacketHitpoints
+        {
+            CurrentHitpoints = CurrentHitpoints,
+            MaxHitpoints = Stats[CharacterStatId.MaxHealth].Int
+        };
+        SendTunneled(hpPacket);
+
+        if (CurrentHitpoints <= 0)
+            IsDead = true;
+    }
+
+    public void AwardXp(int xp)
+    {
+        var xpPacket = new ClientUpdatePacketUpdateProfileExperience
+        {
+            ProfileId = ActiveProfileId,
+            XpGained = xp,
+            TotalXpInLevel = 0,
+            CurrentLevel = 0
+        };
+        SendTunneled(xpPacket);
     }
 
     public void UpdatePosition(Vector4 position, Quaternion rotation)
@@ -274,7 +333,7 @@ public sealed class Player : ClientPcData, IEntity
             SendTunneled(playerUpdatePacketAddNpc);
         }
 
-        /* var playerUpdatePacketNpcRelevance = new PlayerUpdatePacketNpcRelevance();
+        var playerUpdatePacketNpcRelevance = new PlayerUpdatePacketNpcRelevance();
 
         foreach (var npc in npcs)
         {
@@ -284,9 +343,9 @@ public sealed class Player : ClientPcData, IEntity
             playerUpdatePacketNpcRelevance.Entries.Add(new PlayerUpdatePacketNpcRelevance.Entry
             {
                 Guid = npc.Guid,
-                HasCursor = true,
+                Unknown = true,
                 CursorId = npc.CursorId,
-                Unknown2 = false
+                HasCursor = false
             });
         }
 
@@ -301,12 +360,13 @@ public sealed class Player : ClientPcData, IEntity
                 continue;
 
             playerUpdatePacketAddNotifications.Notifications.Add(npc.Notification);
-
-            SendTunneled(playerUpdatePacketAddNotifications);
         }
 
+        if (playerUpdatePacketAddNotifications.Notifications.Count > 0)
+            SendTunneled(playerUpdatePacketAddNotifications);
+
         foreach (var npc in npcs)
-            VisibleNpcs.TryAdd(npc.Guid, npc); */
+            VisibleNpcs.TryAdd(npc.Guid, npc);
     }
 
     public void OnAddVisiblePlayers(params IEnumerable<Player> players)
@@ -524,6 +584,8 @@ public sealed class Player : ClientPcData, IEntity
             packet.MountQueuePosition = Mount.QueuePosition;
 
             packet.NameVerticalOffset = Mount.Definition.NameVerticalOffset;
+
+            Debug.WriteLine($"AddPc: {Name} {Guid} | {Mount.Guid} {Mount.Seat} {Mount.QueuePosition}");
         }
 
         return packet;

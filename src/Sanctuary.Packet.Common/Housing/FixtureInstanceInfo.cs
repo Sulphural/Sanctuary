@@ -8,6 +8,9 @@ public class FixtureInstanceInfo : ISerializableType
 
     public ulong FixtureGuid;
     public int ItemDefinitionId;
+    public int Unknown3;
+    public int Unknown4;
+    public int Unknown5;
 
     public void Serialize(PacketWriter writer)
     {

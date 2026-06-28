@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk -F',' 'NR>1' \"/c/Users/nadim/Desktop/Manually Spawned NPCs \\(2\\) \\(2\\).csv\")",
+      "Bash(awk -F',' '{print $2}')",
+      "Read(//tmp/**)",
+      "Bash(awk -F'^' '$1+0 == 221 || $1+0 == 403 || $1+0 == 2098 {print}' \"/c/Users/nadim/Desktop/NEWSanctServer/Sanctuary/src/Resources/Models.txt\")",
+      "Bash(grep -i \"chugawug_m_02\\\\|rabbit\\\\.adr\\\\|horse_f\\\\.adr\\\\|human_m\\\\.adr\\\\|dwarf_m_therin\\\\|jollyroger\\\\|turtle_01\\\\|banshee_01\" \\\\ *)",
+      "Read(//c/Users/nadim/AppData/Local/OSFRLauncher/Servers/Sul Sanctuary/Client/assets/**)",
+      "Bash(# Check if FreeRealms.exe exists anywhere and what's near it *)",
+      "Read(//c/Users/nadim/AppData/Local/OSFRLauncher/**)",
+      "Bash(find \"/c/Users/nadim/AppData/Local/OSFRLauncher/Servers/Sul Sanctuary\" -name \"*.log\" 2>/dev/null | head -5 *)",
+      "Read(//c/Users/nadim/AppData/Local/**)",
+      "Bash(awk -F, 'NR>1 && \\($2+0 >= 1 && $2+0 <= 50\\) {print $2, $6, $7, $8, $12}' '/c/Users/nadim/Desktop/Manually Spawned NPCs \\(2\\) \\(2\\).csv')",
+      "Bash(awk -F'\\\\t' 'NR>1 && $10!=\"\" {print $10}' \"c:/Users/nadim/Desktop/NEWSanctServer/Sanctuary/src/Resources/NpcSpawns.txt\")",
+      "Bash(awk -F'\\\\t' 'NF>=12 && $12!=\"\" {print $1\"\\\\t\"$12\"\\\\t\"$6\"\\\\t\"$7\"\\\\t\"$8}' \"c:/Users/nadim/Desktop/NEWSanctServer/Sanctuary/Resources/NpcSpawns.txt\")",
+      "Bash(awk '-F\\\\t' 'NR>1 { *)",
+      "Bash(python3 -c ' *)",
+      "Bash(powershell -Command 'Get-Content '\\\\''c:\\\\Users\\\\nadim\\\\Desktop\\\\NEWSanctServer\\\\Sanctuary\\\\src\\\\Resources\\\\CoinStoreItems.json'\\\\'' | ConvertFrom-Json | Select-Object -First 10 | ForEach-Object { $_.Id }')",
+      "WebFetch(domain:freerealms.fandom.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(python3 -c \"import json,sys; [print\\(x['name'], x['type']\\) for x in json.load\\(sys.stdin\\)]\")",
+      "Bash(powershell -Command \"Get-Content 'c:/Users/nadim/Desktop/NEWSanctServer/Sanctuary/src/bin/Release/Resources/CoinStoreItems.json' | Select-String -Pattern '\\\\\"8\\\\\"|\\\\\"9\\\\\"|\\\\\"10\\\\\"' | Select-Object -First 10\")",
+      "PowerShell($json = Get-Content \"c:\\\\Users\\\\nadim\\\\Desktop\\\\NEWSanctServer\\\\Sanctuary\\\\src\\\\bin\\\\Release\\\\Resources\\\\ClientItemDefinitions.json\" -Raw | ConvertFrom-Json; $json.PSObject.Properties | Where-Object { $_.Name -in @\\(\"8\",\"9\",\"10\"\\) } | ForEach-Object { \"$\\($_.Name\\): $\\($_.Value\\)\" })",
+      "PowerShell($json = Get-Content \"c:\\\\Users\\\\nadim\\\\Desktop\\\\NEWSanctServer\\\\Sanctuary\\\\src\\\\bin\\\\Release\\\\Resources\\\\CoinStoreItems.json\" -Raw | ConvertFrom-Json; $json.PSObject.Properties | Select-Object -First 10 | ForEach-Object { \"$\\($_.Name\\): BuyDisabled=$\\($_.Value.buyDisabled\\) Hidden=$\\($_.Value.hidden\\) Category=$\\($_.Value.categoryId\\)\" })",
+      "Bash(node -e ' *)",
+      "WebFetch(domain:web.archive.org)",
+      "Bash(ls \"C:/Program Files/Open Source Free Realms/Client/locale/\" 2>/dev/null | head -20 *)",
+      "Read(//c/Program Files/Open Source Free Realms/Client/locale/**)",
+      "Read(//c/Program Files/Open Source Free Realms/Client/locales/**)",
+      "Read(//c/Program Files/Open Source Free Realms/Client/**)",
+      "Read(//c/Program Files/Open Source Free Realms/**)"
+    ]
+  }
+}

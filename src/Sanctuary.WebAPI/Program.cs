@@ -1,6 +1,7 @@
 using System.Globalization;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +21,9 @@ CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.WebHost.UseUrls();
+
+if (!builder.Environment.IsDevelopment())
+    ((IConfigurationBuilder)builder.Configuration).AddJsonFile("database.json", optional: true);
 
 // Proxy Server / Load Balancer
 var forwardedHeaderSection = builder.Configuration.GetSection("ForwardedHeadersOptions");

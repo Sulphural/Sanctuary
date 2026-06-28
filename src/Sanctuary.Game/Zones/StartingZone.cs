@@ -27,6 +27,52 @@ public sealed class StartingZone : BaseZone
 
         _zoneManager = serviceProvider.GetRequiredService<IZoneManager>();
         _resourceManager = serviceProvider.GetRequiredService<IResourceManager>();
+
+        // Spawn all static NPCs in the zone
+        SpawnNpcs();
+    }
+
+    private void SpawnNpcs()
+    {
+        int spawnedCount = 0;
+
+        foreach (var npcSpawn in _resourceManager.NpcSpawns.Values)
+        {
+            if (!TryCreateNpc(npcSpawn.Guid, out var npc))
+                continue;
+
+            npc.ModelId = npcSpawn.ModelId;
+            npc.NameId = npcSpawn.NameId;
+            npc.TextureAlias = npcSpawn.TextureAlias;
+            npc.Name = npcSpawn.Name;
+            npc.Scale = 1f;
+            npc.Visible = true;
+
+            if (_resourceManager.NpcVendors.TryGetValue(npcSpawn.Guid, out var vendorDef))
+            {
+                npc.VendorItems = vendorDef.Items;
+                npc.VendorCosts = vendorDef.ItemCosts;
+                npc.VendorBundles = vendorDef.Bundles;
+                npc.ResourceManager = _resourceManager;
+                npc.CursorId = 5;
+                npc.NotificationData = vendorDef.Notification;
+                npc.NameplateImageId = vendorDef.NameplateImageId;
+                npc.ImageSetId = vendorDef.ImageSetId;
+                npc.NotificationImageSetId = vendorDef.NotificationImageSetId;
+                npc.Unknown67 = 294;
+                if (vendorDef.ActiveProfile != 0)
+                    npc.ActiveProfile = vendorDef.ActiveProfile;
+                if (vendorDef.SubTextNameId != 0)
+                    npc.SubTextNameId = vendorDef.SubTextNameId;
+            }
+
+            npc.UpdatePosition(npcSpawn.Position, npcSpawn.Rotation);
+
+            var tile = GetTileFromPosition(npcSpawn.Position);
+            tile.Entities.TryAdd(npc.Guid, npc);
+
+            spawnedCount++;
+        }
     }
 
     #region Client Is Ready
@@ -41,16 +87,16 @@ public sealed class StartingZone : BaseZone
 
         var clientUpdatePacketHitpoints = new ClientUpdatePacketHitpoints
         {
-            CurrentHitpoints = 2500,
-            MaxHitpoints = 2500
+            CurrentHitpoints = player.CurrentHitpoints,
+            MaxHitpoints = player.Stats[CharacterStatId.MaxHealth].Int
         };
 
         player.SendTunneled(clientUpdatePacketHitpoints);
 
         var clientUpdatePacketMana = new ClientUpdatePacketMana
         {
-            CurrentMana = 100,
-            MaxMana = 100
+            CurrentMana = player.CurrentMana,
+            MaxMana = player.Stats[CharacterStatId.MaxMana].Int
         };
 
         player.SendTunneled(clientUpdatePacketMana);
@@ -69,13 +115,10 @@ public sealed class StartingZone : BaseZone
 
         SendInGamePurchase(player);
 
-        var packetZoneDoneSendingInitialData = new PacketZoneDoneSendingInitialData();
+        // SendPetList(player); // DISABLED - now sent in GatewayConnection immediately after ClientPcData
 
-        player.SendTunneled(packetZoneDoneSendingInitialData);
-
-        var clientUpdatePacketDoneSendingPreloadCharacters = new ClientUpdatePacketDoneSendingPreloadCharacters();
-
-        player.SendTunneled(clientUpdatePacketDoneSendingPreloadCharacters);
+        player.SendTunneled(new PacketZoneDoneSendingInitialData());
+        player.SendTunneled(new ClientUpdatePacketDoneSendingPreloadCharacters());
 
         SendFriendList(player);
         SendIgnoreList(player);
@@ -1006,10 +1049,23 @@ public sealed class StartingZone : BaseZone
                 NameId = 409160,
                 DescriptionId = 2430,
                 IconId = 949
+            },
+            new ClaimCodeInfo
+            {
+                Code = "BOSSCAKE",
+                NameId = 30109,
+                DescriptionId = 30118,
+                IconId = 6380
             }
         ]);
 
         player.SendTunneled(packetLoadWelcomeScreen);
+    }
+
+    public override void RefreshPlayerCustomizations(Player player)
+    {
+        SendPlayerCustomizations(player);
+        player.SendTunneled(new ClientUpdatePacketDoneSendingPreloadCharacters());
     }
 
     private void SendPlayerCustomizations(Player player)
@@ -1060,8 +1116,8 @@ public sealed class StartingZone : BaseZone
             },
             new PlayerCustomizationData
             {
-                Id = 8, // Model
-                Param = player.Model
+                Id = 8, // Model — use TemporaryAppearance when a transform is active
+                Param = player.TemporaryAppearance != 0 ? player.TemporaryAppearance : player.Model
             }
         };
 
@@ -1137,6 +1193,9 @@ public sealed class StartingZone : BaseZone
 
         player.SendTunneled(packetInGamePurchaseStoreBundleGroups);
 
+        // Send empty claim list so the Claim window doesn't get stuck on "Processing..."
+        player.SendTunneled(new PromotionalBundleDataPacket());
+
         /* var inGamePurchaseUpdateSaleDisplay = new InGamePurchaseUpdateSaleDisplay();
 
         inGamePurchaseUpdateSaleDisplay.Sales.Add(new SaleDisplayInfo
@@ -1170,6 +1229,16 @@ public sealed class StartingZone : BaseZone
         ignoreListPacket.Ignores = player.Ignores;
 
         player.SendTunneled(ignoreListPacket);
+    }
+
+    private void SendPetList(Player player)
+    {
+        var petListPacket = new PetListPacket
+        {
+            Pets = player.Pets
+        };
+
+        player.SendTunneled(petListPacket);
     }
 
     private void UpdateFriendStatus(Player player)
@@ -1238,5 +1307,68 @@ public sealed class StartingZone : BaseZone
         }
 
         return 0;
+    }
+
+    public override int GetClaimCodeItemCount(string code, int itemId)
+    {
+        if (string.Equals(code, "BOSSCAKE", StringComparison.OrdinalIgnoreCase) && itemId == 69828)
+            return 3;
+        return base.GetClaimCodeItemCount(code, itemId);
+    }
+
+    public override List<ClaimCodeInfo> GetClaimCodes()
+    {
+        return
+        [
+            new ClaimCodeInfo
+            {
+                Code = "MMMDONUT",
+                NameId = 401519,
+                DescriptionId = 401534,
+                IconId = 929
+            },
+            new ClaimCodeInfo
+            {
+                Code = "BERRYCUPCAKE",
+                NameId = 401517,
+                DescriptionId = 401532,
+                IconId = 939
+            },
+            new ClaimCodeInfo
+            {
+                Code = "SKELETAL",
+                NameId = 409157,
+                DescriptionId = 109132,
+                IconId = 3459
+            },
+            new ClaimCodeInfo
+            {
+                Code = "STRAWBERRIES",
+                NameId = 409158,
+                DescriptionId = 108948,
+                IconId = 3441
+            },
+            new ClaimCodeInfo
+            {
+                Code = "FROGGY",
+                NameId = 409159,
+                DescriptionId = 3141,
+                IconId = 1258
+            },
+            new ClaimCodeInfo
+            {
+                Code = "SANDWICH",
+                NameId = 409160,
+                DescriptionId = 2430,
+                IconId = 949
+            },
+            new ClaimCodeInfo
+            {
+                Code = "BOSSCAKE",
+                NameId = 30109,
+                DescriptionId = 30118,
+                IconId = 6380
+            }
+        ];
     }
 }

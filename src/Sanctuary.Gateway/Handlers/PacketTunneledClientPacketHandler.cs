@@ -61,18 +61,22 @@ public static class PacketTunneledClientPacketHandler
             PlayerUpdatePacketJump.OpCode => PlayerUpdatePacketJumpHandler.HandlePacket(connection, packet.Payload),
             BaseCoinStorePacket.OpCode => BaseCoinStorePacketHandler.HandlePacket(connection, reader),
             MountBasePacket.OpCode => MountBasePacketHandler.HandlePacket(connection, reader),
+            PetBasePacket.OpCode => PetBasePacketHandler.HandlePacket(connection, reader),
             PacketClientInitializationDetails.OpCode => PacketClientInitializationDetailsHandler.HandlePacket(connection, packet.Payload),
             BaseNameChangePacket.OpCode => BaseNameChangePacketHandler.HandlePacket(connection, reader),
+            BaseCombatPacket.OpCode => BaseCombatPacketHandler.HandlePacket(connection, reader),
             _ => false
         };
 
-#if DEBUG
         if (!handled)
         {
             reader.Reset();
-            System.Diagnostics.Debug.WriteLine(reader.ReadTunneledPacketName(), "TunneledClient");
-        }
+            var pktName = reader.ReadTunneledPacketName();
+#if DEBUG
+            System.Diagnostics.Debug.WriteLine(pktName, "TunneledClient");
 #endif
+            Console.WriteLine($"[UNHANDLED C→S] opCode={opCode} name={pktName} data={Convert.ToHexString(packet.Payload)}");
+        }
 
         return handled;
     }

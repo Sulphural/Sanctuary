@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Sanctuary.Game;
+using Sanctuary.Gateway.Commands;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common.Attributes;
 using Sanctuary.Packet.Common.Chat;
@@ -17,6 +18,7 @@ public static class PacketChatHandler
     private static ILogger _logger = null!;
     private static ILogger _chatLogger = null!;
     private static IZoneManager _zoneManager = null!;
+    private static bool _commandRouterInitialized = false;
 
     public static void ConfigureServices(IServiceProvider serviceProvider)
     {
@@ -25,6 +27,13 @@ public static class PacketChatHandler
         _chatLogger = loggerFactory.CreateLogger("Chat");
 
         _zoneManager = serviceProvider.GetRequiredService<IZoneManager>();
+
+        // Initialize CommandRouter
+        if (!_commandRouterInitialized)
+        {
+            CommandRouter.Initialize(serviceProvider);
+            _commandRouterInitialized = true;
+        }
     }
 
     public static bool HandlePacket(GatewayConnection connection, ReadOnlySpan<byte> data)
@@ -36,6 +45,14 @@ public static class PacketChatHandler
         }
 
         _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(PacketChat), packet);
+        _logger.LogInformation("Chat message from {Player}: {Message}", connection.Player.Name, packet.Message);
+
+        // Check if this is a command
+        if (CommandRouter.TryHandle(connection, packet.Message))
+        {
+            _logger.LogInformation("Command was handled by CommandRouter");
+            return true; // Command was handled
+        }
 
         packet.FromGuid = connection.Player.Guid;
         packet.FromName = connection.Player.Name;

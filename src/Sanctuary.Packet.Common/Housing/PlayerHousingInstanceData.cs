@@ -48,6 +48,8 @@ public class PlayerHousingInstanceData
 
     // public FactoryInstanceData? FactoryInstance; // TODO
 
+    public bool PetAutospawn;
+
     public bool Unknown24;
 
     public Dictionary<uint, FixtureInstance> Fixtures = new();

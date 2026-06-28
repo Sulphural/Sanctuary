@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 using Sanctuary.Game.Entities;
 using Sanctuary.Game.Resources.Definitions;
 using Sanctuary.Game.Resources.Definitions.Zones;
+using Sanctuary.Packet.Common;
 using Sanctuary.UdpLibrary;
 
 namespace Sanctuary.Game.Zones;
@@ -82,6 +83,10 @@ public abstract class BaseZone : IZone, IDisposable
     {
     }
 
+    public virtual void RefreshPlayerCustomizations(Player player)
+    {
+    }
+
     #endregion
 
     #region Entities
@@ -106,6 +111,11 @@ public abstract class BaseZone : IZone, IDisposable
         return _npcs.TryAdd(mount.Guid, mount) && _entities.TryAdd(mount.Guid, mount);
     }
 
+    public bool TryAddPet(Pet pet)
+    {
+        return _npcs.TryAdd(pet.Guid, pet) && _entities.TryAdd(pet.Guid, pet);
+    }
+
     public bool TryAddPlayer(Player player)
     {
         return _players.TryAdd(player.Guid, player) && _entities.TryAdd(player.Guid, player);
@@ -121,6 +131,20 @@ public abstract class BaseZone : IZone, IDisposable
         return _npcs.TryAdd(npc.Guid, npc) && _entities.TryAdd(npc.Guid, npc);
     }
 
+    public bool TryCreateNpc(ulong guid, [MaybeNullWhen(false)] out Npc npc)
+    {
+        npc = new Npc(this)
+        {
+            Guid = guid
+        };
+
+        // Update _uniqueGuid to prevent conflicts
+        if (guid >= _uniqueGuid)
+            _uniqueGuid = guid + 1;
+
+        return _npcs.TryAdd(npc.Guid, npc) && _entities.TryAdd(npc.Guid, npc);
+    }
+
     public bool TryCreateMount(Player rider, MountDefinition definition, [MaybeNullWhen(false)] out Mount mount)
     {
         mount = new Mount(this, rider, definition)
@@ -129,6 +153,26 @@ public abstract class BaseZone : IZone, IDisposable
         };
 
         return _npcs.TryAdd(mount.Guid, mount) && _entities.TryAdd(mount.Guid, mount);
+    }
+
+    public bool TryCreatePet(Player owner, Resources.Definitions.PetDefinition definition, [MaybeNullWhen(false)] out Pet pet)
+    {
+        pet = new Pet(this, owner, definition)
+        {
+            Guid = _uniqueGuid++
+        };
+
+        return _npcs.TryAdd(pet.Guid, pet) && _entities.TryAdd(pet.Guid, pet);
+    }
+
+    public bool TryCreateCombatNpc([MaybeNullWhen(false)] out CombatNpc combatNpc)
+    {
+        combatNpc = new CombatNpc(this)
+        {
+            Guid = _uniqueGuid++
+        };
+
+        return _npcs.TryAdd(combatNpc.Guid, combatNpc) && _entities.TryAdd(combatNpc.Guid, combatNpc);
     }
 
     public bool TryCreatePlayer(ulong guid, UdpConnection connection, [MaybeNullWhen(false)] out Player player)
@@ -399,6 +443,20 @@ public abstract class BaseZone : IZone, IDisposable
     }
 
     #endregion
+
+    public virtual List<ClaimCodeInfo> GetClaimCodes()
+    {
+        return [];
+    }
+
+    public virtual List<int> GetClaimCodeItemIds(string code)
+    {
+        var info = GetClaimCodes().FirstOrDefault(x =>
+            string.Equals(x.Code, code, StringComparison.OrdinalIgnoreCase));
+        return info is null ? [] : [info.IconId];
+    }
+
+    public virtual int GetClaimCodeItemCount(string code, int itemId) => 1;
 
     public void Dispose()
     {

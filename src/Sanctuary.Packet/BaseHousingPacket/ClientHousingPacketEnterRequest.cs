@@ -10,6 +10,8 @@ public class ClientHousingPacketEnterRequest : BaseHousingPacket, IDeserializabl
 
     public ulong HouseGuid;
 
+    public ulong HouseInstanceGuid => HouseGuid;
+
     public int Unknown; // Set by EnterPreview
 
     public bool Unknown2;

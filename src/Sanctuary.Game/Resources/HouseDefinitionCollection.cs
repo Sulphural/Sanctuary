@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
@@ -36,22 +36,24 @@ public class HouseDefinitionCollection : ObservableConcurrentDictionary<int, Hou
                 PropertyNameCaseInsensitive = true
             };
 
-            var entries = JsonSerializer.Deserialize<List<HouseDefinition>>(fileStream, jsonSerializerOptions);
+            var list = JsonSerializer.Deserialize<List<HouseDefinition>>(fileStream, jsonSerializerOptions);
 
-            if (entries is null)
+            if (list is null)
             {
                 _logger.LogError("No entries found in file \"{file}\".", filePath);
                 return false;
             }
 
-            foreach (var entry in entries)
+            foreach (var entry in list)
             {
                 if (!TryAdd(entry.Id, entry))
                 {
                     _logger.LogWarning("Failed to add entry. {id} \"{file}\"", entry.Id, filePath);
-                    continue;
+                    return false;
                 }
             }
+
+            _logger.LogInformation("Loaded {count} house definitions from \"{file}\"", Count, filePath);
         }
         catch (Exception ex)
         {

@@ -158,12 +158,16 @@ public static class CoinStoreBuyFromClientRequestPacketHandler
 
         coinStoreTransactionCompletePacket.TransactionRecord.Id = connection.Player.CoinStoreTransactions.Count + 1;
 
+        coinStoreTransactionCompletePacket.TransactionRecord.MerchantGuid = connection.Player.ActiveMerchantGuid;
+
         coinStoreTransactionCompletePacket.TransactionRecord.Timestamp = DateTimeOffset.UtcNow;
 
         coinStoreTransactionCompletePacket.TransactionRecord.ItemRecord.Definition = clientItem.Definition;
         coinStoreTransactionCompletePacket.TransactionRecord.ItemRecord.Tint = clientItem.Tint;
 
         coinStoreTransactionCompletePacket.TransactionRecord.Quantity = packet.Quantity;
+        coinStoreTransactionCompletePacket.TransactionRecord.QuantityRemaining = packet.Quantity;
+        coinStoreTransactionCompletePacket.TransactionRecord.Price = clientItemDefinition.ResellValue;
 
         connection.SendTunneled(coinStoreTransactionCompletePacket);
 

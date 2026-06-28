@@ -1,0 +1,56 @@
+{
+    "100000002021": {
+        "SubTextNameId": 2922,
+        "ActiveProfile": 200,
+        "NameplateImageId": 0,
+        "ImageSetId": 0,
+        "Notification": {
+            "Type": 12,
+            "ImageId": 0,
+            "DescriptionId": 0,
+            "NameId": 0,
+            "SubTextId": 0,
+            "Unknown3": 0,
+            "Unknown8": true,
+            "CompositeEffectId": 16430,
+            "Combat": false,
+            "Unknown10": true
+        },
+        "Items": [
+            76219,
+            76218,
+            76217,
+            76216,
+            76215,
+            76214,
+            75428,
+            75420,
+            75386,
+            75376,
+            75095,
+            75092
+        ],
+        "Bundles": [2976, 2978, 2980, 2985]
+    },
+    "100000001358": {
+        "SubTextNameId": 2922,
+        "ActiveProfile": 200,
+        "ImageSetId": 0,
+        "NameplateImageId": 0,
+        "Notification": {
+            "Type": 12,
+            "ImageId": 0,
+            "DescriptionId": 0,
+            "NameId": 0,
+            "SubTextId": 0,
+            "Unknown3": 0,
+            "Unknown8": true,
+            "CompositeEffectId": 16430,
+            "Combat": false,
+            "Unknown10": true
+        },
+        "Items": [53, 54, 55, 56, 57],
+        "ItemCosts": [100, 200, 300, 150, 250],
+        "Bundles": [2976,2978,2980,2985]
+    }
+}

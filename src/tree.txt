@@ -1,0 +1,3448 @@
+Folder PATH listing
+Volume serial number is 00000078 A07F:EB50
+C:.
+¦   .editorconfig
+¦   AddTestPets.csx
+¦   Directory.Packages.props
+¦   global.json
+¦   ResetPassword.csx
+¦   Sanctuary.sln
+¦   Sanctuary.slnLaunch
+¦   tree.txt
+¦   
++---bin
+¦   +---Debug
+¦   ¦   ¦   appsettings.Development.json
+¦   ¦   ¦   appsettings.json
+¦   ¦   ¦   BCrypt.Net-Next.dll
+¦   ¦   ¦   Collections.Pooled.dll
+¦   ¦   ¦   csFastFloat.dll
+¦   ¦   ¦   database.json
+¦   ¦   ¦   gateway.json
+¦   ¦   ¦   login.json
+¦   ¦   ¦   Microsoft.Data.Sqlite.dll
+¦   ¦   ¦   Microsoft.EntityFrameworkCore.Abstractions.dll
+¦   ¦   ¦   Microsoft.EntityFrameworkCore.dll
+¦   ¦   ¦   Microsoft.EntityFrameworkCore.Relational.dll
+¦   ¦   ¦   Microsoft.EntityFrameworkCore.Sqlite.dll
+¦   ¦   ¦   Microsoft.Extensions.Caching.Abstractions.dll
+¦   ¦   ¦   Microsoft.Extensions.Caching.Memory.dll
+¦   ¦   ¦   Microsoft.Extensions.Configuration.Abstractions.dll
+¦   ¦   ¦   Microsoft.Extensions.Configuration.Binder.dll
+¦   ¦   ¦   Microsoft.Extensions.Configuration.CommandLine.dll
+¦   ¦   ¦   Microsoft.Extensions.Configuration.dll
+¦   ¦   ¦   Microsoft.Extensions.Configuration.EnvironmentVariables.dll
+¦   ¦   ¦   Microsoft.Extensions.Configuration.FileExtensions.dll
+¦   ¦   ¦   Microsoft.Extensions.Configuration.Json.dll
+¦   ¦   ¦   Microsoft.Extensions.Configuration.UserSecrets.dll
+¦   ¦   ¦   Microsoft.Extensions.DependencyInjection.Abstractions.dll
+¦   ¦   ¦   Microsoft.Extensions.DependencyInjection.dll
+¦   ¦   ¦   Microsoft.Extensions.DependencyModel.dll
+¦   ¦   ¦   Microsoft.Extensions.Diagnostics.Abstractions.dll
+¦   ¦   ¦   Microsoft.Extensions.Diagnostics.dll
+¦   ¦   ¦   Microsoft.Extensions.FileProviders.Abstractions.dll
+¦   ¦   ¦   Microsoft.Extensions.FileProviders.Physical.dll
+¦   ¦   ¦   Microsoft.Extensions.FileSystemGlobbing.dll
+¦   ¦   ¦   Microsoft.Extensions.Hosting.Abstractions.dll
+¦   ¦   ¦   Microsoft.Extensions.Hosting.dll
+¦   ¦   ¦   Microsoft.Extensions.Logging.Abstractions.dll
+¦   ¦   ¦   Microsoft.Extensions.Logging.Configuration.dll
+¦   ¦   ¦   Microsoft.Extensions.Logging.Console.dll
+¦   ¦   ¦   Microsoft.Extensions.Logging.Debug.dll
+¦   ¦   ¦   Microsoft.Extensions.Logging.dll
+¦   ¦   ¦   Microsoft.Extensions.Logging.EventLog.dll
+¦   ¦   ¦   Microsoft.Extensions.Logging.EventSource.dll
+¦   ¦   ¦   Microsoft.Extensions.Options.ConfigurationExtensions.dll
+¦   ¦   ¦   Microsoft.Extensions.Options.dll
+¦   ¦   ¦   Microsoft.Extensions.Primitives.dll
+¦   ¦   ¦   MiniValidation.dll
+¦   ¦   ¦   MySqlConnector.dll
+¦   ¦   ¦   NLog.config
+¦   ¦   ¦   NLog.Development.config
+¦   ¦   ¦   NLog.dll
+¦   ¦   ¦   NLog.Extensions.Logging.dll
+¦   ¦   ¦   Pomelo.EntityFrameworkCore.MySql.dll
+¦   ¦   ¦   Sanctuary.Core.dll
+¦   ¦   ¦   Sanctuary.Core.pdb
+¦   ¦   ¦   Sanctuary.Database.deps.json
+¦   ¦   ¦   Sanctuary.Database.dll
+¦   ¦   ¦   Sanctuary.Database.Entities.deps.json
+¦   ¦   ¦   Sanctuary.Database.Entities.dll
+¦   ¦   ¦   Sanctuary.Database.Entities.pdb
+¦   ¦   ¦   Sanctuary.Database.MySql.deps.json
+¦   ¦   ¦   Sanctuary.Database.MySql.dll
+¦   ¦   ¦   Sanctuary.Database.MySql.pdb
+¦   ¦   ¦   Sanctuary.Database.MySql.runtimeconfig.json
+¦   ¦   ¦   Sanctuary.Database.pdb
+¦   ¦   ¦   Sanctuary.Database.runtimeconfig.json
+¦   ¦   ¦   Sanctuary.Database.Sqlite.deps.json
+¦   ¦   ¦   Sanctuary.Database.Sqlite.dll
+¦   ¦   ¦   Sanctuary.Database.Sqlite.pdb
+¦   ¦   ¦   Sanctuary.Database.Sqlite.runtimeconfig.json
+¦   ¦   ¦   Sanctuary.Game.dll
+¦   ¦   ¦   Sanctuary.Game.pdb
+¦   ¦   ¦   Sanctuary.Gateway.deps.json
+¦   ¦   ¦   Sanctuary.Gateway.dll
+¦   ¦   ¦   Sanctuary.Gateway.exe
+¦   ¦   ¦   Sanctuary.Gateway.pdb
+¦   ¦   ¦   Sanctuary.Gateway.runtimeconfig.json
+¦   ¦   ¦   Sanctuary.Login.deps.json
+¦   ¦   ¦   Sanctuary.Login.dll
+¦   ¦   ¦   Sanctuary.Login.exe
+¦   ¦   ¦   Sanctuary.Login.pdb
+¦   ¦   ¦   Sanctuary.Login.runtimeconfig.json
+¦   ¦   ¦   Sanctuary.Packet.Common.dll
+¦   ¦   ¦   Sanctuary.Packet.Common.pdb
+¦   ¦   ¦   Sanctuary.Packet.dll
+¦   ¦   ¦   Sanctuary.Packet.pdb
+¦   ¦   ¦   Sanctuary.UdpLibrary.dll
+¦   ¦   ¦   Sanctuary.UdpLibrary.pdb
+¦   ¦   ¦   Sanctuary.WebAPI.deps.json
+¦   ¦   ¦   Sanctuary.WebAPI.dll
+¦   ¦   ¦   Sanctuary.WebAPI.exe
+¦   ¦   ¦   Sanctuary.WebAPI.pdb
+¦   ¦   ¦   Sanctuary.WebAPI.runtimeconfig.json
+¦   ¦   ¦   Sanctuary.WebAPI.staticwebassets.endpoints.json
+¦   ¦   ¦   Sep.dll
+¦   ¦   ¦   SixLabors.ImageSharp.dll
+¦   ¦   ¦   SQLitePCLRaw.batteries_v2.dll
+¦   ¦   ¦   SQLitePCLRaw.core.dll
+¦   ¦   ¦   SQLitePCLRaw.provider.e_sqlite3.dll
+¦   ¦   ¦   System.Diagnostics.EventLog.dll
+¦   ¦   ¦   System.Text.Json.dll
+¦   ¦   ¦   ZLibDotNet.dll
+¦   ¦   ¦   
+¦   ¦   +---Resources
+¦   ¦   ¦   ¦   ClientItemDefinitions.json
+¦   ¦   ¦   ¦   CoinStoreItems.json
+¦   ¦   ¦   ¦   Houses.json
+¦   ¦   ¦   ¦   ItemCategories.txt
+¦   ¦   ¦   ¦   ItemCategoryGroups.txt
+¦   ¦   ¦   ¦   ItemClasses.txt
+¦   ¦   ¦   ¦   Models.txt
+¦   ¦   ¦   ¦   Mounts.json
+¦   ¦   ¦   ¦   Pets.json
+¦   ¦   ¦   ¦   PlayerTitles.json
+¦   ¦   ¦   ¦   PointOfInterests.json
+¦   ¦   ¦   ¦   Profiles.json
+¦   ¦   ¦   ¦   QuickChats.json
+¦   ¦   ¦   ¦   StoreBundleCategories.json
+¦   ¦   ¦   ¦   StoreBundleCategoryGroups.json
+¦   ¦   ¦   ¦   StoreBundleGroups.json
+¦   ¦   ¦   ¦   StoreBundles.json
+¦   ¦   ¦   ¦   Stores.json
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---CharacterCreate
+¦   ¦   ¦   ¦       FacePaintMappings.txt
+¦   ¦   ¦   ¦       HairMappings.txt
+¦   ¦   ¦   ¦       HeadMappings.txt
+¦   ¦   ¦   ¦       ModelCustomizationMappings.txt
+¦   ¦   ¦   ¦       SkinToneMappings.txt
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---Zones
+¦   ¦   ¦           FabledRealms.json
+¦   ¦   ¦           hsg_club_house_01.json
+¦   ¦   ¦           hsg_emptylot_seaside_beach_01.json
+¦   ¦   ¦           hsg_emptylot_snowhill_large_01.json
+¦   ¦   ¦           hsg_emptylot_snowhill_small_01.json
+¦   ¦   ¦           hsg_emptylot_wilds_01.json
+¦   ¦   ¦           hsg_snowhill_lodge_01.json
+¦   ¦   ¦           
+¦   ¦   +---runtimes
+¦   ¦       +---browser-wasm
+¦   ¦       ¦   +---nativeassets
+¦   ¦       ¦       +---net9.0
+¦   ¦       ¦               e_sqlite3.a
+¦   ¦       ¦               
+¦   ¦       +---linux-arm
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.so
+¦   ¦       ¦           
+¦   ¦       +---linux-arm64
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.so
+¦   ¦       ¦           
+¦   ¦       +---linux-armel
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.so
+¦   ¦       ¦           
+¦   ¦       +---linux-mips64
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.so
+¦   ¦       ¦           
+¦   ¦       +---linux-musl-arm
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.so
+¦   ¦       ¦           
+¦   ¦       +---linux-musl-arm64
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.so
+¦   ¦       ¦           
+¦   ¦       +---linux-musl-s390x
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.so
+¦   ¦       ¦           
+¦   ¦       +---linux-musl-x64
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.so
+¦   ¦       ¦           
+¦   ¦       +---linux-ppc64le
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.so
+¦   ¦       ¦           
+¦   ¦       +---linux-s390x
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.so
+¦   ¦       ¦           
+¦   ¦       +---linux-x64
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.so
+¦   ¦       ¦           
+¦   ¦       +---linux-x86
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.so
+¦   ¦       ¦           
+¦   ¦       +---maccatalyst-arm64
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.dylib
+¦   ¦       ¦           
+¦   ¦       +---maccatalyst-x64
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.dylib
+¦   ¦       ¦           
+¦   ¦       +---osx-arm64
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.dylib
+¦   ¦       ¦           
+¦   ¦       +---osx-x64
+¦   ¦       ¦   +---native
+¦   ¦       ¦           libe_sqlite3.dylib
+¦   ¦       ¦           
+¦   ¦       +---win
+¦   ¦       ¦   +---lib
+¦   ¦       ¦       +---net9.0
+¦   ¦       ¦               System.Diagnostics.EventLog.dll
+¦   ¦       ¦               System.Diagnostics.EventLog.Messages.dll
+¦   ¦       ¦               
+¦   ¦       +---win-arm
+¦   ¦       ¦   +---native
+¦   ¦       ¦           e_sqlite3.dll
+¦   ¦       ¦           
+¦   ¦       +---win-arm64
+¦   ¦       ¦   +---native
+¦   ¦       ¦           e_sqlite3.dll
+¦   ¦       ¦           
+¦   ¦       +---win-x64
+¦   ¦       ¦   +---native
+¦   ¦       ¦           e_sqlite3.dll
+¦   ¦       ¦           
+¦   ¦       +---win-x86
+¦   ¦           +---native
+¦   ¦                   e_sqlite3.dll
+¦   ¦                   
+¦   +---Release
+¦       ¦   appsettings.Development.json
+¦       ¦   appsettings.json
+¦       ¦   BCrypt.Net-Next.dll
+¦       ¦   Collections.Pooled.dll
+¦       ¦   csFastFloat.dll
+¦       ¦   database.json
+¦       ¦   gateway.json
+¦       ¦   login.json
+¦       ¦   Microsoft.Data.Sqlite.dll
+¦       ¦   Microsoft.EntityFrameworkCore.Abstractions.dll
+¦       ¦   Microsoft.EntityFrameworkCore.dll
+¦       ¦   Microsoft.EntityFrameworkCore.Relational.dll
+¦       ¦   Microsoft.EntityFrameworkCore.Sqlite.dll
+¦       ¦   Microsoft.Extensions.Caching.Abstractions.dll
+¦       ¦   Microsoft.Extensions.Caching.Memory.dll
+¦       ¦   Microsoft.Extensions.Configuration.Abstractions.dll
+¦       ¦   Microsoft.Extensions.Configuration.Binder.dll
+¦       ¦   Microsoft.Extensions.Configuration.CommandLine.dll
+¦       ¦   Microsoft.Extensions.Configuration.dll
+¦       ¦   Microsoft.Extensions.Configuration.EnvironmentVariables.dll
+¦       ¦   Microsoft.Extensions.Configuration.FileExtensions.dll
+¦       ¦   Microsoft.Extensions.Configuration.Json.dll
+¦       ¦   Microsoft.Extensions.Configuration.UserSecrets.dll
+¦       ¦   Microsoft.Extensions.DependencyInjection.Abstractions.dll
+¦       ¦   Microsoft.Extensions.DependencyInjection.dll
+¦       ¦   Microsoft.Extensions.DependencyModel.dll
+¦       ¦   Microsoft.Extensions.Diagnostics.Abstractions.dll
+¦       ¦   Microsoft.Extensions.Diagnostics.dll
+¦       ¦   Microsoft.Extensions.FileProviders.Abstractions.dll
+¦       ¦   Microsoft.Extensions.FileProviders.Physical.dll
+¦       ¦   Microsoft.Extensions.FileSystemGlobbing.dll
+¦       ¦   Microsoft.Extensions.Hosting.Abstractions.dll
+¦       ¦   Microsoft.Extensions.Hosting.dll
+¦       ¦   Microsoft.Extensions.Logging.Abstractions.dll
+¦       ¦   Microsoft.Extensions.Logging.Configuration.dll
+¦       ¦   Microsoft.Extensions.Logging.Console.dll
+¦       ¦   Microsoft.Extensions.Logging.Debug.dll
+¦       ¦   Microsoft.Extensions.Logging.dll
+¦       ¦   Microsoft.Extensions.Logging.EventLog.dll
+¦       ¦   Microsoft.Extensions.Logging.EventSource.dll
+¦       ¦   Microsoft.Extensions.Options.ConfigurationExtensions.dll
+¦       ¦   Microsoft.Extensions.Options.dll
+¦       ¦   Microsoft.Extensions.Primitives.dll
+¦       ¦   MiniValidation.dll
+¦       ¦   MySqlConnector.dll
+¦       ¦   NLog.config
+¦       ¦   NLog.Development.config
+¦       ¦   NLog.dll
+¦       ¦   NLog.Extensions.Logging.dll
+¦       ¦   Pomelo.EntityFrameworkCore.MySql.dll
+¦       ¦   resetpass.csx
+¦       ¦   Sanctuary.Core.dll
+¦       ¦   Sanctuary.Core.pdb
+¦       ¦   Sanctuary.Database.deps.json
+¦       ¦   Sanctuary.Database.dll
+¦       ¦   Sanctuary.Database.Entities.deps.json
+¦       ¦   Sanctuary.Database.Entities.dll
+¦       ¦   Sanctuary.Database.Entities.pdb
+¦       ¦   Sanctuary.Database.MySql.deps.json
+¦       ¦   Sanctuary.Database.MySql.dll
+¦       ¦   Sanctuary.Database.MySql.pdb
+¦       ¦   Sanctuary.Database.MySql.runtimeconfig.json
+¦       ¦   Sanctuary.Database.pdb
+¦       ¦   Sanctuary.Database.runtimeconfig.json
+¦       ¦   Sanctuary.Database.Sqlite.deps.json
+¦       ¦   Sanctuary.Database.Sqlite.dll
+¦       ¦   Sanctuary.Database.Sqlite.pdb
+¦       ¦   Sanctuary.Database.Sqlite.runtimeconfig.json
+¦       ¦   sanctuary.db
+¦       ¦   Sanctuary.Game.dll
+¦       ¦   Sanctuary.Game.pdb
+¦       ¦   Sanctuary.Gateway.deps.json
+¦       ¦   Sanctuary.Gateway.dll
+¦       ¦   Sanctuary.Gateway.exe
+¦       ¦   Sanctuary.Gateway.pdb
+¦       ¦   Sanctuary.Gateway.runtimeconfig.json
+¦       ¦   Sanctuary.Login.deps.json
+¦       ¦   Sanctuary.Login.dll
+¦       ¦   Sanctuary.Login.exe
+¦       ¦   Sanctuary.Login.pdb
+¦       ¦   Sanctuary.Login.runtimeconfig.json
+¦       ¦   Sanctuary.Packet.Common.dll
+¦       ¦   Sanctuary.Packet.Common.pdb
+¦       ¦   Sanctuary.Packet.dll
+¦       ¦   Sanctuary.Packet.pdb
+¦       ¦   Sanctuary.UdpLibrary.dll
+¦       ¦   Sanctuary.UdpLibrary.pdb
+¦       ¦   Sanctuary.WebAPI.deps.json
+¦       ¦   Sanctuary.WebAPI.dll
+¦       ¦   Sanctuary.WebAPI.exe
+¦       ¦   Sanctuary.WebAPI.pdb
+¦       ¦   Sanctuary.WebAPI.runtimeconfig.json
+¦       ¦   Sanctuary.WebAPI.staticwebassets.endpoints.json
+¦       ¦   Sep.dll
+¦       ¦   SixLabors.ImageSharp.dll
+¦       ¦   SQLitePCLRaw.batteries_v2.dll
+¦       ¦   SQLitePCLRaw.core.dll
+¦       ¦   SQLitePCLRaw.provider.e_sqlite3.dll
+¦       ¦   System.Diagnostics.EventLog.dll
+¦       ¦   System.Text.Json.dll
+¦       ¦   ZLibDotNet.dll
+¦       ¦   
+¦       +---Logs
+¦       ¦       Sanctuary.Gateway-Error-2025-12-01.log
+¦       ¦       Sanctuary.Gateway-Error-2025-12-04.log
+¦       ¦       Sanctuary.Gateway-Error-2025-12-07.log
+¦       ¦       Sanctuary.Gateway-Error-2025-12-10.log
+¦       ¦       Sanctuary.Gateway-Error-2025-12-11.log
+¦       ¦       Sanctuary.Gateway-Error-2025-12-12.log
+¦       ¦       Sanctuary.Gateway-Error-2025-12-13.log
+¦       ¦       Sanctuary.Gateway-Error-2025-12-15.log
+¦       ¦       Sanctuary.Gateway-Error-2025-12-16.log
+¦       ¦       Sanctuary.Gateway-Error-2025-12-20.log
+¦       ¦       Sanctuary.Gateway-Error-2025-12-21.log
+¦       ¦       Sanctuary.Gateway-Error-2026-06-17.log
+¦       ¦       Sanctuary.Gateway-Error-2026-06-18.log
+¦       ¦       Sanctuary.Gateway-Error-2026-06-19.log
+¦       ¦       Sanctuary.Gateway-Error-2026-06-20.log
+¦       ¦       Sanctuary.Gateway-Error-2026-06-21.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-01.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-02.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-03.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-04.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-07.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-08.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-10.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-11.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-12.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-13.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-15.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-16.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-20.log
+¦       ¦       Sanctuary.Gateway-Info-2025-12-21.log
+¦       ¦       Sanctuary.Gateway-Info-2026-02-23.log
+¦       ¦       Sanctuary.Gateway-Info-2026-06-17.log
+¦       ¦       Sanctuary.Gateway-Info-2026-06-18.log
+¦       ¦       Sanctuary.Gateway-Info-2026-06-19.log
+¦       ¦       Sanctuary.Gateway-Info-2026-06-20.log
+¦       ¦       Sanctuary.Gateway-Info-2026-06-21.log
+¦       ¦       Sanctuary.Login-Error-2025-12-01.log
+¦       ¦       Sanctuary.Login-Error-2025-12-03.log
+¦       ¦       Sanctuary.Login-Error-2025-12-04.log
+¦       ¦       Sanctuary.Login-Error-2025-12-07.log
+¦       ¦       Sanctuary.Login-Error-2025-12-10.log
+¦       ¦       Sanctuary.Login-Error-2026-06-17.log
+¦       ¦       Sanctuary.Login-Error-2026-06-19.log
+¦       ¦       Sanctuary.Login-Error-2026-06-20.log
+¦       ¦       Sanctuary.Login-Error-2026-06-21.log
+¦       ¦       Sanctuary.Login-Info-2025-12-01.log
+¦       ¦       Sanctuary.Login-Info-2025-12-02.log
+¦       ¦       Sanctuary.Login-Info-2025-12-03.log
+¦       ¦       Sanctuary.Login-Info-2025-12-04.log
+¦       ¦       Sanctuary.Login-Info-2025-12-07.log
+¦       ¦       Sanctuary.Login-Info-2025-12-08.log
+¦       ¦       Sanctuary.Login-Info-2025-12-10.log
+¦       ¦       Sanctuary.Login-Info-2025-12-11.log
+¦       ¦       Sanctuary.Login-Info-2025-12-12.log
+¦       ¦       Sanctuary.Login-Info-2025-12-13.log
+¦       ¦       Sanctuary.Login-Info-2025-12-15.log
+¦       ¦       Sanctuary.Login-Info-2025-12-16.log
+¦       ¦       Sanctuary.Login-Info-2025-12-20.log
+¦       ¦       Sanctuary.Login-Info-2025-12-21.log
+¦       ¦       Sanctuary.Login-Info-2026-02-23.log
+¦       ¦       Sanctuary.Login-Info-2026-06-17.log
+¦       ¦       Sanctuary.Login-Info-2026-06-18.log
+¦       ¦       Sanctuary.Login-Info-2026-06-19.log
+¦       ¦       Sanctuary.Login-Info-2026-06-20.log
+¦       ¦       Sanctuary.Login-Info-2026-06-21.log
+¦       ¦       
+¦       +---Resources
+¦       ¦   ¦   ClientActivityDefinitions.json
+¦       ¦   ¦   ClientItemDefinitions.json
+¦       ¦   ¦   CoinStoreItems.json
+¦       ¦   ¦   CoinStoreItemsold.json
+¦       ¦   ¦   CoinStoreItemsOLD2.json
+¦       ¦   ¦   Houses.json
+¦       ¦   ¦   ItemCategories.txt
+¦       ¦   ¦   ItemCategoryGroups.txt
+¦       ¦   ¦   ItemClasses.txt
+¦       ¦   ¦   Models.txt
+¦       ¦   ¦   Mounts.json
+¦       ¦   ¦   NpcSpawns.txt
+¦       ¦   ¦   NpcVendors.json
+¦       ¦   ¦   PetItemDefinitions_ToAdd.json
+¦       ¦   ¦   Pets.json
+¦       ¦   ¦   PlayerTitles.json
+¦       ¦   ¦   PointOfInterests.json
+¦       ¦   ¦   Profiles.json
+¦       ¦   ¦   QuickChats.json
+¦       ¦   ¦   StoreBundleCategories.json
+¦       ¦   ¦   StoreBundleCategoryGroups.json
+¦       ¦   ¦   StoreBundleGroups.json
+¦       ¦   ¦   StoreBundles.json
+¦       ¦   ¦   Stores.json
+¦       ¦   ¦   
+¦       ¦   +---CharacterCreate
+¦       ¦   ¦       FacePaintMappings.txt
+¦       ¦   ¦       HairMappings.txt
+¦       ¦   ¦       HeadMappings.txt
+¦       ¦   ¦       ModelCustomizationMappings.txt
+¦       ¦   ¦       SkinToneMappings.txt
+¦       ¦   ¦       
+¦       ¦   +---Zones
+¦       ¦           FabledRealms.json
+¦       ¦           hsg_club_house_01.json
+¦       ¦           hsg_emptylot_seaside_beach_01.json
+¦       ¦           hsg_emptylot_snowhill_large_01.json
+¦       ¦           hsg_emptylot_snowhill_small_01.json
+¦       ¦           hsg_emptylot_wilds_01.json
+¦       ¦           hsg_snowhill_lodge_01.json
+¦       ¦           
+¦       +---runtimes
+¦       ¦   +---browser-wasm
+¦       ¦   ¦   +---nativeassets
+¦       ¦   ¦       +---net9.0
+¦       ¦   ¦               e_sqlite3.a
+¦       ¦   ¦               
+¦       ¦   +---linux-arm
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.so
+¦       ¦   ¦           
+¦       ¦   +---linux-arm64
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.so
+¦       ¦   ¦           
+¦       ¦   +---linux-armel
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.so
+¦       ¦   ¦           
+¦       ¦   +---linux-mips64
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.so
+¦       ¦   ¦           
+¦       ¦   +---linux-musl-arm
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.so
+¦       ¦   ¦           
+¦       ¦   +---linux-musl-arm64
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.so
+¦       ¦   ¦           
+¦       ¦   +---linux-musl-s390x
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.so
+¦       ¦   ¦           
+¦       ¦   +---linux-musl-x64
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.so
+¦       ¦   ¦           
+¦       ¦   +---linux-ppc64le
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.so
+¦       ¦   ¦           
+¦       ¦   +---linux-s390x
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.so
+¦       ¦   ¦           
+¦       ¦   +---linux-x64
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.so
+¦       ¦   ¦           
+¦       ¦   +---linux-x86
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.so
+¦       ¦   ¦           
+¦       ¦   +---maccatalyst-arm64
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.dylib
+¦       ¦   ¦           
+¦       ¦   +---maccatalyst-x64
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.dylib
+¦       ¦   ¦           
+¦       ¦   +---osx-arm64
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.dylib
+¦       ¦   ¦           
+¦       ¦   +---osx-x64
+¦       ¦   ¦   +---native
+¦       ¦   ¦           libe_sqlite3.dylib
+¦       ¦   ¦           
+¦       ¦   +---win
+¦       ¦   ¦   +---lib
+¦       ¦   ¦       +---net9.0
+¦       ¦   ¦               System.Diagnostics.EventLog.dll
+¦       ¦   ¦               System.Diagnostics.EventLog.Messages.dll
+¦       ¦   ¦               
+¦       ¦   +---win-arm
+¦       ¦   ¦   +---native
+¦       ¦   ¦           e_sqlite3.dll
+¦       ¦   ¦           
+¦       ¦   +---win-arm64
+¦       ¦   ¦   +---native
+¦       ¦   ¦           e_sqlite3.dll
+¦       ¦   ¦           
+¦       ¦   +---win-x64
+¦       ¦   ¦   +---native
+¦       ¦   ¦           e_sqlite3.dll
+¦       ¦   ¦           
+¦       ¦   +---win-x86
+¦       ¦       +---native
+¦       ¦               e_sqlite3.dll
+¦       ¦               
+¦       +---src
+¦           +---obj
+¦                   Sanctuary.Database.SqLite.EntityFrameworkCore.targets
+¦                   
++---DbSetup
+¦   ¦   DbSetup.csproj
+¦   ¦   Program.cs
+¦   ¦   
+¦   +---bin
+¦   ¦   +---Debug
+¦   ¦       +---net9.0
+¦   ¦           ¦   DbSetup.deps.json
+¦   ¦           ¦   DbSetup.dll
+¦   ¦           ¦   DbSetup.exe
+¦   ¦           ¦   DbSetup.pdb
+¦   ¦           ¦   DbSetup.runtimeconfig.json
+¦   ¦           ¦   Microsoft.Data.Sqlite.dll
+¦   ¦           ¦   Microsoft.EntityFrameworkCore.Abstractions.dll
+¦   ¦           ¦   Microsoft.EntityFrameworkCore.dll
+¦   ¦           ¦   Microsoft.EntityFrameworkCore.Relational.dll
+¦   ¦           ¦   Microsoft.EntityFrameworkCore.Sqlite.dll
+¦   ¦           ¦   Microsoft.Extensions.Caching.Abstractions.dll
+¦   ¦           ¦   Microsoft.Extensions.Caching.Memory.dll
+¦   ¦           ¦   Microsoft.Extensions.Configuration.Abstractions.dll
+¦   ¦           ¦   Microsoft.Extensions.Configuration.Binder.dll
+¦   ¦           ¦   Microsoft.Extensions.Configuration.dll
+¦   ¦           ¦   Microsoft.Extensions.Configuration.FileExtensions.dll
+¦   ¦           ¦   Microsoft.Extensions.Configuration.Json.dll
+¦   ¦           ¦   Microsoft.Extensions.Configuration.UserSecrets.dll
+¦   ¦           ¦   Microsoft.Extensions.DependencyInjection.Abstractions.dll
+¦   ¦           ¦   Microsoft.Extensions.DependencyInjection.dll
+¦   ¦           ¦   Microsoft.Extensions.DependencyModel.dll
+¦   ¦           ¦   Microsoft.Extensions.FileProviders.Abstractions.dll
+¦   ¦           ¦   Microsoft.Extensions.FileProviders.Physical.dll
+¦   ¦           ¦   Microsoft.Extensions.FileSystemGlobbing.dll
+¦   ¦           ¦   Microsoft.Extensions.Logging.Abstractions.dll
+¦   ¦           ¦   Microsoft.Extensions.Logging.dll
+¦   ¦           ¦   Microsoft.Extensions.Options.dll
+¦   ¦           ¦   Microsoft.Extensions.Primitives.dll
+¦   ¦           ¦   MySqlConnector.dll
+¦   ¦           ¦   Pomelo.EntityFrameworkCore.MySql.dll
+¦   ¦           ¦   Sanctuary.Core.dll
+¦   ¦           ¦   Sanctuary.Core.pdb
+¦   ¦           ¦   Sanctuary.Database.dll
+¦   ¦           ¦   Sanctuary.Database.Entities.dll
+¦   ¦           ¦   Sanctuary.Database.Entities.pdb
+¦   ¦           ¦   Sanctuary.Database.pdb
+¦   ¦           ¦   Sanctuary.Database.Sqlite.dll
+¦   ¦           ¦   Sanctuary.Database.Sqlite.pdb
+¦   ¦           ¦   SQLitePCLRaw.batteries_v2.dll
+¦   ¦           ¦   SQLitePCLRaw.core.dll
+¦   ¦           ¦   SQLitePCLRaw.provider.e_sqlite3.dll
+¦   ¦           ¦   System.Text.Json.dll
+¦   ¦           ¦   ZLibDotNet.dll
+¦   ¦           ¦   
+¦   ¦           +---runtimes
+¦   ¦               +---browser-wasm
+¦   ¦               ¦   +---nativeassets
+¦   ¦               ¦       +---net9.0
+¦   ¦               ¦               e_sqlite3.a
+¦   ¦               ¦               
+¦   ¦               +---linux-arm
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---linux-arm64
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---linux-armel
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---linux-mips64
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---linux-musl-arm
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---linux-musl-arm64
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---linux-musl-riscv64
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---linux-musl-s390x
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---linux-musl-x64
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---linux-ppc64le
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---linux-riscv64
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---linux-s390x
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---linux-x64
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---linux-x86
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.so
+¦   ¦               ¦           
+¦   ¦               +---maccatalyst-arm64
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.dylib
+¦   ¦               ¦           
+¦   ¦               +---maccatalyst-x64
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.dylib
+¦   ¦               ¦           
+¦   ¦               +---osx-arm64
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.dylib
+¦   ¦               ¦           
+¦   ¦               +---osx-x64
+¦   ¦               ¦   +---native
+¦   ¦               ¦           libe_sqlite3.dylib
+¦   ¦               ¦           
+¦   ¦               +---win-arm
+¦   ¦               ¦   +---native
+¦   ¦               ¦           e_sqlite3.dll
+¦   ¦               ¦           
+¦   ¦               +---win-arm64
+¦   ¦               ¦   +---native
+¦   ¦               ¦           e_sqlite3.dll
+¦   ¦               ¦           
+¦   ¦               +---win-x64
+¦   ¦               ¦   +---native
+¦   ¦               ¦           e_sqlite3.dll
+¦   ¦               ¦           
+¦   ¦               +---win-x86
+¦   ¦                   +---native
+¦   ¦                           e_sqlite3.dll
+¦   ¦                           
+¦   +---obj
+¦       ¦   DbSetup.csproj.nuget.dgspec.json
+¦       ¦   DbSetup.csproj.nuget.g.props
+¦       ¦   DbSetup.csproj.nuget.g.targets
+¦       ¦   project.assets.json
+¦       ¦   project.nuget.cache
+¦       ¦   
+¦       +---Debug
+¦           +---net9.0
+¦               ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦               ¦   apphost.exe
+¦               ¦   DbSetup.AssemblyInfo.cs
+¦               ¦   DbSetup.AssemblyInfoInputs.cache
+¦               ¦   DbSetup.assets.cache
+¦               ¦   DbSetup.csproj.AssemblyReference.cache
+¦               ¦   DbSetup.csproj.CoreCompileInputs.cache
+¦               ¦   DbSetup.csproj.FileListAbsolute.txt
+¦               ¦   DbSetup.csproj.Up2Date
+¦               ¦   DbSetup.dll
+¦               ¦   DbSetup.GeneratedMSBuildEditorConfig.editorconfig
+¦               ¦   DbSetup.genruntimeconfig.cache
+¦               ¦   DbSetup.GlobalUsings.g.cs
+¦               ¦   DbSetup.pdb
+¦               ¦   DbSetup.sourcelink.json
+¦               ¦   
+¦               +---ref
+¦               ¦       DbSetup.dll
+¦               ¦       
+¦               +---refint
+¦                       DbSetup.dll
+¦                       
++---Docker
+¦   ¦   .dockerignore
+¦   ¦   docker-compose.yml
+¦   ¦   Docker.dcproj
+¦   ¦   Docker.sln
+¦   ¦   launchSettings.json
+¦   ¦   Sanctuary.Gateway.dockerfile
+¦   ¦   Sanctuary.Login.dockerfile
+¦   ¦   
+¦   +---bin
+¦   ¦   +---Release
+¦   +---obj
+¦       +---Debug
+¦       ¦       Docker.dcproj.FileListAbsolute.txt
+¦       ¦       
+¦       +---Release
+¦               Docker.dcproj.CoreCompileInputs.cache
+¦               Docker.dcproj.FileListAbsolute.txt
+¦               
++---PasswordHasher
+¦   ¦   PasswordHasher.csproj
+¦   ¦   Program.cs
+¦   ¦   
+¦   +---bin
+¦   ¦   +---Debug
+¦   ¦       +---net8.0
+¦   ¦               BCrypt.Net-Next.dll
+¦   ¦               PasswordHasher.deps.json
+¦   ¦               PasswordHasher.dll
+¦   ¦               PasswordHasher.exe
+¦   ¦               PasswordHasher.pdb
+¦   ¦               PasswordHasher.runtimeconfig.json
+¦   ¦               
+¦   +---obj
+¦       ¦   PasswordHasher.csproj.nuget.dgspec.json
+¦       ¦   PasswordHasher.csproj.nuget.g.props
+¦       ¦   PasswordHasher.csproj.nuget.g.targets
+¦       ¦   project.assets.json
+¦       ¦   project.nuget.cache
+¦       ¦   
+¦       +---Debug
+¦           +---net8.0
+¦               ¦   .NETCoreApp,Version=v8.0.AssemblyAttributes.cs
+¦               ¦   apphost.exe
+¦               ¦   Password.2686FE60.Up2Date
+¦               ¦   PasswordHasher.AssemblyInfo.cs
+¦               ¦   PasswordHasher.AssemblyInfoInputs.cache
+¦               ¦   PasswordHasher.assets.cache
+¦               ¦   PasswordHasher.csproj.AssemblyReference.cache
+¦               ¦   PasswordHasher.csproj.CoreCompileInputs.cache
+¦               ¦   PasswordHasher.csproj.FileListAbsolute.txt
+¦               ¦   PasswordHasher.dll
+¦               ¦   PasswordHasher.GeneratedMSBuildEditorConfig.editorconfig
+¦               ¦   PasswordHasher.genruntimeconfig.cache
+¦               ¦   PasswordHasher.pdb
+¦               ¦   PasswordHasher.sourcelink.json
+¦               ¦   
+¦               +---ref
+¦               ¦       PasswordHasher.dll
+¦               ¦       
+¦               +---refint
+¦                       PasswordHasher.dll
+¦                       
++---Resources
+¦   ¦   ClientItemDefinitions.json
+¦   ¦   CoinStoreItems.json
+¦   ¦   Houses.json
+¦   ¦   ItemCategories.txt
+¦   ¦   ItemCategoryGroups.txt
+¦   ¦   ItemClasses.txt
+¦   ¦   Models.txt
+¦   ¦   Mounts.json
+¦   ¦   NpcVendors.json
+¦   ¦   Pets.json
+¦   ¦   PlayerTitles.json
+¦   ¦   PointOfInterests.json
+¦   ¦   Profiles.json
+¦   ¦   QuickChats.json
+¦   ¦   StoreBundleCategories.json
+¦   ¦   StoreBundleCategoryGroups.json
+¦   ¦   StoreBundleGroups.json
+¦   ¦   StoreBundles.json
+¦   ¦   Stores.json
+¦   ¦   
+¦   +---CharacterCreate
+¦   ¦       FacePaintMappings.txt
+¦   ¦       HairMappings.txt
+¦   ¦       HeadMappings.txt
+¦   ¦       ModelCustomizationMappings.txt
+¦   ¦       SkinToneMappings.txt
+¦   ¦       
+¦   +---Zones
+¦           FabledRealms.json
+¦           hsg_club_house_01.json
+¦           hsg_emptylot_seaside_beach_01.json
+¦           hsg_emptylot_snowhill_large_01.json
+¦           hsg_emptylot_snowhill_small_01.json
+¦           hsg_emptylot_wilds_01.json
+¦           hsg_snowhill_lodge_01.json
+¦           
++---Sanctuary.Core
+¦   ¦   Sanctuary.Core.csproj
+¦   ¦   
+¦   +---bin
+¦   ¦   +---Debug
+¦   ¦   ¦   +---net9.0
+¦   ¦   ¦           Sanctuary.Core.deps.json
+¦   ¦   ¦           Sanctuary.Core.dll
+¦   ¦   ¦           Sanctuary.Core.pdb
+¦   ¦   ¦           
+¦   ¦   +---Release
+¦   ¦       +---net9.0
+¦   ¦               Sanctuary.Core.deps.json
+¦   ¦               Sanctuary.Core.dll
+¦   ¦               Sanctuary.Core.pdb
+¦   ¦               
+¦   +---Collections
+¦   ¦       ObservableConcurrentDictionary.cs
+¦   ¦       
+¦   +---Configuration
+¦   ¦       DatabaseOptions.cs
+¦   ¦       DatabaseProvider.cs
+¦   ¦       GatewayServerOptions.cs
+¦   ¦       LoginServerOptions.cs
+¦   ¦       ServerOptions.cs
+¦   ¦       
+¦   +---Cryptography
+¦   ¦       CipherCCM.cs
+¦   ¦       CipherRC4.cs
+¦   ¦       ICipher.cs
+¦   ¦       RC4.cs
+¦   ¦       
+¦   +---Extensions
+¦   ¦       Vector4Extensions.cs
+¦   ¦       
+¦   +---Helpers
+¦   ¦       GuidHelper.cs
+¦   ¦       JenkinsHelper.cs
+¦   ¦       
+¦   +---IO
+¦   ¦       IDeserializable.cs
+¦   ¦       IDeserializableType.cs
+¦   ¦       ISerializablePacket.cs
+¦   ¦       ISerializableType.cs
+¦   ¦       JsonConverter.cs
+¦   ¦       PacketReader.cs
+¦   ¦       PacketUtils.cs
+¦   ¦       PacketWriter.cs
+¦   ¦       ZLib.cs
+¦   ¦       
+¦   +---obj
+¦       ¦   project.assets.json
+¦       ¦   project.nuget.cache
+¦       ¦   Sanctuary.Core.csproj.nuget.dgspec.json
+¦       ¦   Sanctuary.Core.csproj.nuget.g.props
+¦       ¦   Sanctuary.Core.csproj.nuget.g.targets
+¦       ¦   
+¦       +---Debug
+¦       ¦   +---net9.0
+¦       ¦       ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦       ¦       ¦   Sanctuary.Core.AssemblyInfo.cs
+¦       ¦       ¦   Sanctuary.Core.AssemblyInfoInputs.cache
+¦       ¦       ¦   Sanctuary.Core.assets.cache
+¦       ¦       ¦   Sanctuary.Core.csproj.AssemblyReference.cache
+¦       ¦       ¦   Sanctuary.Core.csproj.CoreCompileInputs.cache
+¦       ¦       ¦   Sanctuary.Core.csproj.FileListAbsolute.txt
+¦       ¦       ¦   Sanctuary.Core.dll
+¦       ¦       ¦   Sanctuary.Core.GeneratedMSBuildEditorConfig.editorconfig
+¦       ¦       ¦   Sanctuary.Core.pdb
+¦       ¦       ¦   Sanctuary.Core.sourcelink.json
+¦       ¦       ¦   
+¦       ¦       +---ref
+¦       ¦       ¦       Sanctuary.Core.dll
+¦       ¦       ¦       
+¦       ¦       +---refint
+¦       ¦               Sanctuary.Core.dll
+¦       ¦               
+¦       +---Release
+¦           +---net9.0
+¦               ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦               ¦   Sanctuary.Core.AssemblyInfo.cs
+¦               ¦   Sanctuary.Core.AssemblyInfoInputs.cache
+¦               ¦   Sanctuary.Core.assets.cache
+¦               ¦   Sanctuary.Core.csproj.AssemblyReference.cache
+¦               ¦   Sanctuary.Core.csproj.CoreCompileInputs.cache
+¦               ¦   Sanctuary.Core.csproj.FileListAbsolute.txt
+¦               ¦   Sanctuary.Core.dll
+¦               ¦   Sanctuary.Core.GeneratedMSBuildEditorConfig.editorconfig
+¦               ¦   Sanctuary.Core.pdb
+¦               ¦   Sanctuary.Core.sourcelink.json
+¦               ¦   
+¦               +---ref
+¦               ¦       Sanctuary.Core.dll
+¦               ¦       
+¦               +---refint
+¦                       Sanctuary.Core.dll
+¦                       
++---Sanctuary.Database
+¦   ¦   DatabaseContext.cs
+¦   ¦   DatabaseFactory.cs
+¦   ¦   README.md
+¦   ¦   Sanctuary.Database.csproj
+¦   ¦   ServiceCollectionExtensions.cs
+¦   ¦   
+¦   +---bin
+¦   ¦   +---Debug
+¦   ¦   ¦       Sanctuary.Core.dll
+¦   ¦   ¦       Sanctuary.Core.pdb
+¦   ¦   ¦       Sanctuary.Database.deps.json
+¦   ¦   ¦       Sanctuary.Database.dll
+¦   ¦   ¦       Sanctuary.Database.Entities.dll
+¦   ¦   ¦       Sanctuary.Database.Entities.pdb
+¦   ¦   ¦       Sanctuary.Database.pdb
+¦   ¦   ¦       Sanctuary.Database.runtimeconfig.json
+¦   ¦   ¦       Sanctuary.Database.Sqlite.dll
+¦   ¦   ¦       
+¦   ¦   +---Release
+¦   ¦           Sanctuary.Core.dll
+¦   ¦           Sanctuary.Core.pdb
+¦   ¦           Sanctuary.Database.deps.json
+¦   ¦           Sanctuary.Database.dll
+¦   ¦           Sanctuary.Database.Entities.dll
+¦   ¦           Sanctuary.Database.Entities.pdb
+¦   ¦           Sanctuary.Database.pdb
+¦   ¦           Sanctuary.Database.runtimeconfig.json
+¦   ¦           
+¦   +---obj
+¦       ¦   project.assets.json
+¦       ¦   project.nuget.cache
+¦       ¦   Sanctuary.Database.csproj.EntityFrameworkCore.targets
+¦       ¦   Sanctuary.Database.csproj.nuget.dgspec.json
+¦       ¦   Sanctuary.Database.csproj.nuget.g.props
+¦       ¦   Sanctuary.Database.csproj.nuget.g.targets
+¦       ¦   
+¦       +---Debug
+¦       ¦   ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦       ¦   ¦   Sanctuar.177E354C.Up2Date
+¦       ¦   ¦   Sanctuary.Database.AssemblyInfo.cs
+¦       ¦   ¦   Sanctuary.Database.AssemblyInfoInputs.cache
+¦       ¦   ¦   Sanctuary.Database.assets.cache
+¦       ¦   ¦   Sanctuary.Database.csproj.AssemblyReference.cache
+¦       ¦   ¦   Sanctuary.Database.csproj.CoreCompileInputs.cache
+¦       ¦   ¦   Sanctuary.Database.csproj.FileListAbsolute.txt
+¦       ¦   ¦   Sanctuary.Database.dll
+¦       ¦   ¦   Sanctuary.Database.GeneratedMSBuildEditorConfig.editorconfig
+¦       ¦   ¦   Sanctuary.Database.genruntimeconfig.cache
+¦       ¦   ¦   Sanctuary.Database.pdb
+¦       ¦   ¦   Sanctuary.Database.sourcelink.json
+¦       ¦   ¦   
+¦       ¦   +---ref
+¦       ¦   ¦       Sanctuary.Database.dll
+¦       ¦   ¦       
+¦       ¦   +---refint
+¦       ¦           Sanctuary.Database.dll
+¦       ¦           
+¦       +---Release
+¦           ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦           ¦   Sanctuar.177E354C.Up2Date
+¦           ¦   Sanctuary.Database.AssemblyInfo.cs
+¦           ¦   Sanctuary.Database.AssemblyInfoInputs.cache
+¦           ¦   Sanctuary.Database.assets.cache
+¦           ¦   Sanctuary.Database.csproj.AssemblyReference.cache
+¦           ¦   Sanctuary.Database.csproj.CoreCompileInputs.cache
+¦           ¦   Sanctuary.Database.csproj.FileListAbsolute.txt
+¦           ¦   Sanctuary.Database.dll
+¦           ¦   Sanctuary.Database.GeneratedMSBuildEditorConfig.editorconfig
+¦           ¦   Sanctuary.Database.genruntimeconfig.cache
+¦           ¦   Sanctuary.Database.pdb
+¦           ¦   Sanctuary.Database.sourcelink.json
+¦           ¦   
+¦           +---ref
+¦           ¦       Sanctuary.Database.dll
+¦           ¦       
+¦           +---refint
+¦                   Sanctuary.Database.dll
+¦                   
++---Sanctuary.Database.Entities
+¦   ¦   DbCharacter.cs
+¦   ¦   DbFriend.cs
+¦   ¦   DbHouse.cs
+¦   ¦   DbHouseFixture.cs
+¦   ¦   DbHousePermission.cs
+¦   ¦   DbIgnore.cs
+¦   ¦   DbItem.cs
+¦   ¦   DbMount.cs
+¦   ¦   DbPet.cs
+¦   ¦   DbProfile.cs
+¦   ¦   DbTitle.cs
+¦   ¦   DbUser.cs
+¦   ¦   Sanctuary.Database.Entities.csproj
+¦   ¦   
+¦   +---bin
+¦   ¦   +---Debug
+¦   ¦   ¦       Sanctuary.Database.Entities.deps.json
+¦   ¦   ¦       Sanctuary.Database.Entities.dll
+¦   ¦   ¦       Sanctuary.Database.Entities.pdb
+¦   ¦   ¦       
+¦   ¦   +---Release
+¦   ¦           Sanctuary.Database.Entities.deps.json
+¦   ¦           Sanctuary.Database.Entities.dll
+¦   ¦           Sanctuary.Database.Entities.pdb
+¦   ¦           
+¦   +---obj
+¦       ¦   project.assets.json
+¦       ¦   project.nuget.cache
+¦       ¦   Sanctuary.Database.Entities.csproj.nuget.dgspec.json
+¦       ¦   Sanctuary.Database.Entities.csproj.nuget.g.props
+¦       ¦   Sanctuary.Database.Entities.csproj.nuget.g.targets
+¦       ¦   
+¦       +---Debug
+¦       ¦   ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦       ¦   ¦   Sanctuary.Database.Entities.AssemblyInfo.cs
+¦       ¦   ¦   Sanctuary.Database.Entities.AssemblyInfoInputs.cache
+¦       ¦   ¦   Sanctuary.Database.Entities.assets.cache
+¦       ¦   ¦   Sanctuary.Database.Entities.csproj.CoreCompileInputs.cache
+¦       ¦   ¦   Sanctuary.Database.Entities.csproj.FileListAbsolute.txt
+¦       ¦   ¦   Sanctuary.Database.Entities.dll
+¦       ¦   ¦   Sanctuary.Database.Entities.GeneratedMSBuildEditorConfig.editorconfig
+¦       ¦   ¦   Sanctuary.Database.Entities.pdb
+¦       ¦   ¦   Sanctuary.Database.Entities.sourcelink.json
+¦       ¦   ¦   
+¦       ¦   +---ref
+¦       ¦   ¦       Sanctuary.Database.Entities.dll
+¦       ¦   ¦       
+¦       ¦   +---refint
+¦       ¦           Sanctuary.Database.Entities.dll
+¦       ¦           
+¦       +---Release
+¦           ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦           ¦   Sanctuary.Database.Entities.AssemblyInfo.cs
+¦           ¦   Sanctuary.Database.Entities.AssemblyInfoInputs.cache
+¦           ¦   Sanctuary.Database.Entities.assets.cache
+¦           ¦   Sanctuary.Database.Entities.csproj.CoreCompileInputs.cache
+¦           ¦   Sanctuary.Database.Entities.csproj.FileListAbsolute.txt
+¦           ¦   Sanctuary.Database.Entities.dll
+¦           ¦   Sanctuary.Database.Entities.GeneratedMSBuildEditorConfig.editorconfig
+¦           ¦   Sanctuary.Database.Entities.pdb
+¦           ¦   Sanctuary.Database.Entities.sourcelink.json
+¦           ¦   
+¦           +---ref
+¦           ¦       Sanctuary.Database.Entities.dll
+¦           ¦       
+¦           +---refint
+¦                   Sanctuary.Database.Entities.dll
+¦                   
++---Sanctuary.Database.MySql
+¦   ¦   Sanctuary.Database.MySql.csproj
+¦   ¦   
+¦   +---bin
+¦   ¦   +---Debug
+¦   ¦           Sanctuary.Core.dll
+¦   ¦           Sanctuary.Core.pdb
+¦   ¦           Sanctuary.Database.dll
+¦   ¦           Sanctuary.Database.Entities.dll
+¦   ¦           Sanctuary.Database.Entities.pdb
+¦   ¦           Sanctuary.Database.MySql.deps.json
+¦   ¦           Sanctuary.Database.MySql.dll
+¦   ¦           Sanctuary.Database.MySql.pdb
+¦   ¦           Sanctuary.Database.MySql.runtimeconfig.json
+¦   ¦           Sanctuary.Database.pdb
+¦   ¦           
+¦   +---Configuration
+¦   ¦       DbCharacterConfiguration.cs
+¦   ¦       DbFriendConfiguration.cs
+¦   ¦       DbHouseConfiguration.cs
+¦   ¦       DbHouseFixtureConfiguration.cs
+¦   ¦       DbHousePermissionConfiguration.cs
+¦   ¦       DbIgnoreConfiguration.cs
+¦   ¦       DbItemConfiguration.cs
+¦   ¦       DbMountConfiguration.cs
+¦   ¦       DbPetConfiguration.cs
+¦   ¦       DbProfileConfiguration.cs
+¦   ¦       DbTitleConfiguration.cs
+¦   ¦       DbUserConfiguration.cs
+¦   ¦       
+¦   +---Migrations
+¦   ¦       20250823191021_Initial.cs
+¦   ¦       20250823191021_Initial.Designer.cs
+¦   ¦       20250830191844_AddFriendAndIgnore.cs
+¦   ¦       20250830191844_AddFriendAndIgnore.Designer.cs
+¦   ¦       20251120195731_AddShops.cs
+¦   ¦       20251120195731_AddShops.Designer.cs
+¦   ¦       20251207000000_AddHousing.cs
+¦   ¦       20251210000000_AddPets.cs
+¦   ¦       DatabaseContextModelSnapshot.cs
+¦   ¦       
+¦   +---obj
+¦       ¦   project.assets.json
+¦       ¦   project.nuget.cache
+¦       ¦   Sanctuary.Database.MySql.csproj.EntityFrameworkCore.targets
+¦       ¦   Sanctuary.Database.MySql.csproj.nuget.dgspec.json
+¦       ¦   Sanctuary.Database.MySql.csproj.nuget.g.props
+¦       ¦   Sanctuary.Database.MySql.csproj.nuget.g.targets
+¦       ¦   
+¦       +---Debug
+¦       ¦   ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦       ¦   ¦   Sanctuar.44BEF65D.Up2Date
+¦       ¦   ¦   Sanctuary.Database.MySql.AssemblyInfo.cs
+¦       ¦   ¦   Sanctuary.Database.MySql.AssemblyInfoInputs.cache
+¦       ¦   ¦   Sanctuary.Database.MySql.assets.cache
+¦       ¦   ¦   Sanctuary.Database.MySql.csproj.AssemblyReference.cache
+¦       ¦   ¦   Sanctuary.Database.MySql.csproj.CoreCompileInputs.cache
+¦       ¦   ¦   Sanctuary.Database.MySql.csproj.FileListAbsolute.txt
+¦       ¦   ¦   Sanctuary.Database.MySql.dll
+¦       ¦   ¦   Sanctuary.Database.MySql.GeneratedMSBuildEditorConfig.editorconfig
+¦       ¦   ¦   Sanctuary.Database.MySql.genruntimeconfig.cache
+¦       ¦   ¦   Sanctuary.Database.MySql.pdb
+¦       ¦   ¦   Sanctuary.Database.MySql.sourcelink.json
+¦       ¦   ¦   
+¦       ¦   +---ref
+¦       ¦   ¦       Sanctuary.Database.MySql.dll
+¦       ¦   ¦       
+¦       ¦   +---refint
+¦       ¦           Sanctuary.Database.MySql.dll
+¦       ¦           
+¦       +---Release
+¦           ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦           ¦   Sanctuary.Database.MySql.AssemblyInfo.cs
+¦           ¦   Sanctuary.Database.MySql.AssemblyInfoInputs.cache
+¦           ¦   Sanctuary.Database.MySql.assets.cache
+¦           ¦   Sanctuary.Database.MySql.csproj.AssemblyReference.cache
+¦           ¦   Sanctuary.Database.MySql.csproj.CoreCompileInputs.cache
+¦           ¦   Sanctuary.Database.MySql.csproj.FileListAbsolute.txt
+¦           ¦   Sanctuary.Database.MySql.dll
+¦           ¦   Sanctuary.Database.MySql.GeneratedMSBuildEditorConfig.editorconfig
+¦           ¦   Sanctuary.Database.MySql.genruntimeconfig.cache
+¦           ¦   Sanctuary.Database.MySql.pdb
+¦           ¦   Sanctuary.Database.MySql.sourcelink.json
+¦           ¦   
+¦           +---ref
+¦           ¦       Sanctuary.Database.MySql.dll
+¦           ¦       
+¦           +---refint
+¦                   Sanctuary.Database.MySql.dll
+¦                   
++---Sanctuary.Database.SqLite
+¦   ¦   Sanctuary.Database.Sqlite.csproj
+¦   ¦   
+¦   +---bin
+¦   ¦   +---Debug
+¦   ¦           Sanctuary.Core.dll
+¦   ¦           Sanctuary.Core.pdb
+¦   ¦           Sanctuary.Database.dll
+¦   ¦           Sanctuary.Database.Entities.dll
+¦   ¦           Sanctuary.Database.Entities.pdb
+¦   ¦           Sanctuary.Database.pdb
+¦   ¦           Sanctuary.Database.Sqlite.deps.json
+¦   ¦           Sanctuary.Database.Sqlite.dll
+¦   ¦           Sanctuary.Database.Sqlite.pdb
+¦   ¦           Sanctuary.Database.Sqlite.runtimeconfig.json
+¦   ¦           
+¦   +---Configuration
+¦   ¦       DbCharacterConfiguration.cs
+¦   ¦       DbFriendConfiguration.cs
+¦   ¦       DbHouseConfiguration.cs
+¦   ¦       DbHouseFixtureConfiguration.cs
+¦   ¦       DbHousePermissionConfiguration.cs
+¦   ¦       DbIgnoreConfiguration.cs
+¦   ¦       DbItemConfiguration.cs
+¦   ¦       DbMountConfiguration.cs
+¦   ¦       DbPetConfiguration.cs
+¦   ¦       DbProfileConfiguration.cs
+¦   ¦       DbTitleConfiguration.cs
+¦   ¦       DbUserConfiguration.cs
+¦   ¦       
+¦   +---Migrations
+¦   ¦       20250823191050_Initial.cs
+¦   ¦       20250823191050_Initial.Designer.cs
+¦   ¦       20250830192154_AddFriendAndIgnore.cs
+¦   ¦       20250830192154_AddFriendAndIgnore.Designer.cs
+¦   ¦       20251120195716_AddShops.cs
+¦   ¦       20251120195716_AddShops.Designer.cs
+¦   ¦       20251204134445_SetIsMemberDefaultToTrue.cs
+¦   ¦       20251204134445_SetIsMemberDefaultToTrue.Designer.cs
+¦   ¦       20251207164612_AddHousing.cs
+¦   ¦       20251207164612_AddHousing.Designer.cs
+¦   ¦       20251210000000_AddPets.cs
+¦   ¦       DatabaseContextModelSnapshot.cs
+¦   ¦       
+¦   +---obj
+¦   ¦   ¦   ..Sanctuary.Database.EntityFrameworkCore.targets
+¦   ¦   ¦   project.assets.json
+¦   ¦   ¦   project.nuget.cache
+¦   ¦   ¦   Sanctuary.Database.Sqlite.csproj.EntityFrameworkCore.targets
+¦   ¦   ¦   Sanctuary.Database.Sqlite.csproj.nuget.dgspec.json
+¦   ¦   ¦   Sanctuary.Database.Sqlite.csproj.nuget.g.props
+¦   ¦   ¦   Sanctuary.Database.Sqlite.csproj.nuget.g.targets
+¦   ¦   ¦   
+¦   ¦   +---Debug
+¦   ¦   ¦   ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦   ¦   ¦   Sanctuar.71B378FB.Up2Date
+¦   ¦   ¦   ¦   Sanctuary.Database.Sqlite.AssemblyInfo.cs
+¦   ¦   ¦   ¦   Sanctuary.Database.Sqlite.AssemblyInfoInputs.cache
+¦   ¦   ¦   ¦   Sanctuary.Database.Sqlite.assets.cache
+¦   ¦   ¦   ¦   Sanctuary.Database.Sqlite.csproj.AssemblyReference.cache
+¦   ¦   ¦   ¦   Sanctuary.Database.Sqlite.csproj.CoreCompileInputs.cache
+¦   ¦   ¦   ¦   Sanctuary.Database.Sqlite.csproj.FileListAbsolute.txt
+¦   ¦   ¦   ¦   Sanctuary.Database.Sqlite.dll
+¦   ¦   ¦   ¦   Sanctuary.Database.Sqlite.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦   ¦   ¦   Sanctuary.Database.Sqlite.genruntimeconfig.cache
+¦   ¦   ¦   ¦   Sanctuary.Database.Sqlite.pdb
+¦   ¦   ¦   ¦   Sanctuary.Database.Sqlite.sourcelink.json
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---ref
+¦   ¦   ¦   ¦       Sanctuary.Database.Sqlite.dll
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---refint
+¦   ¦   ¦           Sanctuary.Database.Sqlite.dll
+¦   ¦   ¦           
+¦   ¦   +---Release
+¦   ¦       ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦       ¦   Sanctuary.Database.Sqlite.AssemblyInfo.cs
+¦   ¦       ¦   Sanctuary.Database.Sqlite.AssemblyInfoInputs.cache
+¦   ¦       ¦   Sanctuary.Database.Sqlite.assets.cache
+¦   ¦       ¦   Sanctuary.Database.Sqlite.csproj.AssemblyReference.cache
+¦   ¦       ¦   Sanctuary.Database.Sqlite.csproj.CoreCompileInputs.cache
+¦   ¦       ¦   Sanctuary.Database.Sqlite.csproj.FileListAbsolute.txt
+¦   ¦       ¦   Sanctuary.Database.Sqlite.dll
+¦   ¦       ¦   Sanctuary.Database.Sqlite.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦       ¦   Sanctuary.Database.Sqlite.genruntimeconfig.cache
+¦   ¦       ¦   Sanctuary.Database.Sqlite.pdb
+¦   ¦       ¦   Sanctuary.Database.Sqlite.sourcelink.json
+¦   ¦       ¦   
+¦   ¦       +---ref
+¦   ¦       ¦       Sanctuary.Database.Sqlite.dll
+¦   ¦       ¦       
+¦   ¦       +---refint
+¦   ¦               Sanctuary.Database.Sqlite.dll
+¦   ¦               
+¦   +---src
+¦       +---obj
+¦               Sanctuary.Database.SqLite.EntityFrameworkCore.targets
+¦               
++---Sanctuary.Game
+¦   ¦   IInteractionManager.cs
+¦   ¦   InteractionManager.cs
+¦   ¦   IResourceManager.cs
+¦   ¦   IZoneManager.cs
+¦   ¦   ResourceManager.cs
+¦   ¦   Sanctuary.Game.csproj
+¦   ¦   ZoneManager.cs
+¦   ¦   
+¦   +---bin
+¦   ¦   +---Debug
+¦   ¦   ¦   +---net9.0
+¦   ¦   ¦           Sanctuary.Core.dll
+¦   ¦   ¦           Sanctuary.Core.pdb
+¦   ¦   ¦           Sanctuary.Database.dll
+¦   ¦   ¦           Sanctuary.Database.Entities.dll
+¦   ¦   ¦           Sanctuary.Database.Entities.pdb
+¦   ¦   ¦           Sanctuary.Database.pdb
+¦   ¦   ¦           Sanctuary.Game.deps.json
+¦   ¦   ¦           Sanctuary.Game.dll
+¦   ¦   ¦           Sanctuary.Game.pdb
+¦   ¦   ¦           Sanctuary.Packet.Common.dll
+¦   ¦   ¦           Sanctuary.Packet.Common.pdb
+¦   ¦   ¦           Sanctuary.Packet.dll
+¦   ¦   ¦           Sanctuary.Packet.pdb
+¦   ¦   ¦           Sanctuary.UdpLibrary.dll
+¦   ¦   ¦           Sanctuary.UdpLibrary.pdb
+¦   ¦   ¦           
+¦   ¦   +---Release
+¦   ¦       +---net9.0
+¦   ¦               Sanctuary.Core.dll
+¦   ¦               Sanctuary.Core.pdb
+¦   ¦               Sanctuary.Database.dll
+¦   ¦               Sanctuary.Database.Entities.dll
+¦   ¦               Sanctuary.Database.Entities.pdb
+¦   ¦               Sanctuary.Database.pdb
+¦   ¦               Sanctuary.Game.deps.json
+¦   ¦               Sanctuary.Game.dll
+¦   ¦               Sanctuary.Game.pdb
+¦   ¦               Sanctuary.Packet.Common.dll
+¦   ¦               Sanctuary.Packet.Common.pdb
+¦   ¦               Sanctuary.Packet.dll
+¦   ¦               Sanctuary.Packet.pdb
+¦   ¦               Sanctuary.UdpLibrary.dll
+¦   ¦               Sanctuary.UdpLibrary.pdb
+¦   ¦               
+¦   +---Entities
+¦   ¦       CombatNpc.cs
+¦   ¦       IEntity.cs
+¦   ¦       Mount.cs
+¦   ¦       Npc.cs
+¦   ¦       Pet.cs
+¦   ¦       Player.cs
+¦   ¦       
+¦   +---Interactions
+¦   ¦       AddFriendInteraction.cs
+¦   ¦       IgnoreInteraction.cs
+¦   ¦       IInteraction.cs
+¦   ¦       InspectInteraction.cs
+¦   ¦       OpenShopInteraction.cs
+¦   ¦       RemoveFriendInteraction.cs
+¦   ¦       StopIgnoringInteraction.cs
+¦   ¦       
+¦   +---obj
+¦   ¦   ¦   project.assets.json
+¦   ¦   ¦   project.nuget.cache
+¦   ¦   ¦   Sanctuary.Game.csproj.nuget.dgspec.json
+¦   ¦   ¦   Sanctuary.Game.csproj.nuget.g.props
+¦   ¦   ¦   Sanctuary.Game.csproj.nuget.g.targets
+¦   ¦   ¦   
+¦   ¦   +---Debug
+¦   ¦   ¦   +---net9.0
+¦   ¦   ¦       ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦   ¦       ¦   Sanctuar.0E942BCB.Up2Date
+¦   ¦   ¦       ¦   Sanctuary.Game.AssemblyInfo.cs
+¦   ¦   ¦       ¦   Sanctuary.Game.AssemblyInfoInputs.cache
+¦   ¦   ¦       ¦   Sanctuary.Game.assets.cache
+¦   ¦   ¦       ¦   Sanctuary.Game.csproj.AssemblyReference.cache
+¦   ¦   ¦       ¦   Sanctuary.Game.csproj.CoreCompileInputs.cache
+¦   ¦   ¦       ¦   Sanctuary.Game.csproj.FileListAbsolute.txt
+¦   ¦   ¦       ¦   Sanctuary.Game.dll
+¦   ¦   ¦       ¦   Sanctuary.Game.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦   ¦       ¦   Sanctuary.Game.pdb
+¦   ¦   ¦       ¦   Sanctuary.Game.sourcelink.json
+¦   ¦   ¦       ¦   
+¦   ¦   ¦       +---ref
+¦   ¦   ¦       ¦       Sanctuary.Game.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---refint
+¦   ¦   ¦               Sanctuary.Game.dll
+¦   ¦   ¦               
+¦   ¦   +---Release
+¦   ¦       +---net9.0
+¦   ¦           ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦           ¦   Sanctuar.0E942BCB.Up2Date
+¦   ¦           ¦   Sanctuary.Game.AssemblyInfo.cs
+¦   ¦           ¦   Sanctuary.Game.AssemblyInfoInputs.cache
+¦   ¦           ¦   Sanctuary.Game.assets.cache
+¦   ¦           ¦   Sanctuary.Game.csproj.AssemblyReference.cache
+¦   ¦           ¦   Sanctuary.Game.csproj.CoreCompileInputs.cache
+¦   ¦           ¦   Sanctuary.Game.csproj.FileListAbsolute.txt
+¦   ¦           ¦   Sanctuary.Game.dll
+¦   ¦           ¦   Sanctuary.Game.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦           ¦   Sanctuary.Game.pdb
+¦   ¦           ¦   Sanctuary.Game.sourcelink.json
+¦   ¦           ¦   
+¦   ¦           +---ref
+¦   ¦           ¦       Sanctuary.Game.dll
+¦   ¦           ¦       
+¦   ¦           +---refint
+¦   ¦                   Sanctuary.Game.dll
+¦   ¦                   
+¦   +---Resources
+¦   ¦   ¦   ClientItemDefinitionCollection.cs
+¦   ¦   ¦   CoinStoreItemCollection.cs
+¦   ¦   ¦   HouseDefinitionCollection.cs
+¦   ¦   ¦   IdToStringLookup.cs
+¦   ¦   ¦   ItemCategoryDefinitionCollection.cs
+¦   ¦   ¦   ItemCategoryGroupDefinitionCollection.cs
+¦   ¦   ¦   ItemClassDefinitionCollection.cs
+¦   ¦   ¦   ModelDefinitionCollection.cs
+¦   ¦   ¦   MountDefinitionCollection.cs
+¦   ¦   ¦   NpcSpawnCollection.cs
+¦   ¦   ¦   NpcVendorCollection.cs
+¦   ¦   ¦   PetDefinitionCollection.cs
+¦   ¦   ¦   PlayerTitleCollection.cs
+¦   ¦   ¦   PointOfInterestDefinitionCollection.cs
+¦   ¦   ¦   ProfileDefinitionCollection.cs
+¦   ¦   ¦   QuickChatDefinitionCollection.cs
+¦   ¦   ¦   StoreBundleCategoryGroupDefinitionCollection.cs
+¦   ¦   ¦   StoreBundleCategoryNodeCollection.cs
+¦   ¦   ¦   StoreBundleGroupDefinitionCollection.cs
+¦   ¦   ¦   StoreDefinitionCollection.cs
+¦   ¦   ¦   ZoneDefinitionCollection.cs
+¦   ¦   ¦   
+¦   ¦   +---Definitions
+¦   ¦       ¦   HouseDefinition.cs
+¦   ¦       ¦   ModelDefinition.cs
+¦   ¦       ¦   MountDefinition.cs
+¦   ¦       ¦   NpcSpawnDefinition.cs
+¦   ¦       ¦   PetDefinition.cs
+¦   ¦       ¦   ZoneAreaDefinition.cs
+¦   ¦       ¦   
+¦   ¦       +---Zones
+¦   ¦               BaseZoneDefinition.cs
+¦   ¦               StartingZoneDefinition.cs
+¦   ¦               
+¦   +---Zones
+¦           BaseZone.cs
+¦           IZone.cs
+¦           StartingZone.cs
+¦           ZoneTile.cs
+¦           
++---Sanctuary.Gateway
+¦   ¦   gateway.json
+¦   ¦   GatewayConnection.cs
+¦   ¦   GatewayServer.cs
+¦   ¦   GatewayService.cs
+¦   ¦   LoginClient.cs
+¦   ¦   LoginConnection.cs
+¦   ¦   NLog.config
+¦   ¦   NLog.Development.config
+¦   ¦   Program.cs
+¦   ¦   Sanctuary.Gateway.csproj
+¦   ¦   
+¦   +---bin
+¦   ¦   +---Debug
+¦   ¦   ¦   ¦   Collections.Pooled.dll
+¦   ¦   ¦   ¦   csFastFloat.dll
+¦   ¦   ¦   ¦   gateway.json
+¦   ¦   ¦   ¦   Microsoft.Data.Sqlite.dll
+¦   ¦   ¦   ¦   Microsoft.EntityFrameworkCore.Abstractions.dll
+¦   ¦   ¦   ¦   Microsoft.EntityFrameworkCore.dll
+¦   ¦   ¦   ¦   Microsoft.EntityFrameworkCore.Relational.dll
+¦   ¦   ¦   ¦   Microsoft.EntityFrameworkCore.Sqlite.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Caching.Abstractions.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Caching.Memory.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Configuration.Abstractions.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Configuration.Binder.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Configuration.CommandLine.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Configuration.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Configuration.EnvironmentVariables.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Configuration.FileExtensions.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Configuration.Json.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Configuration.UserSecrets.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.DependencyInjection.Abstractions.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.DependencyInjection.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.DependencyModel.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Diagnostics.Abstractions.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Diagnostics.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.FileProviders.Abstractions.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.FileProviders.Physical.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.FileSystemGlobbing.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Hosting.Abstractions.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Hosting.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Logging.Abstractions.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Logging.Configuration.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Logging.Console.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Logging.Debug.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Logging.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Logging.EventLog.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Logging.EventSource.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Options.ConfigurationExtensions.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Options.dll
+¦   ¦   ¦   ¦   Microsoft.Extensions.Primitives.dll
+¦   ¦   ¦   ¦   MySqlConnector.dll
+¦   ¦   ¦   ¦   NLog.config
+¦   ¦   ¦   ¦   NLog.Development.config
+¦   ¦   ¦   ¦   NLog.dll
+¦   ¦   ¦   ¦   NLog.Extensions.Logging.dll
+¦   ¦   ¦   ¦   Pomelo.EntityFrameworkCore.MySql.dll
+¦   ¦   ¦   ¦   Sanctuary.Core.dll
+¦   ¦   ¦   ¦   Sanctuary.Core.pdb
+¦   ¦   ¦   ¦   Sanctuary.Database.dll
+¦   ¦   ¦   ¦   Sanctuary.Database.Entities.dll
+¦   ¦   ¦   ¦   Sanctuary.Database.Entities.pdb
+¦   ¦   ¦   ¦   Sanctuary.Database.pdb
+¦   ¦   ¦   ¦   Sanctuary.Game.dll
+¦   ¦   ¦   ¦   Sanctuary.Game.pdb
+¦   ¦   ¦   ¦   Sanctuary.Gateway.deps.json
+¦   ¦   ¦   ¦   Sanctuary.Gateway.dll
+¦   ¦   ¦   ¦   Sanctuary.Gateway.exe
+¦   ¦   ¦   ¦   Sanctuary.Gateway.pdb
+¦   ¦   ¦   ¦   Sanctuary.Gateway.runtimeconfig.json
+¦   ¦   ¦   ¦   Sanctuary.Packet.Common.dll
+¦   ¦   ¦   ¦   Sanctuary.Packet.Common.pdb
+¦   ¦   ¦   ¦   Sanctuary.Packet.dll
+¦   ¦   ¦   ¦   Sanctuary.Packet.pdb
+¦   ¦   ¦   ¦   Sanctuary.UdpLibrary.dll
+¦   ¦   ¦   ¦   Sanctuary.UdpLibrary.pdb
+¦   ¦   ¦   ¦   Sep.dll
+¦   ¦   ¦   ¦   SQLitePCLRaw.batteries_v2.dll
+¦   ¦   ¦   ¦   SQLitePCLRaw.core.dll
+¦   ¦   ¦   ¦   SQLitePCLRaw.provider.e_sqlite3.dll
+¦   ¦   ¦   ¦   System.Diagnostics.EventLog.dll
+¦   ¦   ¦   ¦   ZLibDotNet.dll
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---runtimes
+¦   ¦   ¦       +---browser-wasm
+¦   ¦   ¦       ¦   +---nativeassets
+¦   ¦   ¦       ¦       +---net9.0
+¦   ¦   ¦       ¦               e_sqlite3.a
+¦   ¦   ¦       ¦               
+¦   ¦   ¦       +---linux-arm
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.so
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---linux-arm64
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.so
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---linux-armel
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.so
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---linux-mips64
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.so
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---linux-musl-arm
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.so
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---linux-musl-arm64
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.so
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---linux-musl-s390x
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.so
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---linux-musl-x64
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.so
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---linux-ppc64le
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.so
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---linux-s390x
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.so
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---linux-x64
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.so
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---linux-x86
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.so
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---maccatalyst-arm64
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.dylib
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---maccatalyst-x64
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.dylib
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---osx-arm64
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.dylib
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---osx-x64
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           libe_sqlite3.dylib
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---win
+¦   ¦   ¦       ¦   +---lib
+¦   ¦   ¦       ¦       +---net9.0
+¦   ¦   ¦       ¦               System.Diagnostics.EventLog.dll
+¦   ¦   ¦       ¦               System.Diagnostics.EventLog.Messages.dll
+¦   ¦   ¦       ¦               
+¦   ¦   ¦       +---win-arm
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           e_sqlite3.dll
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---win-arm64
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           e_sqlite3.dll
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---win-x64
+¦   ¦   ¦       ¦   +---native
+¦   ¦   ¦       ¦           e_sqlite3.dll
+¦   ¦   ¦       ¦           
+¦   ¦   ¦       +---win-x86
+¦   ¦   ¦           +---native
+¦   ¦   ¦                   e_sqlite3.dll
+¦   ¦   ¦                   
+¦   ¦   +---Release
+¦   ¦       ¦   Collections.Pooled.dll
+¦   ¦       ¦   csFastFloat.dll
+¦   ¦       ¦   gateway.json
+¦   ¦       ¦   Microsoft.Data.Sqlite.dll
+¦   ¦       ¦   Microsoft.EntityFrameworkCore.Abstractions.dll
+¦   ¦       ¦   Microsoft.EntityFrameworkCore.dll
+¦   ¦       ¦   Microsoft.EntityFrameworkCore.Relational.dll
+¦   ¦       ¦   Microsoft.EntityFrameworkCore.Sqlite.dll
+¦   ¦       ¦   Microsoft.Extensions.Caching.Abstractions.dll
+¦   ¦       ¦   Microsoft.Extensions.Caching.Memory.dll
+¦   ¦       ¦   Microsoft.Extensions.Configuration.Abstractions.dll
+¦   ¦       ¦   Microsoft.Extensions.Configuration.Binder.dll
+¦   ¦       ¦   Microsoft.Extensions.Configuration.CommandLine.dll
+¦   ¦       ¦   Microsoft.Extensions.Configuration.dll
+¦   ¦       ¦   Microsoft.Extensions.Configuration.EnvironmentVariables.dll
+¦   ¦       ¦   Microsoft.Extensions.Configuration.FileExtensions.dll
+¦   ¦       ¦   Microsoft.Extensions.Configuration.Json.dll
+¦   ¦       ¦   Microsoft.Extensions.Configuration.UserSecrets.dll
+¦   ¦       ¦   Microsoft.Extensions.DependencyInjection.Abstractions.dll
+¦   ¦       ¦   Microsoft.Extensions.DependencyInjection.dll
+¦   ¦       ¦   Microsoft.Extensions.DependencyModel.dll
+¦   ¦       ¦   Microsoft.Extensions.Diagnostics.Abstractions.dll
+¦   ¦       ¦   Microsoft.Extensions.Diagnostics.dll
+¦   ¦       ¦   Microsoft.Extensions.FileProviders.Abstractions.dll
+¦   ¦       ¦   Microsoft.Extensions.FileProviders.Physical.dll
+¦   ¦       ¦   Microsoft.Extensions.FileSystemGlobbing.dll
+¦   ¦       ¦   Microsoft.Extensions.Hosting.Abstractions.dll
+¦   ¦       ¦   Microsoft.Extensions.Hosting.dll
+¦   ¦       ¦   Microsoft.Extensions.Logging.Abstractions.dll
+¦   ¦       ¦   Microsoft.Extensions.Logging.Configuration.dll
+¦   ¦       ¦   Microsoft.Extensions.Logging.Console.dll
+¦   ¦       ¦   Microsoft.Extensions.Logging.Debug.dll
+¦   ¦       ¦   Microsoft.Extensions.Logging.dll
+¦   ¦       ¦   Microsoft.Extensions.Logging.EventLog.dll
+¦   ¦       ¦   Microsoft.Extensions.Logging.EventSource.dll
+¦   ¦       ¦   Microsoft.Extensions.Options.ConfigurationExtensions.dll
+¦   ¦       ¦   Microsoft.Extensions.Options.dll
+¦   ¦       ¦   Microsoft.Extensions.Primitives.dll
+¦   ¦       ¦   MySqlConnector.dll
+¦   ¦       ¦   NLog.config
+¦   ¦       ¦   NLog.Development.config
+¦   ¦       ¦   NLog.dll
+¦   ¦       ¦   NLog.Extensions.Logging.dll
+¦   ¦       ¦   Pomelo.EntityFrameworkCore.MySql.dll
+¦   ¦       ¦   Sanctuary.Core.dll
+¦   ¦       ¦   Sanctuary.Core.pdb
+¦   ¦       ¦   Sanctuary.Database.dll
+¦   ¦       ¦   Sanctuary.Database.Entities.dll
+¦   ¦       ¦   Sanctuary.Database.Entities.pdb
+¦   ¦       ¦   Sanctuary.Database.pdb
+¦   ¦       ¦   Sanctuary.Game.dll
+¦   ¦       ¦   Sanctuary.Game.pdb
+¦   ¦       ¦   Sanctuary.Gateway.deps.json
+¦   ¦       ¦   Sanctuary.Gateway.dll
+¦   ¦       ¦   Sanctuary.Gateway.exe
+¦   ¦       ¦   Sanctuary.Gateway.pdb
+¦   ¦       ¦   Sanctuary.Gateway.runtimeconfig.json
+¦   ¦       ¦   Sanctuary.Packet.Common.dll
+¦   ¦       ¦   Sanctuary.Packet.Common.pdb
+¦   ¦       ¦   Sanctuary.Packet.dll
+¦   ¦       ¦   Sanctuary.Packet.pdb
+¦   ¦       ¦   Sanctuary.UdpLibrary.dll
+¦   ¦       ¦   Sanctuary.UdpLibrary.pdb
+¦   ¦       ¦   Sep.dll
+¦   ¦       ¦   SQLitePCLRaw.batteries_v2.dll
+¦   ¦       ¦   SQLitePCLRaw.core.dll
+¦   ¦       ¦   SQLitePCLRaw.provider.e_sqlite3.dll
+¦   ¦       ¦   System.Diagnostics.EventLog.dll
+¦   ¦       ¦   ZLibDotNet.dll
+¦   ¦       ¦   
+¦   ¦       +---runtimes
+¦   ¦           +---browser-wasm
+¦   ¦           ¦   +---nativeassets
+¦   ¦           ¦       +---net9.0
+¦   ¦           ¦               e_sqlite3.a
+¦   ¦           ¦               
+¦   ¦           +---linux-arm
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.so
+¦   ¦           ¦           
+¦   ¦           +---linux-arm64
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.so
+¦   ¦           ¦           
+¦   ¦           +---linux-armel
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.so
+¦   ¦           ¦           
+¦   ¦           +---linux-mips64
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.so
+¦   ¦           ¦           
+¦   ¦           +---linux-musl-arm
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.so
+¦   ¦           ¦           
+¦   ¦           +---linux-musl-arm64
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.so
+¦   ¦           ¦           
+¦   ¦           +---linux-musl-s390x
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.so
+¦   ¦           ¦           
+¦   ¦           +---linux-musl-x64
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.so
+¦   ¦           ¦           
+¦   ¦           +---linux-ppc64le
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.so
+¦   ¦           ¦           
+¦   ¦           +---linux-s390x
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.so
+¦   ¦           ¦           
+¦   ¦           +---linux-x64
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.so
+¦   ¦           ¦           
+¦   ¦           +---linux-x86
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.so
+¦   ¦           ¦           
+¦   ¦           +---maccatalyst-arm64
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.dylib
+¦   ¦           ¦           
+¦   ¦           +---maccatalyst-x64
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.dylib
+¦   ¦           ¦           
+¦   ¦           +---osx-arm64
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.dylib
+¦   ¦           ¦           
+¦   ¦           +---osx-x64
+¦   ¦           ¦   +---native
+¦   ¦           ¦           libe_sqlite3.dylib
+¦   ¦           ¦           
+¦   ¦           +---win
+¦   ¦           ¦   +---lib
+¦   ¦           ¦       +---net9.0
+¦   ¦           ¦               System.Diagnostics.EventLog.dll
+¦   ¦           ¦               System.Diagnostics.EventLog.Messages.dll
+¦   ¦           ¦               
+¦   ¦           +---win-arm
+¦   ¦           ¦   +---native
+¦   ¦           ¦           e_sqlite3.dll
+¦   ¦           ¦           
+¦   ¦           +---win-arm64
+¦   ¦           ¦   +---native
+¦   ¦           ¦           e_sqlite3.dll
+¦   ¦           ¦           
+¦   ¦           +---win-x64
+¦   ¦           ¦   +---native
+¦   ¦           ¦           e_sqlite3.dll
+¦   ¦           ¦           
+¦   ¦           +---win-x86
+¦   ¦               +---native
+¦   ¦                       e_sqlite3.dll
+¦   ¦                       
+¦   +---Commands
+¦   ¦       CommandRouter.cs
+¦   ¦       
+¦   +---Handlers
+¦   ¦   ¦   BaseAbilityPacketHandler.cs
+¦   ¦   ¦   BaseChatPacketHandler.cs
+¦   ¦   ¦   BaseCoinStorePacketHandler.cs
+¦   ¦   ¦   BaseCombatPacketHandler.cs
+¦   ¦   ¦   BaseCommandPacketHandler.cs
+¦   ¦   ¦   BaseFotomatPacketHandler.cs
+¦   ¦   ¦   BaseHousingPacketHandler.cs
+¦   ¦   ¦   BaseInventoryPacketHandler.cs
+¦   ¦   ¦   BaseLobbyGameDefinitionPacketHandler.cs
+¦   ¦   ¦   BaseNameChangePacketHandler.cs
+¦   ¦   ¦   BasePlayerTitlePacketHandler.cs
+¦   ¦   ¦   BasePlayerUpdatePacketHandler.cs
+¦   ¦   ¦   BaseQuickChatPacketHandler.cs
+¦   ¦   ¦   MountBasePacketHandler.cs
+¦   ¦   ¦   PacketBaseInGamePurchaseHandler.cs
+¦   ¦   ¦   PacketClientFinishedLoadingHandler.cs
+¦   ¦   ¦   PacketClientInitializationDetails.cs
+¦   ¦   ¦   PacketClientIsReadyHandler.cs
+¦   ¦   ¦   PacketClientLogHandler.cs
+¦   ¦   ¦   PacketClientMetricsHandler.cs
+¦   ¦   ¦   PacketGameTimeSyncHandler.cs
+¦   ¦   ¦   PacketLoginHandler.cs
+¦   ¦   ¦   PacketSetLocaleHandler.cs
+¦   ¦   ¦   PacketTunneledClientPacketHandler.cs
+¦   ¦   ¦   PacketTunneledClientWorldPacketHandler.cs
+¦   ¦   ¦   PacketWorldTeleportRequestHandler.cs
+¦   ¦   ¦   PacketZoneSafeTeleportRequestHandler.cs
+¦   ¦   ¦   PacketZoneTeleportRequestHandler.cs
+¦   ¦   ¦   PetBasePacketHandler.cs
+¦   ¦   ¦   PlayerUpdatePacketCameraUpdateHandler.cs
+¦   ¦   ¦   PlayerUpdatePacketJumpHandler.cs
+¦   ¦   ¦   PlayerUpdatePacketUpdatePositionHandler.cs
+¦   ¦   ¦   WallOfDataBasePacketHandler.cs
+¦   ¦   ¦   
+¦   ¦   +---BaseAbilityPacket
+¦   ¦   ¦       AbilityPacketClientRequestStartAbilityHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---BaseCoinStorePacket
+¦   ¦   ¦       CoinStoreBuyFromClientRequestPacketHandler.cs
+¦   ¦   ¦       CoinStoreItemDefinitionsRequestPacketHandler.cs
+¦   ¦   ¦       CoinStoreItemDynamicListUpdateRequestPacketHandler.cs
+¦   ¦   ¦       CoinStoreSellToClientRequestPacketHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---BaseCombatPacket
+¦   ¦   ¦       CombatPacketAutoAttackTargetHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---BaseCommandPacket
+¦   ¦   ¦       CommandPacketAddFriendRequestHandler.cs
+¦   ¦   ¦       CommandPacketChatChannelOffHandler.cs
+¦   ¦   ¦       CommandPacketChatChannelOnHandler.cs
+¦   ¦   ¦       CommandPacketConfirmFriendResponseHandler.cs
+¦   ¦   ¦       CommandPacketFriendsPositionRequestHandler.cs
+¦   ¦   ¦       CommandPacketIgnoreRequestHandler.cs
+¦   ¦   ¦       CommandPacketInteractionSelectHandler.cs
+¦   ¦   ¦       CommandPacketInteractRequestHandler.cs
+¦   ¦   ¦       CommandPacketRemoveFriendRequestHandler.cs
+¦   ¦   ¦       CommandPacketSelectPlayerHandler.cs
+¦   ¦   ¦       CommandPacketSetChatBubbleColorHandler.cs
+¦   ¦   ¦       CommandPacketSetProfileHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---BaseFotomatPacket
+¦   ¦   ¦       PacketPortraitDataRequestHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---BaseHousingPacket
+¦   ¦   ¦       ClientHousingPacketEnterRequestHandler.cs
+¦   ¦   ¦       ClientHousingPacketPickupFixtureHandler.cs
+¦   ¦   ¦       ClientHousingPacketPlaceFixtureRequestHandler.cs
+¦   ¦   ¦       ClientHousingPacketSaveFixtureHandler.cs
+¦   ¦   ¦       ClientHousingPacketSetEditModeHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---BaseInventoryPacket
+¦   ¦   ¦       InventoryPacketEquipByGuidHandler.cs
+¦   ¦   ¦       InventoryPacketEquipByItemRecordHandler.cs
+¦   ¦   ¦       InventoryPacketEquippedRemoveHandler.cs
+¦   ¦   ¦       InventoryPacketItemActionBarAssignHandler.cs
+¦   ¦   ¦       InventoryPacketPreviewStyleCardHandler.cs
+¦   ¦   ¦       InventoryPacketUseStyleCardByItemRecordHandler.cs
+¦   ¦   ¦       InventoryPacketUseStyleCardHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---BaseLobbyGameDefinitionPacket
+¦   ¦   ¦       LobbyGameDefinitionPacketDefinitionsRequestHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---BaseNameChangePacket
+¦   ¦   ¦       ChangeNameRequestPacketHandler.cs
+¦   ¦   ¦       CheckNamePacketHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---BasePlayerTitlePacket
+¦   ¦   ¦       PlayerTitleRequestSelectPacketHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---BasePlayerUpdatePacket
+¦   ¦   ¦       PlayerUpdatePacketItemDefinitionRequestHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---BaseQuickChatPacket
+¦   ¦   ¦       QuickChatSendChatToChannelPacketHandler.cs
+¦   ¦   ¦       QuickChatSendTellPacketHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---Login
+¦   ¦   ¦       GatewayLoginReplyHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---MountBasePacket
+¦   ¦   ¦       PacketDismountRequestHandler.cs
+¦   ¦   ¦       PacketMountSpawnByItemDefinitionIdHandler.cs
+¦   ¦   ¦       PacketMountSpawnHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---PacketBaseInGamePurchase
+¦   ¦   ¦       InGamePurchaseUpdateItemRequirementsRequestHandler.cs
+¦   ¦   ¦       PacketInGamePurchaseAccountInfoRequestHandler.cs
+¦   ¦   ¦       PacketInGamePurchaseCountryCodesRequestHandler.cs
+¦   ¦   ¦       PacketInGamePurchaseCurrencyCodesRequestHandler.cs
+¦   ¦   ¦       PacketInGamePurchasePlaceOrderPacketHandler.cs
+¦   ¦   ¦       PacketInGamePurchasePreviewOrderHandler.cs
+¦   ¦   ¦       PacketInGamePurchaseStateCodesRequestHandler.cs
+¦   ¦   ¦       PacketInGamePurchaseStoreBundleContentRequestHandler.cs
+¦   ¦   ¦       PacketInGamePurchaseSubscriptionProductsRequestHandler.cs
+¦   ¦   ¦       PacketInGamePurchaseWalletInfoRequestHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---PacketChat
+¦   ¦   ¦       PacketChatHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---PetBasePacket
+¦   ¦   ¦       PacketPetDismountHandler.cs
+¦   ¦   ¦       PacketPetSpawnHandler.cs
+¦   ¦   ¦       PetListPacketHandler.cs
+¦   ¦   ¦       PetSummonRecallPacketHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---WallOfDataBasePacket
+¦   ¦           WallOfDataUIEventPacketHandler.cs
+¦   ¦           
+¦   +---obj
+¦   ¦   ¦   project.assets.json
+¦   ¦   ¦   project.nuget.cache
+¦   ¦   ¦   Sanctuary.Gateway.csproj.EntityFrameworkCore.targets
+¦   ¦   ¦   Sanctuary.Gateway.csproj.nuget.dgspec.json
+¦   ¦   ¦   Sanctuary.Gateway.csproj.nuget.g.props
+¦   ¦   ¦   Sanctuary.Gateway.csproj.nuget.g.targets
+¦   ¦   ¦   
+¦   ¦   +---Debug
+¦   ¦   ¦   ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦   ¦   ¦   apphost.exe
+¦   ¦   ¦   ¦   Sanctuar.D1506CA8.Up2Date
+¦   ¦   ¦   ¦   Sanctuary.Gateway.AssemblyInfo.cs
+¦   ¦   ¦   ¦   Sanctuary.Gateway.AssemblyInfoInputs.cache
+¦   ¦   ¦   ¦   Sanctuary.Gateway.assets.cache
+¦   ¦   ¦   ¦   Sanctuary.Gateway.csproj.AssemblyReference.cache
+¦   ¦   ¦   ¦   Sanctuary.Gateway.csproj.CoreCompileInputs.cache
+¦   ¦   ¦   ¦   Sanctuary.Gateway.csproj.FileListAbsolute.txt
+¦   ¦   ¦   ¦   Sanctuary.Gateway.dll
+¦   ¦   ¦   ¦   Sanctuary.Gateway.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦   ¦   ¦   Sanctuary.Gateway.genruntimeconfig.cache
+¦   ¦   ¦   ¦   Sanctuary.Gateway.pdb
+¦   ¦   ¦   ¦   Sanctuary.Gateway.sourcelink.json
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---ref
+¦   ¦   ¦   ¦       Sanctuary.Gateway.dll
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---refint
+¦   ¦   ¦           Sanctuary.Gateway.dll
+¦   ¦   ¦           
+¦   ¦   +---Release
+¦   ¦       ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦       ¦   apphost.exe
+¦   ¦       ¦   Sanctuar.D1506CA8.Up2Date
+¦   ¦       ¦   Sanctuary.Gateway.AssemblyInfo.cs
+¦   ¦       ¦   Sanctuary.Gateway.AssemblyInfoInputs.cache
+¦   ¦       ¦   Sanctuary.Gateway.assets.cache
+¦   ¦       ¦   Sanctuary.Gateway.csproj.AssemblyReference.cache
+¦   ¦       ¦   Sanctuary.Gateway.csproj.CoreCompileInputs.cache
+¦   ¦       ¦   Sanctuary.Gateway.csproj.FileListAbsolute.txt
+¦   ¦       ¦   Sanctuary.Gateway.dll
+¦   ¦       ¦   Sanctuary.Gateway.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦       ¦   Sanctuary.Gateway.genruntimeconfig.cache
+¦   ¦       ¦   Sanctuary.Gateway.pdb
+¦   ¦       ¦   Sanctuary.Gateway.sourcelink.json
+¦   ¦       ¦   
+¦   ¦       +---ref
+¦   ¦       ¦       Sanctuary.Gateway.dll
+¦   ¦       ¦       
+¦   ¦       +---refint
+¦   ¦               Sanctuary.Gateway.dll
+¦   ¦               
+¦   +---Properties
+¦           launchSettings.json
+¦           
++---Sanctuary.Login
+¦   ¦   GatewayConnection.cs
+¦   ¦   GatewayServer.cs
+¦   ¦   login.json
+¦   ¦   LoginConnection.cs
+¦   ¦   LoginServer.cs
+¦   ¦   LoginService.cs
+¦   ¦   NLog.config
+¦   ¦   NLog.Development.config
+¦   ¦   Program.cs
+¦   ¦   Sanctuary.Login.csproj
+¦   ¦   
+¦   +---bin
+¦   ¦   +---Debug
+¦   +---Handlers
+¦   ¦   ¦   CharacterCreateRequestHandler.cs
+¦   ¦   ¦   CharacterDeleteRequestHandler.cs
+¦   ¦   ¦   CharacterLoginRequestHandler.cs
+¦   ¦   ¦   CharacterSelectInfoRequestHandler.cs
+¦   ¦   ¦   LoginRequestHandler.cs
+¦   ¦   ¦   ServerListRequestHandler.cs
+¦   ¦   ¦   TunnelAppPacketClientToServerHandler.cs
+¦   ¦   ¦   
+¦   ¦   +---Gateway
+¦   ¦   ¦       GatewayCharacterLoginHandler.cs
+¦   ¦   ¦       GatewayCharacterLogoutHandler.cs
+¦   ¦   ¦       GatewayLoginRequestHandler.cs
+¦   ¦   ¦       
+¦   ¦   +---TunnelAppPacketClientToServer
+¦   ¦           PacketCheckNameRequestHandler.cs
+¦   ¦           
+¦   +---obj
+¦   ¦   ¦   project.assets.json
+¦   ¦   ¦   project.nuget.cache
+¦   ¦   ¦   Sanctuary.Login.csproj.nuget.dgspec.json
+¦   ¦   ¦   Sanctuary.Login.csproj.nuget.g.props
+¦   ¦   ¦   Sanctuary.Login.csproj.nuget.g.targets
+¦   ¦   ¦   
+¦   ¦   +---Debug
+¦   ¦   ¦   ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦   ¦   ¦   apphost.exe
+¦   ¦   ¦   ¦   Sanctuar.D9F74E83.Up2Date
+¦   ¦   ¦   ¦   Sanctuary.Login.AssemblyInfo.cs
+¦   ¦   ¦   ¦   Sanctuary.Login.AssemblyInfoInputs.cache
+¦   ¦   ¦   ¦   Sanctuary.Login.assets.cache
+¦   ¦   ¦   ¦   Sanctuary.Login.csproj.AssemblyReference.cache
+¦   ¦   ¦   ¦   Sanctuary.Login.csproj.CoreCompileInputs.cache
+¦   ¦   ¦   ¦   Sanctuary.Login.csproj.FileListAbsolute.txt
+¦   ¦   ¦   ¦   Sanctuary.Login.dll
+¦   ¦   ¦   ¦   Sanctuary.Login.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦   ¦   ¦   Sanctuary.Login.genruntimeconfig.cache
+¦   ¦   ¦   ¦   Sanctuary.Login.pdb
+¦   ¦   ¦   ¦   Sanctuary.Login.sourcelink.json
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---ref
+¦   ¦   ¦   ¦       Sanctuary.Login.dll
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---refint
+¦   ¦   ¦           Sanctuary.Login.dll
+¦   ¦   ¦           
+¦   ¦   +---Release
+¦   ¦       ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦       ¦   apphost.exe
+¦   ¦       ¦   Sanctuar.D9F74E83.Up2Date
+¦   ¦       ¦   Sanctuary.Login.AssemblyInfo.cs
+¦   ¦       ¦   Sanctuary.Login.AssemblyInfoInputs.cache
+¦   ¦       ¦   Sanctuary.Login.assets.cache
+¦   ¦       ¦   Sanctuary.Login.csproj.AssemblyReference.cache
+¦   ¦       ¦   Sanctuary.Login.csproj.CoreCompileInputs.cache
+¦   ¦       ¦   Sanctuary.Login.csproj.FileListAbsolute.txt
+¦   ¦       ¦   Sanctuary.Login.dll
+¦   ¦       ¦   Sanctuary.Login.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦       ¦   Sanctuary.Login.genruntimeconfig.cache
+¦   ¦       ¦   Sanctuary.Login.pdb
+¦   ¦       ¦   Sanctuary.Login.sourcelink.json
+¦   ¦       ¦   
+¦   ¦       +---ref
+¦   ¦       ¦       Sanctuary.Login.dll
+¦   ¦       ¦       
+¦   ¦       +---refint
+¦   ¦               Sanctuary.Login.dll
+¦   ¦               
+¦   +---Properties
+¦           launchSettings.json
+¦           
++---Sanctuary.Packet
+¦   ¦   BaseAbilityPacket.cs
+¦   ¦   BaseAdventurersJournalPacket.cs
+¦   ¦   BaseChatPacket.cs
+¦   ¦   BaseClientUpdatePacket.cs
+¦   ¦   BaseCoinStorePacket.cs
+¦   ¦   BaseCombatPacket.cs
+¦   ¦   BaseCommandPacket.cs
+¦   ¦   BaseEncounterPacket.cs
+¦   ¦   BaseFotomatPacket.cs
+¦   ¦   BaseFriendPacket.cs
+¦   ¦   BaseHousingPacket.cs
+¦   ¦   BaseIgnorePacket.cs
+¦   ¦   BaseInspectPacket.cs
+¦   ¦   BaseInventoryPacket.cs
+¦   ¦   BaseLobbyGameDefinitionPacket.cs
+¦   ¦   BaseNameChangePacket.cs
+¦   ¦   BasePlayerTitlePacket.cs
+¦   ¦   BasePlayerUpdatePacket.cs
+¦   ¦   BaseQuickChatPacket.cs
+¦   ¦   BaseUiPacket.cs
+¦   ¦   MountBasePacket.cs
+¦   ¦   PacketBaseInGamePurchase.cs
+¦   ¦   PacketClientBeginZoning.cs
+¦   ¦   PacketClientFinishedLoading.cs
+¦   ¦   PacketClientGameSettings.cs
+¦   ¦   PacketClientInitializationDetails.cs
+¦   ¦   PacketClientIsReady.cs
+¦   ¦   PacketClientLog.cs
+¦   ¦   PacketClientMetrics.cs
+¦   ¦   PacketGameTimeSync.cs
+¦   ¦   PacketInitializationParameters.cs
+¦   ¦   PacketLoadWelcomeScreen.cs
+¦   ¦   PacketMembershipSubscriptionInfo.cs
+¦   ¦   PacketMOTD.cs
+¦   ¦   PacketPOIChangeMessage.cs
+¦   ¦   PacketPointOfInterestDefinitionReply.cs
+¦   ¦   PacketSendSelfToClient.cs
+¦   ¦   PacketSendZoneDetails.cs
+¦   ¦   PacketSetLocale.cs
+¦   ¦   PacketWorldShutdownNotice.cs
+¦   ¦   PacketWorldTeleportRequest.cs
+¦   ¦   PacketZoneDoneSendingInitialData.cs
+¦   ¦   PacketZoneSafeTeleportRequest.cs
+¦   ¦   PacketZoneTeleportRequest.cs
+¦   ¦   PetBasePacket.cs
+¦   ¦   PlayerUpdatePacketCameraUpdate.cs
+¦   ¦   PlayerUpdatePacketJump.cs
+¦   ¦   PlayerUpdatePacketUpdatePosition.cs
+¦   ¦   ReferenceDataPacket.cs
+¦   ¦   Sanctuary.Packet.csproj
+¦   ¦   WallOfDataBasePacket.cs
+¦   ¦   
+¦   +---BaseAbilityPacket
+¦   ¦       AbilityPacketClientRequestStartAbility.cs
+¦   ¦       AbilityPacketExecuteClientLua.cs
+¦   ¦       AbilityPacketFailed.cs
+¦   ¦       
+¦   +---BaseAdventurersJournalPacket
+¦   ¦       AdventurersJournalInfoPacket.cs
+¦   ¦       
+¦   +---BaseChatPacket
+¦   ¦       ChatPacketFromStringId.cs
+¦   ¦       PacketChat.cs
+¦   ¦       TellEchoPacket.cs
+¦   ¦       
+¦   +---BaseClientUpdatePacket
+¦   ¦       ClientUpdatePacketActivateProfile.cs
+¦   ¦       ClientUpdatePacketAddEffectTag.cs
+¦   ¦       ClientUpdatePacketCoinCount.cs
+¦   ¦       ClientUpdatePacketDoneSendingPreloadCharacters.cs
+¦   ¦       ClientUpdatePacketEquipItem.cs
+¦   ¦       ClientUpdatePacketHitpoints.cs
+¦   ¦       ClientUpdatePacketItemAdd.cs
+¦   ¦       ClientUpdatePacketItemDelete.cs
+¦   ¦       ClientUpdatePacketItemUpdate.cs
+¦   ¦       ClientUpdatePacketMana.cs
+¦   ¦       ClientUpdatePacketRemoveEffectTag.cs
+¦   ¦       ClientUpdatePacketUnequipSlot.cs
+¦   ¦       ClientUpdatePacketUpdateActionBarSlot.cs
+¦   ¦       ClientUpdatePacketUpdateLocation.cs
+¦   ¦       ClientUpdatePacketUpdateProfileExperience.cs
+¦   ¦       ClientUpdatePacketUpdateProfileRank.cs
+¦   ¦       ClientUpdatePacketUpdateStat.cs
+¦   ¦       
+¦   +---BaseCoinStorePacket
+¦   ¦       CoinStoreBuyFromClientRequestPacket.cs
+¦   ¦       CoinStoreItemDefinitionsRequestPacket.cs
+¦   ¦       CoinStoreItemDefinitionsResponsePacket.cs
+¦   ¦       CoinStoreItemDynamicListUpdateRequestPacket.cs
+¦   ¦       CoinStoreItemDynamicListUpdateResponsePacket.cs
+¦   ¦       CoinStoreItemListPacket.cs
+¦   ¦       CoinStoreMerchantBundleListPacket.cs
+¦   ¦       CoinStoreMerchantListPacket.cs
+¦   ¦       CoinStoreOpenPacket.cs
+¦   ¦       CoinStoreSellToClientRequestPacket.cs
+¦   ¦       CoinStoreTransactionCompletePacket.cs
+¦   ¦       
+¦   +---BaseCombatPacket
+¦   ¦       CombatPacketAttackProcessed.cs
+¦   ¦       CombatPacketAttackTargetDamage.cs
+¦   ¦       CombatPacketAutoAttackTarget.cs
+¦   ¦       
+¦   +---BaseCommandPacket
+¦   ¦       CommandPacketAddFriendRequest.cs
+¦   ¦       CommandPacketChatChannelOff.cs
+¦   ¦       CommandPacketChatChannelOn.cs
+¦   ¦       CommandPacketConfirmFriendRequest.cs
+¦   ¦       CommandPacketConfirmFriendResponse.cs
+¦   ¦       CommandPacketFriendsPositionRequest.cs
+¦   ¦       CommandPacketIgnoreRequest.cs
+¦   ¦       CommandPacketInteractionList.cs
+¦   ¦       CommandPacketInteractionSelect.cs
+¦   ¦       CommandPacketInteractRequest.cs
+¦   ¦       CommandPacketRemoveFriendRequest.cs
+¦   ¦       CommandPacketSelectPlayer.cs
+¦   ¦       CommandPacketSetChatBubbleColor.cs
+¦   ¦       CommandPacketSetProfile.cs
+¦   ¦       
+¦   +---BaseEncounterPacket
+¦   ¦       EncounterOverworldCombatPacket.cs
+¦   ¦       
+¦   +---BaseFotomatPacket
+¦   ¦       PacketPlayerImageData.cs
+¦   ¦       PacketPortraitDataRequest.cs
+¦   ¦       
+¦   +---BaseFriendPacket
+¦   ¦       FriendAddPacket.cs
+¦   ¦       FriendListPacket.cs
+¦   ¦       FriendMessagePacket.cs
+¦   ¦       FriendOfflinePacket.cs
+¦   ¦       FriendOnlinePacket.cs
+¦   ¦       FriendRemovePacket.cs
+¦   ¦       FriendRenamePacket.cs
+¦   ¦       FriendStatusPacket.cs
+¦   ¦       FriendUpdatePositionsPacket.cs
+¦   ¦       
+¦   +---BaseHousingPacket
+¦   ¦       ClientHousingPacketEnterRequest.cs
+¦   ¦       ClientHousingPacketPickupFixture.cs
+¦   ¦       ClientHousingPacketPlaceFixtureRequest.cs
+¦   ¦       ClientHousingPacketRequestPlayerHouses.cs
+¦   ¦       ClientHousingPacketSaveFixture.cs
+¦   ¦       ClientHousingPacketSetEditMode.cs
+¦   ¦       HousingPacketFixtureItemList.cs
+¦   ¦       HousingPacketInstanceData.cs
+¦   ¦       HousingPacketInstanceList.cs
+¦   ¦       HousingPacketPlaceFixture.cs
+¦   ¦       HousingPacketRemoveFixture.cs
+¦   ¦       HousingPacketUpdateHouseInfo.cs
+¦   ¦       HousingPacketZoneData.cs
+¦   ¦       
+¦   +---BaseIgnorePacket
+¦   ¦       IgnoreAddPacket.cs
+¦   ¦       IgnoreListPacket.cs
+¦   ¦       IgnoreRemovePacket.cs
+¦   ¦       
+¦   +---BaseInspectPacket
+¦   ¦       StartInspectPacket.cs
+¦   ¦       StopInspectPacket.cs
+¦   ¦       
+¦   +---BaseInventoryPacket
+¦   ¦       InventoryPacketEquipByGuid.cs
+¦   ¦       InventoryPacketEquipByItemRecord.cs
+¦   ¦       InventoryPacketEquippedRemove.cs
+¦   ¦       InventoryPacketItemActionBarAssign.cs
+¦   ¦       InventoryPacketPreviewStyleCard.cs
+¦   ¦       InventoryPacketUseStyleCard.cs
+¦   ¦       InventoryPacketUseStyleCardByItemRecord.cs
+¦   ¦       
+¦   +---BaseLobbyGameDefinitionPacket
+¦   ¦       LobbyGameDefinitionPacketDefinitionsRequest.cs
+¦   ¦       LobbyGameDefinitionPacketDefinitionsResponse.cs
+¦   ¦       
+¦   +---BaseNameChangePacket
+¦   ¦       ChangeNameRequestPacket.cs
+¦   ¦       CheckNamePacket.cs
+¦   ¦       CheckNameResponsePacket.cs
+¦   ¦       NameChangeResponsePacket.cs
+¦   ¦       
+¦   +---BasePlayerTitlePacket
+¦   ¦       PlayerTitleRequestSelectPacket.cs
+¦   ¦       PlayerTitleUpdateAllPacket.cs
+¦   ¦       
+¦   +---BasePlayerUpdatePacket
+¦   ¦       PlayerUpdatePacketAddNotifications.cs
+¦   ¦       PlayerUpdatePacketAddNpc.cs
+¦   ¦       PlayerUpdatePacketAddPc.cs
+¦   ¦       PlayerUpdatePacketCustomizationChange.cs
+¦   ¦       PlayerUpdatePacketCustomizationData.cs
+¦   ¦       PlayerUpdatePacketDestroyed.cs
+¦   ¦       PlayerUpdatePacketEquipItemChange.cs
+¦   ¦       PlayerUpdatePacketEquippedItemsChange.cs
+¦   ¦       PlayerUpdatePacketExpectedSpeed.cs
+¦   ¦       PlayerUpdatePacketHitPointModification.cs
+¦   ¦       PlayerUpdatePacketItemDefinitionRequest.cs
+¦   ¦       PlayerUpdatePacketItemDefinitions.cs
+¦   ¦       PlayerUpdatePacketNpcRelevance.cs
+¦   ¦       PlayerUpdatePacketPlayCompositeEffect.cs
+¦   ¦       PlayerUpdatePacketPlayerTitle.cs
+¦   ¦       PlayerUpdatePacketQueueAnimation.cs
+¦   ¦       PlayerUpdatePacketRemovePlayer.cs
+¦   ¦       PlayerUpdatePacketRemovePlayerGracefully.cs
+¦   ¦       PlayerUpdatePacketRemoveTemporaryAppearance.cs
+¦   ¦       PlayerUpdatePacketRenamePlayer.cs
+¦   ¦       PlayerUpdatePacketReplaceBaseModel.cs
+¦   ¦       PlayerUpdatePacketSlotCompositeEffectOverride.cs
+¦   ¦       PlayerUpdatePacketUpdateHitpoints.cs
+¦   ¦       PlayerUpdatePacketUpdateScale.cs
+¦   ¦       PlayerUpdatePacketUpdateTemporaryAppearance.cs
+¦   ¦       PlayerUpdateProfileNameplateImageIdPacket.cs
+¦   ¦       
+¦   +---BaseQuickChatPacket
+¦   ¦       QuickChatSendChatPacketBase.cs
+¦   ¦       QuickChatSendChatToChannelPacket.cs
+¦   ¦       QuickChatSendDataPacket.cs
+¦   ¦       QuickChatSendTellPacket.cs
+¦   ¦       
+¦   +---BaseUiPacket
+¦   ¦       ExecuteScriptPacket.cs
+¦   ¦       
+¦   +---bin
+¦   ¦   +---Debug
+¦   ¦   ¦   +---net9.0
+¦   ¦   ¦           Sanctuary.Core.dll
+¦   ¦   ¦           Sanctuary.Core.pdb
+¦   ¦   ¦           Sanctuary.Packet.Common.dll
+¦   ¦   ¦           Sanctuary.Packet.Common.pdb
+¦   ¦   ¦           Sanctuary.Packet.deps.json
+¦   ¦   ¦           Sanctuary.Packet.dll
+¦   ¦   ¦           Sanctuary.Packet.pdb
+¦   ¦   ¦           Sanctuary.UdpLibrary.dll
+¦   ¦   ¦           Sanctuary.UdpLibrary.pdb
+¦   ¦   ¦           
+¦   ¦   +---Release
+¦   ¦       +---net9.0
+¦   ¦               Sanctuary.Core.dll
+¦   ¦               Sanctuary.Core.pdb
+¦   ¦               Sanctuary.Packet.Common.dll
+¦   ¦               Sanctuary.Packet.Common.pdb
+¦   ¦               Sanctuary.Packet.deps.json
+¦   ¦               Sanctuary.Packet.dll
+¦   ¦               Sanctuary.Packet.pdb
+¦   ¦               Sanctuary.UdpLibrary.dll
+¦   ¦               Sanctuary.UdpLibrary.pdb
+¦   ¦               
+¦   +---ClientGateway
+¦   ¦       PacketLogin.cs
+¦   ¦       PacketLoginReply.cs
+¦   ¦       PacketTunneledClientPacket.cs
+¦   ¦       PacketTunneledClientWorldPacket.cs
+¦   ¦       
+¦   +---Custom
+¦   ¦       GatewayCharacterLogin.cs
+¦   ¦       GatewayCharacterLogout.cs
+¦   ¦       GatewayLoginReply.cs
+¦   ¦       GatewayLoginRequest.cs
+¦   ¦       
+¦   +---ExternalLogin
+¦   ¦       CharacterCreateReply.cs
+¦   ¦       CharacterCreateRequest.cs
+¦   ¦       CharacterDeleteReply.cs
+¦   ¦       CharacterDeleteRequest.cs
+¦   ¦       CharacterLoginReply.cs
+¦   ¦       CharacterLoginRequest.cs
+¦   ¦       CharacterSelectInfoReply.cs
+¦   ¦       CharacterSelectInfoRequest.cs
+¦   ¦       ForceDisconnect.cs
+¦   ¦       LoginReply.cs
+¦   ¦       LoginRequest.cs
+¦   ¦       Logout.cs
+¦   ¦       PacketCheckNameReply.cs
+¦   ¦       PacketCheckNameRequest.cs
+¦   ¦       ServerListReply.cs
+¦   ¦       ServerListRequest.cs
+¦   ¦       ServerUpdate.cs
+¦   ¦       TunnelAppPacketClientToServer.cs
+¦   ¦       TunnelAppPacketServerToClient.cs
+¦   ¦       
+¦   +---MountBasePacket
+¦   ¦       PacketDismountRequest.cs
+¦   ¦       PacketDismountResponse.cs
+¦   ¦       PacketMountList.cs
+¦   ¦       PacketMountResponse.cs
+¦   ¦       PacketMountSpawn.cs
+¦   ¦       PacketMountSpawnByItemDefinitionId.cs
+¦   ¦       
+¦   +---obj
+¦   ¦   ¦   project.assets.json
+¦   ¦   ¦   project.nuget.cache
+¦   ¦   ¦   Sanctuary.Packet.csproj.nuget.dgspec.json
+¦   ¦   ¦   Sanctuary.Packet.csproj.nuget.g.props
+¦   ¦   ¦   Sanctuary.Packet.csproj.nuget.g.targets
+¦   ¦   ¦   
+¦   ¦   +---Debug
+¦   ¦   ¦   +---net9.0
+¦   ¦   ¦       ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦   ¦       ¦   Sanctuar.30CF95D6.Up2Date
+¦   ¦   ¦       ¦   Sanctuary.Packet.AssemblyInfo.cs
+¦   ¦   ¦       ¦   Sanctuary.Packet.AssemblyInfoInputs.cache
+¦   ¦   ¦       ¦   Sanctuary.Packet.assets.cache
+¦   ¦   ¦       ¦   Sanctuary.Packet.csproj.AssemblyReference.cache
+¦   ¦   ¦       ¦   Sanctuary.Packet.csproj.CoreCompileInputs.cache
+¦   ¦   ¦       ¦   Sanctuary.Packet.csproj.FileListAbsolute.txt
+¦   ¦   ¦       ¦   Sanctuary.Packet.dll
+¦   ¦   ¦       ¦   Sanctuary.Packet.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦   ¦       ¦   Sanctuary.Packet.pdb
+¦   ¦   ¦       ¦   Sanctuary.Packet.sourcelink.json
+¦   ¦   ¦       ¦   
+¦   ¦   ¦       +---ref
+¦   ¦   ¦       ¦       Sanctuary.Packet.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---refint
+¦   ¦   ¦               Sanctuary.Packet.dll
+¦   ¦   ¦               
+¦   ¦   +---Release
+¦   ¦       +---net9.0
+¦   ¦           ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦           ¦   Sanctuar.30CF95D6.Up2Date
+¦   ¦           ¦   Sanctuary.Packet.AssemblyInfo.cs
+¦   ¦           ¦   Sanctuary.Packet.AssemblyInfoInputs.cache
+¦   ¦           ¦   Sanctuary.Packet.assets.cache
+¦   ¦           ¦   Sanctuary.Packet.csproj.AssemblyReference.cache
+¦   ¦           ¦   Sanctuary.Packet.csproj.CoreCompileInputs.cache
+¦   ¦           ¦   Sanctuary.Packet.csproj.FileListAbsolute.txt
+¦   ¦           ¦   Sanctuary.Packet.dll
+¦   ¦           ¦   Sanctuary.Packet.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦           ¦   Sanctuary.Packet.pdb
+¦   ¦           ¦   Sanctuary.Packet.sourcelink.json
+¦   ¦           ¦   
+¦   ¦           +---ref
+¦   ¦           ¦       Sanctuary.Packet.dll
+¦   ¦           ¦       
+¦   ¦           +---refint
+¦   ¦                   Sanctuary.Packet.dll
+¦   ¦                   
+¦   +---PacketBaseInGamePurchase
+¦   ¦   ¦   InGamePurchaseMerchantListPacket.cs
+¦   ¦   ¦   InGamePurchaseUpdateItemRequirementsReply.cs
+¦   ¦   ¦   InGamePurchaseUpdateItemRequirementsRequest.cs
+¦   ¦   ¦   InGamePurchaseUpdateMerchantBundleQuantityPacket.cs
+¦   ¦   ¦   InGamePurchaseUpdateSaleDisplay.cs
+¦   ¦   ¦   PacketInGamePurchaseAccountInfoRequest.cs
+¦   ¦   ¦   PacketInGamePurchaseAccountInfoResponse.cs
+¦   ¦   ¦   PacketInGamePurchaseCountryCodesRequest.cs
+¦   ¦   ¦   PacketInGamePurchaseCountryCodesResponse.cs
+¦   ¦   ¦   PacketInGamePurchaseCurrencyCodesRequest.cs
+¦   ¦   ¦   PacketInGamePurchaseCurrencyCodesResponse.cs
+¦   ¦   ¦   PacketInGamePurchaseEnableMarketplace.cs
+¦   ¦   ¦   PacketInGamePurchasePlaceOrderPacket.cs
+¦   ¦   ¦   PacketInGamePurchasePlaceOrderResponse.cs
+¦   ¦   ¦   PacketInGamePurchasePreviewOrder.cs
+¦   ¦   ¦   PacketInGamePurchasePreviewOrderResponse.cs
+¦   ¦   ¦   PacketInGamePurchaseStateCodesRequest.cs
+¦   ¦   ¦   PacketInGamePurchaseStateCodesResponse.cs
+¦   ¦   ¦   PacketInGamePurchaseStoreBundleBase.cs
+¦   ¦   ¦   PacketInGamePurchaseStoreBundleCategories.cs
+¦   ¦   ¦   PacketInGamePurchaseStoreBundleCategoryGroups.cs
+¦   ¦   ¦   PacketInGamePurchaseStoreBundleContentRequest.cs
+¦   ¦   ¦   PacketInGamePurchaseStoreBundleContentResponse.cs
+¦   ¦   ¦   PacketInGamePurchaseStoreBundleGroups.cs
+¦   ¦   ¦   PacketInGamePurchaseStoreEnablePaymentSources.cs
+¦   ¦   ¦   PacketInGamePurchaseSubscriptionProductsRequest.cs
+¦   ¦   ¦   PacketInGamePurchaseSubscriptionProductsResponse.cs
+¦   ¦   ¦   PacketInGamePurchaseWalletInfoRequest.cs
+¦   ¦   ¦   PacketInGamePurchaseWalletInfoResponse.cs
+¦   ¦   ¦   
+¦   ¦   +---PacketInGamePurchaseStoreBundleBase
+¦   ¦           PacketInGamePurchaseStoreBundles.cs
+¦   ¦           PacketInGamePurchaseStoreBundleUpdate.cs
+¦   ¦           
+¦   +---PetBasePacket
+¦   ¦       PacketPetDismount.cs
+¦   ¦       PacketPetList.cs.INCORRECT_OPCODE_DO_NOT_USE
+¦   ¦       PacketPetSpawn.cs
+¦   ¦       PetActivePacket.cs
+¦   ¦       PetDismountResponsePacket.cs
+¦   ¦       PetListPacket.cs
+¦   ¦       PetSpawnResponsePacket.cs
+¦   ¦       PetSummonRecallPacket.cs
+¦   ¦       PetUiModePacket.cs
+¦   ¦       
+¦   +---ReferenceDataPacket
+¦   ¦       ReferenceDataPacketClientProfileData.cs
+¦   ¦       ReferenceDataPacketItemCategoryDefinitions.cs
+¦   ¦       ReferenceDataPacketItemClassDefinitions.cs
+¦   ¦       
+¦   +---WallOfDataBasePacket
+¦           WallOfDataUIEventPacket.cs
+¦           
++---Sanctuary.Packet.Common
+¦   ¦   Ability.cs
+¦   ¦   AbilityExperience.cs
+¦   ¦   ActionBarData.cs
+¦   ¦   ActionBarSlot.cs
+¦   ¦   BaseItemDefinition.cs
+¦   ¦   BaseItemStatDefinition.cs
+¦   ¦   ChangeNameResponse.cs
+¦   ¦   CharacterAttachmentData.cs
+¦   ¦   CheckNameResponse.cs
+¦   ¦   ClientActionBar.cs
+¦   ¦   ClientItem.cs
+¦   ¦   ClientItemDefinition.cs
+¦   ¦   ClientItemStatDefinition.cs
+¦   ¦   ClientMetrics.cs
+¦   ¦   ClientPcData.cs
+¦   ¦   ClientPcProfile.cs
+¦   ¦   ClientProfileData.cs
+¦   ¦   CoinStoreTransactionRecord.cs
+¦   ¦   CustomizationDetail.cs
+¦   ¦   EffectTag.cs
+¦   ¦   FotomatPortrait.cs
+¦   ¦   FriendData.cs
+¦   ¦   FriendMessageType.cs
+¦   ¦   FriendStatus.cs
+¦   ¦   IconData.cs
+¦   ¦   IgnoreData.cs
+¦   ¦   InspectProxy.cs
+¦   ¦   InteractionData.cs
+¦   ¦   InteractionList.cs
+¦   ¦   ItemCategoryDefinition.cs
+¦   ¦   ItemCategoryGroupDefinition.cs
+¦   ¦   ItemClassDefinition.cs
+¦   ¦   ItemDefinition.cs
+¦   ¦   ItemDefinitionMetaData.cs
+¦   ¦   ItemInstance.cs
+¦   ¦   ItemRecord.cs
+¦   ¦   LobbyGameDefinition.cs
+¦   ¦   MerchantItemEntry.cs
+¦   ¦   NameChangeInfo.cs
+¦   ¦   NameChangeType.cs
+¦   ¦   NameData.cs
+¦   ¦   PacketMountInfo.cs
+¦   ¦   PacketPetInfo.cs
+¦   ¦   PlayerCustomizationData.cs
+¦   ¦   PlayerTitleData.cs
+¦   ¦   PointOfInterestDefinition.cs
+¦   ¦   ProfileItem.cs
+¦   ¦   ProfileItemClassData.cs
+¦   ¦   ProfileTypeEntry.cs
+¦   ¦   SaleDisplayInfo.cs
+¦   ¦   Sanctuary.Packet.Common.csproj
+¦   ¦   
+¦   +---AdventurersJournal
+¦   ¦       AdventurersJournalHubDefinition.cs
+¦   ¦       AdventurersJournalHubQuestDefinition.cs
+¦   ¦       AdventurersJournalRegionDefinition.cs
+¦   ¦       AdventurersJournalStickerDefinition.cs
+¦   ¦       
+¦   +---Attributes
+¦   ¦       PacketHandlerAttribute.cs
+¦   ¦       
+¦   +---bin
+¦   ¦   +---Debug
+¦   ¦   ¦   +---net9.0
+¦   ¦   ¦           Sanctuary.Core.dll
+¦   ¦   ¦           Sanctuary.Core.pdb
+¦   ¦   ¦           Sanctuary.Packet.Common.deps.json
+¦   ¦   ¦           Sanctuary.Packet.Common.dll
+¦   ¦   ¦           Sanctuary.Packet.Common.pdb
+¦   ¦   ¦           Sanctuary.UdpLibrary.dll
+¦   ¦   ¦           Sanctuary.UdpLibrary.pdb
+¦   ¦   ¦           
+¦   ¦   +---Release
+¦   ¦       +---net9.0
+¦   ¦               Sanctuary.Core.dll
+¦   ¦               Sanctuary.Core.pdb
+¦   ¦               Sanctuary.Packet.Common.deps.json
+¦   ¦               Sanctuary.Packet.Common.dll
+¦   ¦               Sanctuary.Packet.Common.pdb
+¦   ¦               Sanctuary.UdpLibrary.dll
+¦   ¦               Sanctuary.UdpLibrary.pdb
+¦   ¦               
+¦   +---CharacterStat
+¦   ¦       CharacterStat.cs
+¦   ¦       CharacterStatId.cs
+¦   ¦       CharacterStats.cs
+¦   ¦       
+¦   +---Chat
+¦   ¦       ChatChannel.cs
+¦   ¦       QuickChatDefinition.cs
+¦   ¦       
+¦   +---Extensions
+¦   ¦       PacketReaderExtensions.cs
+¦   ¦       ServiceCollectionExtensions.cs
+¦   ¦       
+¦   +---GameCommerce
+¦   ¦       AppStoreBundleDefinition.cs
+¦   ¦       BaseInGamePurchaseOrder.cs
+¦   ¦       BaseInGamePurchaseOrderDetail.cs
+¦   ¦       ClientInGamePurchaseOrder.cs
+¦   ¦       CountryCode.cs
+¦   ¦       CurrencyCodeData.cs
+¦   ¦       ImageDataDefinition.cs
+¦   ¦       MarketingBundleDefinition.cs
+¦   ¦       MembershipSkuData.cs
+¦   ¦       StateCode.cs
+¦   ¦       StoreBundleCategoryDefinition.cs
+¦   ¦       StoreBundleCategoryGroupDefinition.cs
+¦   ¦       StoreBundleCategoryNode.cs
+¦   ¦       StoreBundleCategoryTree.cs
+¦   ¦       StoreBundleDefinition.cs
+¦   ¦       StoreBundleGroupDefinition.cs
+¦   ¦       StoreDefinition.cs
+¦   ¦       WalletInfo.cs
+¦   ¦       
+¦   +---Housing
+¦   ¦       BoundingBox.cs
+¦   ¦       FixtureDefinition.cs
+¦   ¦       FixtureInstance.cs
+¦   ¦       FixtureInstanceInfo.cs
+¦   ¦       InstancePermission.cs
+¦   ¦       PlayerHousingInstanceData.cs
+¦   ¦       PlayerHousingInstanceInfo.cs
+¦   ¦       
+¦   +---Login
+¦   ¦       AccountInfo.cs
+¦   ¦       AccountInfoCharacterData.cs
+¦   ¦       AccountInfoCharacterDetails.cs
+¦   ¦       CharacterData.cs
+¦   ¦       ClientCharacterData.cs
+¦   ¦       ClientGameServerData.cs
+¦   ¦       ClientLoginData.cs
+¦   ¦       EntityDetails.cs
+¦   ¦       GameServerData.cs
+¦   ¦       
+¦   +---obj
+¦   ¦   ¦   project.assets.json
+¦   ¦   ¦   project.nuget.cache
+¦   ¦   ¦   Sanctuary.Packet.Common.csproj.nuget.dgspec.json
+¦   ¦   ¦   Sanctuary.Packet.Common.csproj.nuget.g.props
+¦   ¦   ¦   Sanctuary.Packet.Common.csproj.nuget.g.targets
+¦   ¦   ¦   
+¦   ¦   +---Debug
+¦   ¦   ¦   +---net9.0
+¦   ¦   ¦       ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦   ¦       ¦   Sanctuar.7B7939EA.Up2Date
+¦   ¦   ¦       ¦   Sanctuary.Packet.Common.AssemblyInfo.cs
+¦   ¦   ¦       ¦   Sanctuary.Packet.Common.AssemblyInfoInputs.cache
+¦   ¦   ¦       ¦   Sanctuary.Packet.Common.assets.cache
+¦   ¦   ¦       ¦   Sanctuary.Packet.Common.csproj.AssemblyReference.cache
+¦   ¦   ¦       ¦   Sanctuary.Packet.Common.csproj.CoreCompileInputs.cache
+¦   ¦   ¦       ¦   Sanctuary.Packet.Common.csproj.FileListAbsolute.txt
+¦   ¦   ¦       ¦   Sanctuary.Packet.Common.dll
+¦   ¦   ¦       ¦   Sanctuary.Packet.Common.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦   ¦       ¦   Sanctuary.Packet.Common.pdb
+¦   ¦   ¦       ¦   Sanctuary.Packet.Common.sourcelink.json
+¦   ¦   ¦       ¦   
+¦   ¦   ¦       +---ref
+¦   ¦   ¦       ¦       Sanctuary.Packet.Common.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---refint
+¦   ¦   ¦               Sanctuary.Packet.Common.dll
+¦   ¦   ¦               
+¦   ¦   +---Release
+¦   ¦       +---net9.0
+¦   ¦           ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦           ¦   Sanctuar.7B7939EA.Up2Date
+¦   ¦           ¦   Sanctuary.Packet.Common.AssemblyInfo.cs
+¦   ¦           ¦   Sanctuary.Packet.Common.AssemblyInfoInputs.cache
+¦   ¦           ¦   Sanctuary.Packet.Common.assets.cache
+¦   ¦           ¦   Sanctuary.Packet.Common.csproj.AssemblyReference.cache
+¦   ¦           ¦   Sanctuary.Packet.Common.csproj.CoreCompileInputs.cache
+¦   ¦           ¦   Sanctuary.Packet.Common.csproj.FileListAbsolute.txt
+¦   ¦           ¦   Sanctuary.Packet.Common.dll
+¦   ¦           ¦   Sanctuary.Packet.Common.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦           ¦   Sanctuary.Packet.Common.pdb
+¦   ¦           ¦   Sanctuary.Packet.Common.sourcelink.json
+¦   ¦           ¦   
+¦   ¦           +---ref
+¦   ¦           ¦       Sanctuary.Packet.Common.dll
+¦   ¦           ¦       
+¦   ¦           +---refint
+¦   ¦                   Sanctuary.Packet.Common.dll
+¦   ¦                   
+¦   +---Targets
+¦   ¦       Target.cs
+¦   ¦       TargetActorBone.cs
+¦   ¦       TargetActorBoneId.cs
+¦   ¦       TargetBase.cs
+¦   ¦       TargetCharacterBone.cs
+¦   ¦       TargetCharacterBoneId.cs
+¦   ¦       TargetCharacterGuid.cs
+¦   ¦       TargetLocation.cs
+¦   ¦       TargetType.cs
+¦   ¦       
+¦   +---WelcomeScreen
+¦           ClaimCodeInfo.cs
+¦           ContentInfo.cs
+¦           
++---Sanctuary.UdpLibrary
+¦   ¦   Sanctuary.UdpLibrary.csproj
+¦   ¦   UdpConnection.cs
+¦   ¦   UdpManager.cs
+¦   ¦   
+¦   +---Abstractions
+¦   ¦       IUdpDriver.cs
+¦   ¦       IUdpManager.cs
+¦   ¦       
+¦   +---bin
+¦   ¦   +---Debug
+¦   ¦   ¦   +---net9.0
+¦   ¦   ¦           Sanctuary.Core.dll
+¦   ¦   ¦           Sanctuary.Core.pdb
+¦   ¦   ¦           Sanctuary.UdpLibrary.deps.json
+¦   ¦   ¦           Sanctuary.UdpLibrary.dll
+¦   ¦   ¦           Sanctuary.UdpLibrary.pdb
+¦   ¦   ¦           
+¦   ¦   +---Release
+¦   ¦       +---net9.0
+¦   ¦               Sanctuary.Core.dll
+¦   ¦               Sanctuary.Core.pdb
+¦   ¦               Sanctuary.UdpLibrary.deps.json
+¦   ¦               Sanctuary.UdpLibrary.dll
+¦   ¦               Sanctuary.UdpLibrary.pdb
+¦   ¦               
+¦   +---Configuration
+¦   ¦       UdpParams.cs
+¦   ¦       UdpReliableConfig.cs
+¦   ¦       
+¦   +---Enumerations
+¦   ¦       CallbackEventType.cs
+¦   ¦       DisconnectReason.cs
+¦   ¦       EncryptMethod.cs
+¦   ¦       ErrorCondition.cs
+¦   ¦       ManagerRole.cs
+¦   ¦       ReliablePacketMode.cs
+¦   ¦       Status.cs
+¦   ¦       UdpChannel.cs
+¦   ¦       UdpCorruptionReason.cs
+¦   ¦       
+¦   +---Internal
+¦   ¦       CallbackEvent.cs
+¦   ¦       Constants.cs
+¦   ¦       PriorityQueue.cs
+¦   ¦       UdpDriverLinux.cs
+¦   ¦       UdpDriverWindows.cs
+¦   ¦       UdpMisc.cs
+¦   ¦       UdpPacketClockReflect.cs
+¦   ¦       UdpPacketClockSync.cs
+¦   ¦       UdpPacketType.cs
+¦   ¦       UdpPlatformDriver.cs
+¦   ¦       UdpReliableChannel.cs
+¦   ¦       
+¦   +---obj
+¦   ¦   ¦   project.assets.json
+¦   ¦   ¦   project.nuget.cache
+¦   ¦   ¦   Sanctuary.UdpLibrary.csproj.nuget.dgspec.json
+¦   ¦   ¦   Sanctuary.UdpLibrary.csproj.nuget.g.props
+¦   ¦   ¦   Sanctuary.UdpLibrary.csproj.nuget.g.targets
+¦   ¦   ¦   
+¦   ¦   +---Debug
+¦   ¦   ¦   +---net9.0
+¦   ¦   ¦       ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦   ¦       ¦   Sanctuar.A72B9857.Up2Date
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.AssemblyInfo.cs
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.AssemblyInfoInputs.cache
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.assets.cache
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.csproj.AssemblyReference.cache
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.csproj.CoreCompileInputs.cache
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.csproj.FileListAbsolute.txt
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.dll
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.pdb
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.sourcelink.json
+¦   ¦   ¦       ¦   
+¦   ¦   ¦       +---ref
+¦   ¦   ¦       ¦       Sanctuary.UdpLibrary.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---refint
+¦   ¦   ¦               Sanctuary.UdpLibrary.dll
+¦   ¦   ¦               
+¦   ¦   +---Release
+¦   ¦       +---net9.0
+¦   ¦           ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦           ¦   Sanctuar.A72B9857.Up2Date
+¦   ¦           ¦   Sanctuary.UdpLibrary.AssemblyInfo.cs
+¦   ¦           ¦   Sanctuary.UdpLibrary.AssemblyInfoInputs.cache
+¦   ¦           ¦   Sanctuary.UdpLibrary.assets.cache
+¦   ¦           ¦   Sanctuary.UdpLibrary.csproj.AssemblyReference.cache
+¦   ¦           ¦   Sanctuary.UdpLibrary.csproj.CoreCompileInputs.cache
+¦   ¦           ¦   Sanctuary.UdpLibrary.csproj.FileListAbsolute.txt
+¦   ¦           ¦   Sanctuary.UdpLibrary.dll
+¦   ¦           ¦   Sanctuary.UdpLibrary.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦           ¦   Sanctuary.UdpLibrary.pdb
+¦   ¦           ¦   Sanctuary.UdpLibrary.sourcelink.json
+¦   ¦           ¦   
+¦   ¦           +---ref
+¦   ¦           ¦       Sanctuary.UdpLibrary.dll
+¦   ¦           ¦       
+¦   ¦           +---refint
+¦   ¦                   Sanctuary.UdpLibrary.dll
+¦   ¦                   
+¦   +---Packets
+¦   ¦       FixedLogicalPacket.cs
+¦   ¦       LogicalPacket.cs
+¦   ¦       PooledLogicalPacket.cs
+¦   ¦       SimpleLogicalPacket.cs
+¦   ¦       
+¦   +---Statistics
+¦   ¦       UdpConnectionStatistics.cs
+¦   ¦       UdpManagerStatistics.cs
+¦   ¦       
+¦   +---Types
+¦           UdpClockStamp.cs
+¦           
++---Sanctuary.UdpLibrary.Tests
+¦   ¦   BasicTest.cs
+¦   ¦   Sanctuary.UdpLibrary.Tests.csproj
+¦   ¦   TestConnection.cs
+¦   ¦   TestManager.cs
+¦   ¦   
+¦   +---bin
+¦   ¦   +---Debug
+¦   ¦   ¦   +---net9.0
+¦   ¦   ¦       ¦   .msCoverageSourceRootsMapping_Sanctuary.UdpLibrary.Tests
+¦   ¦   ¦       ¦   Collections.Pooled.dll
+¦   ¦   ¦       ¦   CoverletSourceRootsMapping_Sanctuary.UdpLibrary.Tests
+¦   ¦   ¦       ¦   Microsoft.ApplicationInsights.dll
+¦   ¦   ¦       ¦   Microsoft.Extensions.DependencyInjection.Abstractions.dll
+¦   ¦   ¦       ¦   Microsoft.Extensions.DependencyInjection.dll
+¦   ¦   ¦       ¦   Microsoft.Testing.Extensions.MSBuild.dll
+¦   ¦   ¦       ¦   Microsoft.Testing.Extensions.Telemetry.dll
+¦   ¦   ¦       ¦   Microsoft.Testing.Extensions.TrxReport.Abstractions.dll
+¦   ¦   ¦       ¦   Microsoft.Testing.Extensions.VSTestBridge.dll
+¦   ¦   ¦       ¦   Microsoft.Testing.Platform.dll
+¦   ¦   ¦       ¦   Microsoft.TestPlatform.AdapterUtilities.dll
+¦   ¦   ¦       ¦   Microsoft.TestPlatform.CommunicationUtilities.dll
+¦   ¦   ¦       ¦   Microsoft.TestPlatform.CoreUtilities.dll
+¦   ¦   ¦       ¦   Microsoft.TestPlatform.CrossPlatEngine.dll
+¦   ¦   ¦       ¦   Microsoft.TestPlatform.PlatformAbstractions.dll
+¦   ¦   ¦       ¦   Microsoft.TestPlatform.Utilities.dll
+¦   ¦   ¦       ¦   Microsoft.VisualStudio.CodeCoverage.Shim.dll
+¦   ¦   ¦       ¦   Microsoft.VisualStudio.TestPlatform.Common.dll
+¦   ¦   ¦       ¦   Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.dll
+¦   ¦   ¦       ¦   Microsoft.VisualStudio.TestPlatform.MSTestAdapter.PlatformServices.dll
+¦   ¦   ¦       ¦   Microsoft.VisualStudio.TestPlatform.ObjectModel.dll
+¦   ¦   ¦       ¦   Microsoft.VisualStudio.TestPlatform.TestFramework.dll
+¦   ¦   ¦       ¦   Microsoft.VisualStudio.TestPlatform.TestFramework.Extensions.dll
+¦   ¦   ¦       ¦   Microsoft.VisualStudio.TestPlatform.TestFramework.Extensions.xml
+¦   ¦   ¦       ¦   Newtonsoft.Json.dll
+¦   ¦   ¦       ¦   Sanctuary.Core.dll
+¦   ¦   ¦       ¦   Sanctuary.Core.pdb
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.dll
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.pdb
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.Tests.deps.json
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.Tests.dll
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.Tests.exe
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.Tests.pdb
+¦   ¦   ¦       ¦   Sanctuary.UdpLibrary.Tests.runtimeconfig.json
+¦   ¦   ¦       ¦   testhost.dll
+¦   ¦   ¦       ¦   testhost.exe
+¦   ¦   ¦       ¦   ZLibDotNet.dll
+¦   ¦   ¦       ¦   
+¦   ¦   ¦       +---cs
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---de
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---es
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---fr
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---it
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---ja
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---ko
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---pl
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---pt-BR
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---ru
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---tr
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---zh-Hans
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦   ¦       ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦   ¦       ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦   ¦       ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦   ¦       ¦       
+¦   ¦   ¦       +---zh-Hant
+¦   ¦   ¦               Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦   ¦               Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦   ¦               Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦   ¦               Microsoft.Testing.Platform.resources.dll
+¦   ¦   ¦               Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦   ¦               Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦   ¦               Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦   ¦               Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦   ¦               Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦   ¦               Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦   ¦               Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦   ¦               
+¦   ¦   +---Release
+¦   ¦       +---net9.0
+¦   ¦           ¦   .msCoverageSourceRootsMapping_Sanctuary.UdpLibrary.Tests
+¦   ¦           ¦   Collections.Pooled.dll
+¦   ¦           ¦   CoverletSourceRootsMapping_Sanctuary.UdpLibrary.Tests
+¦   ¦           ¦   Microsoft.ApplicationInsights.dll
+¦   ¦           ¦   Microsoft.Extensions.DependencyInjection.Abstractions.dll
+¦   ¦           ¦   Microsoft.Extensions.DependencyInjection.dll
+¦   ¦           ¦   Microsoft.Testing.Extensions.MSBuild.dll
+¦   ¦           ¦   Microsoft.Testing.Extensions.Telemetry.dll
+¦   ¦           ¦   Microsoft.Testing.Extensions.TrxReport.Abstractions.dll
+¦   ¦           ¦   Microsoft.Testing.Extensions.VSTestBridge.dll
+¦   ¦           ¦   Microsoft.Testing.Platform.dll
+¦   ¦           ¦   Microsoft.TestPlatform.AdapterUtilities.dll
+¦   ¦           ¦   Microsoft.TestPlatform.CommunicationUtilities.dll
+¦   ¦           ¦   Microsoft.TestPlatform.CoreUtilities.dll
+¦   ¦           ¦   Microsoft.TestPlatform.CrossPlatEngine.dll
+¦   ¦           ¦   Microsoft.TestPlatform.PlatformAbstractions.dll
+¦   ¦           ¦   Microsoft.TestPlatform.Utilities.dll
+¦   ¦           ¦   Microsoft.VisualStudio.CodeCoverage.Shim.dll
+¦   ¦           ¦   Microsoft.VisualStudio.TestPlatform.Common.dll
+¦   ¦           ¦   Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.dll
+¦   ¦           ¦   Microsoft.VisualStudio.TestPlatform.MSTestAdapter.PlatformServices.dll
+¦   ¦           ¦   Microsoft.VisualStudio.TestPlatform.ObjectModel.dll
+¦   ¦           ¦   Microsoft.VisualStudio.TestPlatform.TestFramework.dll
+¦   ¦           ¦   Microsoft.VisualStudio.TestPlatform.TestFramework.Extensions.dll
+¦   ¦           ¦   Microsoft.VisualStudio.TestPlatform.TestFramework.Extensions.xml
+¦   ¦           ¦   Newtonsoft.Json.dll
+¦   ¦           ¦   Sanctuary.Core.dll
+¦   ¦           ¦   Sanctuary.Core.pdb
+¦   ¦           ¦   Sanctuary.UdpLibrary.dll
+¦   ¦           ¦   Sanctuary.UdpLibrary.pdb
+¦   ¦           ¦   Sanctuary.UdpLibrary.Tests.deps.json
+¦   ¦           ¦   Sanctuary.UdpLibrary.Tests.dll
+¦   ¦           ¦   Sanctuary.UdpLibrary.Tests.exe
+¦   ¦           ¦   Sanctuary.UdpLibrary.Tests.pdb
+¦   ¦           ¦   Sanctuary.UdpLibrary.Tests.runtimeconfig.json
+¦   ¦           ¦   testhost.dll
+¦   ¦           ¦   testhost.exe
+¦   ¦           ¦   ZLibDotNet.dll
+¦   ¦           ¦   
+¦   ¦           +---cs
+¦   ¦           ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦           ¦       
+¦   ¦           +---de
+¦   ¦           ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦           ¦       
+¦   ¦           +---es
+¦   ¦           ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦           ¦       
+¦   ¦           +---fr
+¦   ¦           ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦           ¦       
+¦   ¦           +---it
+¦   ¦           ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦           ¦       
+¦   ¦           +---ja
+¦   ¦           ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦           ¦       
+¦   ¦           +---ko
+¦   ¦           ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦           ¦       
+¦   ¦           +---pl
+¦   ¦           ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦           ¦       
+¦   ¦           +---pt-BR
+¦   ¦           ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦           ¦       
+¦   ¦           +---ru
+¦   ¦           ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦           ¦       
+¦   ¦           +---tr
+¦   ¦           ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦           ¦       
+¦   ¦           +---zh-Hans
+¦   ¦           ¦       Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦           ¦       Microsoft.Testing.Platform.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦           ¦       Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦           ¦       Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦           ¦       
+¦   ¦           +---zh-Hant
+¦   ¦                   Microsoft.Testing.Extensions.MSBuild.resources.dll
+¦   ¦                   Microsoft.Testing.Extensions.Telemetry.resources.dll
+¦   ¦                   Microsoft.Testing.Extensions.VSTestBridge.resources.dll
+¦   ¦                   Microsoft.Testing.Platform.resources.dll
+¦   ¦                   Microsoft.TestPlatform.AdapterUtilities.resources.dll
+¦   ¦                   Microsoft.TestPlatform.CommunicationUtilities.resources.dll
+¦   ¦                   Microsoft.TestPlatform.CoreUtilities.resources.dll
+¦   ¦                   Microsoft.TestPlatform.CrossPlatEngine.resources.dll
+¦   ¦                   Microsoft.VisualStudio.TestPlatform.Common.resources.dll
+¦   ¦                   Microsoft.VisualStudio.TestPlatform.ObjectModel.resources.dll
+¦   ¦                   Microsoft.VisualStudio.TestPlatform.TestFramework.resources.dll
+¦   ¦                   
+¦   +---obj
+¦       ¦   project.assets.json
+¦       ¦   project.nuget.cache
+¦       ¦   Sanctuary.UdpLibrary.Tests.csproj.nuget.dgspec.json
+¦       ¦   Sanctuary.UdpLibrary.Tests.csproj.nuget.g.props
+¦       ¦   Sanctuary.UdpLibrary.Tests.csproj.nuget.g.targets
+¦       ¦   
+¦       +---Debug
+¦       ¦   +---net9.0
+¦       ¦       ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦       ¦       ¦   apphost.exe
+¦       ¦       ¦   Sanctuar.6BDFCC25.Up2Date
+¦       ¦       ¦   Sanctuary.UdpLibrary.Tests.AssemblyInfo.cs
+¦       ¦       ¦   Sanctuary.UdpLibrary.Tests.AssemblyInfoInputs.cache
+¦       ¦       ¦   Sanctuary.UdpLibrary.Tests.assets.cache
+¦       ¦       ¦   Sanctuary.UdpLibrary.Tests.csproj.AssemblyReference.cache
+¦       ¦       ¦   Sanctuary.UdpLibrary.Tests.csproj.CoreCompileInputs.cache
+¦       ¦       ¦   Sanctuary.UdpLibrary.Tests.csproj.FileListAbsolute.txt
+¦       ¦       ¦   Sanctuary.UdpLibrary.Tests.dll
+¦       ¦       ¦   Sanctuary.UdpLibrary.Tests.genautoregisteredextensionsinputcache.cache
+¦       ¦       ¦   Sanctuary.UdpLibrary.Tests.GeneratedMSBuildEditorConfig.editorconfig
+¦       ¦       ¦   Sanctuary.UdpLibrary.Tests.genruntimeconfig.cache
+¦       ¦       ¦   Sanctuary.UdpLibrary.Tests.gentestingplatformentrypointinputcache.cache
+¦       ¦       ¦   Sanctuary.UdpLibrary.Tests.pdb
+¦       ¦       ¦   Sanctuary.UdpLibrary.Tests.sourcelink.json
+¦       ¦       ¦   
+¦       ¦       +---ref
+¦       ¦       ¦       Sanctuary.UdpLibrary.Tests.dll
+¦       ¦       ¦       
+¦       ¦       +---refint
+¦       ¦               Sanctuary.UdpLibrary.Tests.dll
+¦       ¦               
+¦       +---Release
+¦           +---net9.0
+¦               ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦               ¦   apphost.exe
+¦               ¦   Sanctuar.6BDFCC25.Up2Date
+¦               ¦   Sanctuary.UdpLibrary.Tests.AssemblyInfo.cs
+¦               ¦   Sanctuary.UdpLibrary.Tests.AssemblyInfoInputs.cache
+¦               ¦   Sanctuary.UdpLibrary.Tests.assets.cache
+¦               ¦   Sanctuary.UdpLibrary.Tests.csproj.AssemblyReference.cache
+¦               ¦   Sanctuary.UdpLibrary.Tests.csproj.CoreCompileInputs.cache
+¦               ¦   Sanctuary.UdpLibrary.Tests.csproj.FileListAbsolute.txt
+¦               ¦   Sanctuary.UdpLibrary.Tests.dll
+¦               ¦   Sanctuary.UdpLibrary.Tests.genautoregisteredextensionsinputcache.cache
+¦               ¦   Sanctuary.UdpLibrary.Tests.GeneratedMSBuildEditorConfig.editorconfig
+¦               ¦   Sanctuary.UdpLibrary.Tests.genruntimeconfig.cache
+¦               ¦   Sanctuary.UdpLibrary.Tests.gentestingplatformentrypointinputcache.cache
+¦               ¦   Sanctuary.UdpLibrary.Tests.pdb
+¦               ¦   Sanctuary.UdpLibrary.Tests.sourcelink.json
+¦               ¦   
+¦               +---ref
+¦               ¦       Sanctuary.UdpLibrary.Tests.dll
+¦               ¦       
+¦               +---refint
+¦                       Sanctuary.UdpLibrary.Tests.dll
+¦                       
++---Sanctuary.WebAPI
+¦   ¦   appsettings.Development.json
+¦   ¦   appsettings.json
+¦   ¦   NLog.config
+¦   ¦   NLog.Development.config
+¦   ¦   Program.cs
+¦   ¦   Sanctuary.WebAPI.csproj
+¦   ¦   
+¦   +---bin
+¦   ¦   +---Debug
+¦   +---Endpoints
+¦   ¦       AuthEndpoints.cs
+¦   ¦       PortraitEndpoints.cs
+¦   ¦       
+¦   +---Models
+¦   ¦       LoginRequestModel.cs
+¦   ¦       LoginResponseModel.cs
+¦   ¦       RegisterRequestModel.cs
+¦   ¦       
+¦   +---obj
+¦   ¦   ¦   project.assets.json
+¦   ¦   ¦   project.nuget.cache
+¦   ¦   ¦   Sanctuary.WebAPI.csproj.nuget.dgspec.json
+¦   ¦   ¦   Sanctuary.WebAPI.csproj.nuget.g.props
+¦   ¦   ¦   Sanctuary.WebAPI.csproj.nuget.g.targets
+¦   ¦   ¦   
+¦   ¦   +---Debug
+¦   ¦   ¦   ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦   ¦   ¦   apphost.exe
+¦   ¦   ¦   ¦   rjsmcshtml.dswa.cache.json
+¦   ¦   ¦   ¦   rjsmrazor.dswa.cache.json
+¦   ¦   ¦   ¦   rpswa.dswa.cache.json
+¦   ¦   ¦   ¦   Sanctuary.WebAPI.AssemblyInfo.cs
+¦   ¦   ¦   ¦   Sanctuary.WebAPI.AssemblyInfoInputs.cache
+¦   ¦   ¦   ¦   Sanctuary.WebAPI.assets.cache
+¦   ¦   ¦   ¦   Sanctuary.WebAPI.csproj.AssemblyReference.cache
+¦   ¦   ¦   ¦   Sanctuary.WebAPI.csproj.CoreCompileInputs.cache
+¦   ¦   ¦   ¦   Sanctuary.WebAPI.csproj.FileListAbsolute.txt
+¦   ¦   ¦   ¦   Sanctuary.WebAPI.dll
+¦   ¦   ¦   ¦   Sanctuary.WebAPI.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦   ¦   ¦   Sanctuary.WebAPI.genruntimeconfig.cache
+¦   ¦   ¦   ¦   Sanctuary.WebAPI.MvcApplicationPartsAssemblyInfo.cache
+¦   ¦   ¦   ¦   Sanctuary.WebAPI.pdb
+¦   ¦   ¦   ¦   Sanctuary.WebAPI.sourcelink.json
+¦   ¦   ¦   ¦   staticwebassets.build.endpoints.json
+¦   ¦   ¦   ¦   staticwebassets.build.json
+¦   ¦   ¦   ¦   staticwebassets.references.upToDateCheck.txt
+¦   ¦   ¦   ¦   staticwebassets.removed.txt
+¦   ¦   ¦   ¦   
+¦   ¦   ¦   +---ref
+¦   ¦   ¦   ¦       Sanctuary.WebAPI.dll
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---refint
+¦   ¦   ¦   ¦       Sanctuary.WebAPI.dll
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---staticwebassets
+¦   ¦   +---Release
+¦   ¦       ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+¦   ¦       ¦   apphost.exe
+¦   ¦       ¦   rjsmcshtml.dswa.cache.json
+¦   ¦       ¦   rjsmrazor.dswa.cache.json
+¦   ¦       ¦   rpswa.dswa.cache.json
+¦   ¦       ¦   Sanctuary.WebAPI.AssemblyInfo.cs
+¦   ¦       ¦   Sanctuary.WebAPI.AssemblyInfoInputs.cache
+¦   ¦       ¦   Sanctuary.WebAPI.assets.cache
+¦   ¦       ¦   Sanctuary.WebAPI.csproj.AssemblyReference.cache
+¦   ¦       ¦   Sanctuary.WebAPI.csproj.CoreCompileInputs.cache
+¦   ¦       ¦   Sanctuary.WebAPI.csproj.FileListAbsolute.txt
+¦   ¦       ¦   Sanctuary.WebAPI.dll
+¦   ¦       ¦   Sanctuary.WebAPI.GeneratedMSBuildEditorConfig.editorconfig
+¦   ¦       ¦   Sanctuary.WebAPI.genruntimeconfig.cache
+¦   ¦       ¦   Sanctuary.WebAPI.MvcApplicationPartsAssemblyInfo.cache
+¦   ¦       ¦   Sanctuary.WebAPI.pdb
+¦   ¦       ¦   Sanctuary.WebAPI.sourcelink.json
+¦   ¦       ¦   staticwebassets.build.endpoints.json
+¦   ¦       ¦   staticwebassets.build.json
+¦   ¦       ¦   staticwebassets.build.json.cache
+¦   ¦       ¦   staticwebassets.references.upToDateCheck.txt
+¦   ¦       ¦   staticwebassets.removed.txt
+¦   ¦       ¦   
+¦   ¦       +---ref
+¦   ¦       ¦       Sanctuary.WebAPI.dll
+¦   ¦       ¦       
+¦   ¦       +---refint
+¦   ¦       ¦       Sanctuary.WebAPI.dll
+¦   ¦       ¦       
+¦   ¦       +---staticwebassets
+¦   +---Options
+¦   ¦       WebAPIOptions.cs
+¦   ¦       
+¦   +---Properties
+¦           launchSettings.json
+¦           
++---SqlRunner
+    ¦   Program.cs
+    ¦   SqlRunner.csproj
+    ¦   
+    +---bin
+    ¦   +---Debug
+    ¦       +---net9.0
+    ¦           ¦   Microsoft.Data.Sqlite.dll
+    ¦           ¦   SQLitePCLRaw.batteries_v2.dll
+    ¦           ¦   SQLitePCLRaw.core.dll
+    ¦           ¦   SQLitePCLRaw.provider.e_sqlite3.dll
+    ¦           ¦   SqlRunner.deps.json
+    ¦           ¦   SqlRunner.dll
+    ¦           ¦   SqlRunner.exe
+    ¦           ¦   SqlRunner.pdb
+    ¦           ¦   SqlRunner.runtimeconfig.json
+    ¦           ¦   
+    ¦           +---runtimes
+    ¦               +---browser-wasm
+    ¦               ¦   +---nativeassets
+    ¦               ¦       +---net9.0
+    ¦               ¦               e_sqlite3.a
+    ¦               ¦               
+    ¦               +---linux-arm
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---linux-arm64
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---linux-armel
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---linux-mips64
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---linux-musl-arm
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---linux-musl-arm64
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---linux-musl-riscv64
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---linux-musl-s390x
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---linux-musl-x64
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---linux-ppc64le
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---linux-riscv64
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---linux-s390x
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---linux-x64
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---linux-x86
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.so
+    ¦               ¦           
+    ¦               +---maccatalyst-arm64
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.dylib
+    ¦               ¦           
+    ¦               +---maccatalyst-x64
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.dylib
+    ¦               ¦           
+    ¦               +---osx-arm64
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.dylib
+    ¦               ¦           
+    ¦               +---osx-x64
+    ¦               ¦   +---native
+    ¦               ¦           libe_sqlite3.dylib
+    ¦               ¦           
+    ¦               +---win-arm
+    ¦               ¦   +---native
+    ¦               ¦           e_sqlite3.dll
+    ¦               ¦           
+    ¦               +---win-arm64
+    ¦               ¦   +---native
+    ¦               ¦           e_sqlite3.dll
+    ¦               ¦           
+    ¦               +---win-x64
+    ¦               ¦   +---native
+    ¦               ¦           e_sqlite3.dll
+    ¦               ¦           
+    ¦               +---win-x86
+    ¦                   +---native
+    ¦                           e_sqlite3.dll
+    ¦                           
+    +---obj
+        ¦   project.assets.json
+        ¦   project.nuget.cache
+        ¦   SqlRunner.csproj.nuget.dgspec.json
+        ¦   SqlRunner.csproj.nuget.g.props
+        ¦   SqlRunner.csproj.nuget.g.targets
+        ¦   
+        +---Debug
+            +---net9.0
+                ¦   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+                ¦   apphost.exe
+                ¦   SqlRunner.AssemblyInfo.cs
+                ¦   SqlRunner.AssemblyInfoInputs.cache
+                ¦   SqlRunner.assets.cache
+                ¦   SqlRunner.csproj.AssemblyReference.cache
+                ¦   SqlRunner.csproj.CoreCompileInputs.cache
+                ¦   SqlRunner.csproj.FileListAbsolute.txt
+                ¦   SqlRunner.csproj.Up2Date
+                ¦   SqlRunner.dll
+                ¦   SqlRunner.GeneratedMSBuildEditorConfig.editorconfig
+                ¦   SqlRunner.genruntimeconfig.cache
+                ¦   SqlRunner.GlobalUsings.g.cs
+                ¦   SqlRunner.pdb
+                ¦   SqlRunner.sourcelink.json
+                ¦   
+                +---ref
+                ¦       SqlRunner.dll
+                ¦       
+                +---refint
+                        SqlRunner.dll
+                        

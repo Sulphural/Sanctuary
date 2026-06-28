@@ -30,6 +30,9 @@ public static class BaseHousingPacketHandler
 
         return opCode switch
         {
+            ClientHousingPacketPlaceFixtureRequest.OpCode => ClientHousingPacketPlaceFixtureRequestHandler.HandlePacket(connection, reader.Span),
+            ClientHousingPacketSaveFixture.OpCode => ClientHousingPacketSaveFixtureHandler.HandlePacket(connection, reader.Span),
+            ClientHousingPacketPickupFixture.OpCode => ClientHousingPacketPickupFixtureHandler.HandlePacket(connection, reader.Span),
             ClientHousingPacketSetEditMode.OpCode => ClientHousingPacketSetEditModeHandler.HandlePacket(connection, reader.Span),
             ClientHousingPacketEnterRequest.OpCode => ClientHousingPacketEnterRequestHandler.HandlePacket(connection, reader.Span),
             _ => false

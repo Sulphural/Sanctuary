@@ -1,5 +1,80 @@
 [
   {
+    "Comment": "Fairweather Hoverboard",
+    "Id": 99,
+    "NameId": 6447,
+    "ImageSetId": 7016,
+    "ModelId": 3213,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TintId": 0
+  },
+  {
+    "Comment": "Chrome Dragon",
+    "Id": 520,
+    "NameId": 5232,
+    "ImageSetId": 6425,
+    "IsUpgradable": true,
+    "ModelId": 2064,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "ign-chrome"
+  },
+  {
+    "Comment": "Haunted Hoverboard",
+    "Id": 681,
+    "NameId": 6605,
+    "ImageSetId": 6922,
+    "ModelId": 3314,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Stormy Hoverboard",
+    "Id": 697,
+    "NameId": 6230,
+    "ImageSetId": 6820,
+    "ModelId": 3162,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Fiery Hoverboard",
+    "Id": 698,
+    "NameId": 6231,
+    "ImageSetId": 6802,
+    "ModelId": 3163,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Icy Hoverboard",
+    "Id": 699,
+    "NameId": 6232,
+    "ImageSetId": 6659,
+    "TintAlias": "skyblue",
+    "ModelId": 3164,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "icedecal"
+  },
+  {
+    "Comment": "Eight Ball",
+    "Id": 713,
+    "NameId": 6697,
+    "ImageSetId": 6968,
+    "ModelId": 3378,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
     "Comment": "Skeletal Dragon",
     "Id": 715,
     "NameId": 6638,
@@ -12,50 +87,54 @@
     }
   },
   {
-    "Comment": "Scaled Dragon",
-    "Id": 12672,
-    "NameId": 4897,
-    "ImageSetId": 6294,
-    "TextureAlias": "basic-scales",
+    "Comment": "Hydra Ride",
+    "Id": 738,
+    "NameId": 6764,
+    "ImageSetId": 6977,
     "TintAlias": "dyetint",
-    "IsUpgradable": true,
-    "ModelId": 2064,
+    "ModelId": 3384,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
   },
   {
-    "Comment": "Poison Dragon",
-    "Id": 12792,
-    "NameId": 434170,
-    "ImageSetId": 7056,
-    "IsUpgradable": true,
-    "ModelId": 3480,
+    "Comment": "Air T-Rex",
+    "Id": 757,
+    "NameId": 6806,
+    "ImageSetId": 7015,
+    "ModelId": 3409,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
   },
   {
-    "Comment": "Gold-Tipped Dragon",
-    "Id": 12671,
-    "NameId": 4893,
-    "ImageSetId": 6075,
-    "TextureAlias": "basic-goldtips",
+    "Comment": "Bicycle",
+    "Id": 839,
+    "NameId": 6966,
+    "ImageSetId": 7296,
     "TintAlias": "dyetint",
-    "IsUpgradable": true,
-    "ModelId": 2064,
+    "ModelId": 3478,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
   },
   {
-    "Comment": "Feathered Drake",
-    "Id": 13291,
-    "NameId": 33906,
-    "ImageSetId": 7927,
-    "TintAlias": "dyetint",
-    "IsUpgradable": true,
-    "ModelId": 1525,
+    "Comment": "Kangaroo",
+    "Id": 895,
+    "NameId": 378,
+    "ImageSetId": 7665,
+    "TintAlias": "kangaroo-red",
+    "ModelId": 3870,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Glacierator 5000",
+    "Id": 926,
+    "NameId": 385,
+    "ImageSetId": 7700,
+    "ModelId": 3882,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
@@ -73,102 +152,6 @@
     }
   },
   {
-    "Comment": "Pegasus",
-    "Id": 12601,
-    "NameId": 5656,
-    "ImageSetId": 6319,
-    "TextureAlias": "pegasus-solidcolor",
-    "TintAlias": "dyetint",
-    "IsUpgradable": true,
-    "ModelId": 2109,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
-    "Comment": "Fire Pegasus",
-    "Id": 12915,
-    "NameId": 435560,
-    "ImageSetId": 7484,
-    "TextureAlias": "fire",
-    "IsUpgradable": true,
-    "ModelId": 3782,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
-    "Comment": "Hearts Pegasus",
-    "Id": 12678,
-    "NameId": 10108,
-    "ImageSetId": 6318,
-    "TextureAlias": "pegasus-hearts",
-    "TintAlias": "dyetint",
-    "IsUpgradable": true,
-    "ModelId": 2109,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
-    "Comment": "Pegasus Unicorn",
-    "Id": 12679,
-    "NameId": 10110,
-    "ImageSetId": 6320,
-    "TextureAlias": "pegasus-unicorn",
-    "TintAlias": "dyetint",
-    "IsUpgradable": true,
-    "ModelId": 2109,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
-    "Comment": "Tiger",
-    "Id": 12682,
-    "NameId": 6182,
-    "ImageSetId": 6703,
-    "TintAlias": "dyetint",
-    "ModelId": 3026,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
-    "Comment": "Lava Tiger",
-    "Id": 12688,
-    "NameId": 6369,
-    "ImageSetId": 6825,
-    "TintAlias": "dyetint",
-    "ModelId": 3199,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
-    "Comment": "Saber-Tooth Tiger",
-    "Id": 12686,
-    "NameId": 6221,
-    "ImageSetId": 6738,
-    "TextureAlias": "sabertooth-basic",
-    "TintAlias": "dyetint",
-    "ModelId": 3026,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
-    "Comment": "Stone Saber-Tooth Tiger",
-    "Id": 12687,
-    "NameId": 6305,
-    "ImageSetId": 6821,
-    "TintAlias": "dyetint",
-    "ModelId": 3208,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
     "Comment": "Wolf",
     "Id": 993,
     "NameId": 374,
@@ -180,35 +163,245 @@
     }
   },
   {
-    "Comment": "Unicorn",
-    "Id": 12680,
-    "NameId": 4905,
-    "ImageSetId": 6322,
+    "Comment": "Robgoblin Mech",
+    "Id": 1254,
+    "NameId": 852,
+    "ImageSetId": 7928,
     "TintAlias": "dyetint",
-    "ModelId": 2113,
+    "ModelId": 3989,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "mechmount-stripe"
+  },
+  {
+    "Comment": "Precursor Hoverboard",
+    "Id": 8211,
+    "NameId": 5218,
+    "ImageSetId": 6457,
+    "ModelId": 522,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
   },
   {
-    "Comment": "Nightmare",
-    "Id": 12677,
-    "NameId": 4831,
-    "ImageSetId": 6355,
-    "TintAlias": "dyetint",
-    "ModelId": 2108,
+    "Comment": "Molten Precursor Hoverboard",
+    "Id": 8212,
+    "NameId": 5219,
+    "ImageSetId": 6456,
+    "ModelId": 523,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
   },
   {
-    "Comment": "White-Nosed Stallion",
-    "Id": 12676,
-    "NameId": 15014,
-    "ImageSetId": 6325,
-    "TextureAlias": "basic-whitenoselegs",
+    "Comment": "Beach Ball",
+    "Id": 8765,
+    "NameId": 6408,
+    "ImageSetId": 6854,
     "TintAlias": "dyetint",
-    "ModelId": 2099,
+    "ModelId": 3210,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "beach-basic"
+  },
+  {
+    "Comment": "Surfboard",
+    "Id": 12161,
+    "NameId": 5635,
+    "ImageSetId": 6658,
+    "TintAlias": "dyetint",
+    "ModelId": 3033,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "freerealmslogo"
+  },
+  {
+    "Comment": "Wooden Surfboard",
+    "Id": 12168,
+    "NameId": 5636,
+    "ImageSetId": 6659,
+    "TintAlias": "dyetint",
+    "ModelId": 3033,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "wood"
+  },
+  {
+    "Comment": "Windstorm Surfboard",
+    "Id": 12211,
+    "NameId": 7256,
+    "ImageSetId": 6792,
+    "TintAlias": "dyetint",
+    "ModelId": 3033,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "stormclouddecal"
+  },
+  {
+    "Comment": "Basalt Surfboard",
+    "Id": 12218,
+    "NameId": 7257,
+    "ImageSetId": 6791,
+    "TintAlias": "dyetint",
+    "ModelId": 3033,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "lavadecal"
+  },
+  {
+    "Comment": "Chilly Surfboard",
+    "Id": 12225,
+    "NameId": 7258,
+    "ImageSetId": 6658,
+    "TintAlias": "dyetint",
+    "ModelId": 3033,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "icedecal"
+  },
+  {
+    "Comment": "Pegasus",
+    "Id": 12601,
+    "NameId": 5656,
+    "ImageSetId": 6319,
+    "TintAlias": "dyetint",
+    "IsUpgradable": true,
+    "ModelId": 2109,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "pegasus-solidcolor"
+  },
+  {
+    "Comment": "Bowling Ball",
+    "Id": 12626,
+    "NameId": 7376,
+    "ImageSetId": 6998,
+    "TintAlias": "dyetint",
+    "ModelId": 3366,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Snowball",
+    "Id": 12636,
+    "NameId": 22959,
+    "ImageSetId": 6978,
+    "TintAlias": "snow",
+    "ModelId": 3376,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "snow_basic"
+  },
+  {
+    "Comment": "Sun",
+    "Id": 12637,
+    "NameId": 22960,
+    "ImageSetId": 7020,
+    "ModelId": 3377,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Phoenix",
+    "Id": 12638,
+    "NameId": 6574,
+    "ImageSetId": 6889,
+    "ModelId": 3292,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "basic-fire"
+  },
+  {
+    "Comment": "Dwarftech Hoverboard",
+    "Id": 12667,
+    "NameId": 4945,
+    "ImageSetId": 6460,
+    "TintAlias": "dyetint",
+    "ModelId": 503,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Clockwork Hoverboard",
+    "Id": 12668,
+    "NameId": 6847,
+    "ImageSetId": 6459,
+    "TintAlias": "dyetint",
+    "ModelId": 503,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "cogs"
+  },
+  {
+    "Comment": "Striped T-Rex",
+    "Id": 12669,
+    "NameId": 5570,
+    "ImageSetId": 6074,
+    "TintAlias": "dyetint",
+    "ModelId": 2040,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Spotted T-Rex",
+    "Id": 12670,
+    "NameId": 5571,
+    "ImageSetId": 6252,
+    "TintAlias": "dyetint",
+    "ModelId": 2040,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "spots"
+  },
+  {
+    "Comment": "Gold-Tipped Dragon",
+    "Id": 12671,
+    "NameId": 4893,
+    "ImageSetId": 6075,
+    "TintAlias": "dyetint",
+    "IsUpgradable": true,
+    "ModelId": 2064,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "basic-goldtips"
+  },
+  {
+    "Comment": "Scaled Dragon",
+    "Id": 12672,
+    "NameId": 4897,
+    "ImageSetId": 6294,
+    "TintAlias": "dyetint",
+    "IsUpgradable": true,
+    "ModelId": 2064,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "basic-scales"
+  },
+  {
+    "Comment": "White-Nosed Mare",
+    "Id": 12673,
+    "NameId": 15011,
+    "ImageSetId": 6317,
+    "TintAlias": "dyetint",
+    "ModelId": 2098,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
@@ -229,20 +422,114 @@
     "Id": 12675,
     "NameId": 10106,
     "ImageSetId": 6324,
-    "TextureAlias": "basic-solidcolor",
     "TintAlias": "dyetint",
     "ModelId": 2099,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "basic-solidcolor"
+  },
+  {
+    "Comment": "White-Nosed Stallion",
+    "Id": 12676,
+    "NameId": 15014,
+    "ImageSetId": 6325,
+    "TintAlias": "dyetint",
+    "ModelId": 2099,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "basic-whitenoselegs"
+  },
+  {
+    "Comment": "Nightmare",
+    "Id": 12677,
+    "NameId": 4831,
+    "ImageSetId": 6355,
+    "TintAlias": "dyetint",
+    "ModelId": 2108,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
   },
   {
-    "Comment": "White-Nosed Mare",
-    "Id": 12673,
-    "NameId": 15011,
-    "ImageSetId": 6317,
+    "Comment": "Hearts Pegasus",
+    "Id": 12678,
+    "NameId": 10108,
+    "ImageSetId": 6318,
     "TintAlias": "dyetint",
-    "ModelId": 2098,
+    "IsUpgradable": true,
+    "ModelId": 2109,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "pegasus-hearts"
+  },
+  {
+    "Comment": "Pegasus Unicorn",
+    "Id": 12679,
+    "NameId": 10110,
+    "ImageSetId": 6320,
+    "TintAlias": "dyetint",
+    "IsUpgradable": true,
+    "ModelId": 2109,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "pegasus-unicorn"
+  },
+  {
+    "Comment": "Unicorn",
+    "Id": 12680,
+    "NameId": 4905,
+    "ImageSetId": 6322,
+    "TintAlias": "dyetint",
+    "ModelId": 2113,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Tiger",
+    "Id": 12682,
+    "NameId": 6182,
+    "ImageSetId": 6703,
+    "TintAlias": "dyetint",
+    "ModelId": 3026,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Saber-Tooth Tiger",
+    "Id": 12686,
+    "NameId": 6221,
+    "ImageSetId": 6738,
+    "TintAlias": "dyetint",
+    "ModelId": 3026,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "sabertooth-basic"
+  },
+  {
+    "Comment": "Stone Saber-Tooth Tiger",
+    "Id": 12687,
+    "NameId": 6305,
+    "ImageSetId": 6821,
+    "TintAlias": "dyetint",
+    "ModelId": 3208,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Lava Tiger",
+    "Id": 12688,
+    "NameId": 6369,
+    "ImageSetId": 6825,
+    "TintAlias": "dyetint",
+    "ModelId": 3199,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
@@ -259,76 +546,56 @@
     }
   },
   {
-    "Comment": "Spotted T-Rex",
-    "Id": 12670,
-    "NameId": 5571,
-    "ImageSetId": 6252,
-    "TextureAlias": "spots",
+    "Comment": "Poison Dragon",
+    "Id": 12792,
+    "NameId": 434170,
+    "ImageSetId": 7056,
+    "IsUpgradable": true,
+    "ModelId": 3480,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Tractor",
+    "Id": 12907,
+    "NameId": 435431,
+    "ImageSetId": 7401,
+    "ModelId": 3776,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Fire Pegasus",
+    "Id": 12915,
+    "NameId": 435560,
+    "ImageSetId": 7484,
+    "IsUpgradable": true,
+    "ModelId": 3782,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "fire"
+  },
+  {
+    "Comment": "Feathered Drake",
+    "Id": 13291,
+    "NameId": 33906,
+    "ImageSetId": 7927,
     "TintAlias": "dyetint",
-    "ModelId": 2040,
+    "IsUpgradable": true,
+    "ModelId": 1525,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
   },
   {
-    "Comment": "Striped T-Rex",
-    "Id": 12669,
-    "NameId": 5570,
-    "ImageSetId": 6074,
-    "TintAlias": "dyetint",
-    "ModelId": 2040,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
-    "Comment": "Sun",
-    "Id": 12637,
-    "NameId": 22960,
-    "ImageSetId": 7020,
-    "ModelId": 3377,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
-    "Comment": "Air T-Rex",
-    "Id": 757,
-    "NameId": 6806,
-    "ImageSetId": 7015,
-    "ModelId": 3409,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
-    "Comment": "Bowling Ball",
-    "Id": 12626,
-    "NameId": 7376,
-    "ImageSetId": 6998,
-    "TintAlias": "dyetint",
-    "ModelId": 3366,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
-    "Comment": "Eight Ball",
-    "Id": 713,
-    "NameId": 6697,
-    "ImageSetId": 6968,
-    "ModelId": 3378,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
-    "Comment": "Hydra Ride",
-    "Id": 738,
-    "NameId": 6764,
-    "ImageSetId": 6977,
-    "TintAlias": "dyetint",
-    "ModelId": 3384,
+    "Comment": "The Hover Ring",
+    "Id": 13421,
+    "NameId": 442479,
+    "ImageSetId": 8440,
+    "ModelId": 4222,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
@@ -368,128 +635,396 @@
     "Id": 13459,
     "NameId": 442674,
     "ImageSetId": 8556,
+    "IsUpgradable": true,
     "ModelId": 4590,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
   },
   {
-    "Comment": "The Hover Ring",
-    "Id": 13421,
-    "NameId": 442479,
-    "ImageSetId": 8440,
-    "ModelId": 4222,
-    "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
-  },
-  {
-    "Comment": "Bicycle",
-    "Id": 839,
-    "NameId": 6966,
-    "ImageSetId": 7296,
+    "Comment": "Lawn Chair",
+    "Id": 13460,
+    "NameId": 442689,
+    "ImageSetId": 8456,
     "TintAlias": "dyetint",
-    "ModelId": 3478,
+    "ModelId": 4439,
     "Stats": {
-      "MaxMovementSpeed": 12.5
-    }
+      "MaxMovementSpeed": 0
+    },
+    "TextureAlias": "lawnchair-treelogo"
   },
   {
-    "Comment": "Robgoblin Mech",
-    "Id": 1254,
-    "NameId": 852,
-    "ImageSetId": 7928,
-    "TextureAlias": "mechmount-stripe",
+    "Comment": "Star Lawn Chair",
+    "Id": 13463,
+    "NameId": 442683,
+    "ImageSetId": 8461,
+    "ModelId": 4439,
+    "Stats": {
+      "MaxMovementSpeed": 0
+    },
+    "TextureAlias": "lawnchair-summerpass"
+  },
+  {
+    "Comment": "Futuristic Bicycle",
+    "Id": 13464,
+    "NameId": 435220,
+    "ImageSetId": 7297,
+    "ModelId": 3718,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "solidcolor"
+  },
+  {
+    "Comment": "Broomstick",
+    "Id": 13562,
+    "NameId": 9911,
+    "ImageSetId": 8035,
     "TintAlias": "dyetint",
-    "ModelId": 3989,
+    "IsUpgradable": true,
+    "ModelId": 1529,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
   },
   {
-    "Comment": "Tractor",
-    "Id": 12907,
-    "NameId": 435431,
-    "ImageSetId": 7401,
-    "ModelId": 3776,
+    "Comment": "Dragonfire Broomstick",
+    "Id": 13563,
+    "NameId": 5102679,
+    "ImageSetId": 8598,
+    "IsUpgradable": true,
+    "ModelId": 4613,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
   },
   {
-    "Comment": "Molten Precursor Hoverboard",
-    "Id": 8212,
-    "NameId": 5219,
-    "ImageSetId": 6456,
-    "ModelId": 523,
+    "Comment": "Sparky",
+    "Id": 13564,
+    "NameId": 17468,
+    "ImageSetId": 7911,
+    "ModelId": 1514,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
   },
   {
-    "Comment": "Fiery Hoverboard",
-    "Id": 698,
-    "NameId": 6231,
-    "ImageSetId": 6802,
-    "ModelId": 3163,
+    "Comment": "Wonderous Tiger",
+    "Id": 13565,
+    "NameId": 442894,
+    "ImageSetId": 8501,
+    "ModelId": 4462,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
   },
   {
-    "Comment": "Precursor Hoverboard",
-    "Id": 8211,
-    "NameId": 5218,
-    "ImageSetId": 6457,
-    "ModelId": 522,
+    "Comment": "Giant Turkey",
+    "Id": 13566,
+    "NameId": 9268,
+    "ImageSetId": 92,
+    "ModelId": 1533,
     "Stats": {
       "MaxMovementSpeed": 12.5
     }
   },
   {
-    "Comment": "Clockwork Hoverboard",
-    "Id": 12668,
-    "NameId": 6847,
-    "ImageSetId": 6459,
-    "TextureAlias": "cogs",
+    "Comment": "Pogo Stick",
+    "Id": 13567,
+    "NameId": 14105,
+    "ImageSetId": 8121,
+    "ModelId": 1532,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Eyeball",
+    "Id": 13568,
+    "NameId": 5102489,
+    "ImageSetId": 8571,
+    "ModelId": 4568,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Snow Globe",
+    "Id": 13569,
+    "NameId": 7504,
+    "ImageSetId": 6995,
+    "ModelId": 3393,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Giant Jack-O-Lantern",
+    "Id": 13570,
+    "NameId": 9917,
+    "ImageSetId": 6939,
+    "ModelId": 3338,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Gloamstone Hoverboard",
+    "Id": 13571,
+    "NameId": 387,
+    "ImageSetId": 7674,
+    "ModelId": 3884,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Clockwork Horse",
+    "Id": 13572,
+    "NameId": 8779,
+    "ImageSetId": 7886,
+    "ModelId": 982,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "clockwork"
+  },
+  {
+    "Comment": "Octopus",
+    "Id": 13573,
+    "NameId": 442880,
+    "ImageSetId": 8496,
+    "ModelId": 4451,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    }
+  },
+  {
+    "Comment": "Clocktopus",
+    "Id": 13574,
+    "NameId": 19040,
+    "ImageSetId": 7798,
+    "ModelId": 726,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "clockwork"
+  },
+  {
+    "Comment": "Skeletal T-Rex",
+    "Id": 13575,
+    "NameId": 19042,
+    "ImageSetId": 7799,
     "TintAlias": "dyetint",
-    "ModelId": 503,
+    "ModelId": 728,
     "Stats": {
       "MaxMovementSpeed": 12.5
-    }
+    },
+    "TextureAlias": "trex-bones"
   },
   {
-    "Comment": "Dwarftech Hoverboard",
-    "Id": 12667,
-    "NameId": 4945,
-    "ImageSetId": 6460,
+    "Comment": "Polar Bear",
+    "Id": 13576,
+    "NameId": 441220,
+    "ImageSetId": 8225,
+    "ModelId": 4110,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "xmas"
+  },
+  {
+    "Comment": "Skullz Chopper",
+    "Id": 13577,
+    "NameId": 442318,
+    "ImageSetId": 8405,
+    "ModelId": 4214,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "chopper-skullz"
+  },
+  {
+    "Comment": "Magic Carpet",
+    "Id": 13578,
+    "NameId": 510189,
+    "ImageSetId": 8498,
+    "IsUpgradable": true,
+    "ModelId": 4452,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "carpet-basic"
+  },
+  {
+    "Comment": "Flying Saucer",
+    "Id": 13579,
+    "NameId": 2664,
+    "ImageSetId": 7710,
+    "IsUpgradable": true,
+    "ModelId": 687,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "classic-saucer"
+  },
+  {
+    "Comment": "Reindeer",
+    "Id": 13580,
+    "NameId": 436679,
+    "ImageSetId": 5614,
     "TintAlias": "dyetint",
-    "ModelId": 503,
+    "IsUpgradable": true,
+    "ModelId": 4111,
     "Stats": {
       "MaxMovementSpeed": 12.5
-    }
+    },
+    "TextureAlias": "green-blanket"
   },
   {
-    "Comment": "Stormy Hoverboard",
-    "Id": 697,
-    "NameId": 6230,
-    "ImageSetId": 6820,
-    "ModelId": 3162,
+    "Comment": "Santa's Sleigh-mobile",
+    "Id": 13581,
+    "NameId": 4419436,
+    "ImageSetId": 8144,
+    "ModelId": 4130,
     "Stats": {
       "MaxMovementSpeed": 12.5
-    }
+    },
+    "TextureAlias": "sleighmobile"
   },
   {
-    "Comment": "Fairweather Hoverboard",
-    "Id": 99,
-    "NameId": 6447,
-    "ImageSetId": 7016,
-    "TextureAlias": "",
-    "TintAlias": "",
-    "TintId": 0,
-    "ModelId": 3213,
+    "Comment": "Retro Bike",
+    "Id": 13582,
+    "NameId": 5102429,
+    "ImageSetId": 8564,
+    "TintAlias": "dyetint",
+    "ModelId": 4553,
     "Stats": {
       "MaxMovementSpeed": 12.5
-    }
+    },
+    "TextureAlias": "bike_8bit"
+  },
+  {
+    "Comment": "Chrome Drake",
+    "Id": 13583,
+    "NameId": 442331,
+    "ImageSetId": 8406,
+    "IsUpgradable": true,
+    "ModelId": 4217,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "drake-chrome-mount"
+  },
+  {
+    "Comment": "Robo-Roo",
+    "Id": 13584,
+    "NameId": 440558,
+    "ImageSetId": 8034,
+    "ModelId": 4075,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "kangaroo_robo"
+  },
+  {
+    "Comment": "Valiant Gleam Cycle",
+    "Id": 13585,
+    "NameId": 5103065,
+    "ImageSetId": 8766,
+    "ModelId": 4751,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "hero-cycle"
+  },
+  {
+    "Comment": "Lawless Gloam Chopper",
+    "Id": 13586,
+    "NameId": 5103066,
+    "ImageSetId": 8767,
+    "ModelId": 4751,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "villain-cycle"
+  },
+  {
+    "Comment": "Dwarftech Chopper",
+    "Id": 13587,
+    "NameId": 854,
+    "ImageSetId": 71,
+    "TintAlias": "dyetint",
+    "ModelId": 3988,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "chopper-basic"
+  },
+  {
+    "Comment": "Robotic Chicken",
+    "Id": 13588,
+    "NameId": 19014,
+    "ImageSetId": 35,
+    "ModelId": 937,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "blue-glow"
+  },
+  {
+    "Comment": "Holiday Tree Board",
+    "Id": 13589,
+    "NameId": 7503,
+    "ImageSetId": 6996,
+    "ModelId": 3392,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "wood"
+  },
+  {
+    "Comment": "Roasted Turkey",
+    "Id": 13590,
+    "NameId": 5102766,
+    "ImageSetId": 8617,
+    "ModelId": 4622,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "turkey-roasted"
+  },
+  {
+    "Comment": "Burnt Turkey",
+    "Id": 13591,
+    "NameId": 5102767,
+    "ImageSetId": 8615,
+    "ModelId": 4622,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "turkey-burnt"
+  },
+  {
+    "Comment": "Raw Turkey",
+    "Id": 13592,
+    "NameId": 5102765,
+    "ImageSetId": 8616,
+    "ModelId": 4622,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "turkey-raw"
+  },
+  {
+    "Comment": "Fan Faire 2011 Bicycle",
+    "Id": 13593,
+    "NameId": 436136,
+    "ImageSetId": 7499,
+    "ModelId": 3831,
+    "Stats": {
+      "MaxMovementSpeed": 12.5
+    },
+    "TextureAlias": "bike-glow"
   }
 ]
