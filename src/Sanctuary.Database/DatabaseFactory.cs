@@ -29,18 +29,18 @@ internal class DatabaseFactory : IDesignTimeDbContextFactory<DatabaseContext>
 
     public static DbContextOptionsBuilder CreateInstance(DbContextOptionsBuilder builder, DatabaseOptions databaseOptions)
     {
-        var providerAssembly = $"{typeof(DatabaseFactory).Namespace}.{databaseOptions.Provider}";
+        var ns = typeof(DatabaseFactory).Namespace;
 
         switch (databaseOptions.Provider)
         {
             case DatabaseProvider.MySql:
                 builder.UseMySql(databaseOptions.ConnectionString, ServerVersion.Parse(databaseOptions.VersionString),
-                    x => x.EnableRetryOnFailure().MigrationsAssembly(providerAssembly));
+                    x => x.EnableRetryOnFailure().MigrationsAssembly($"{ns}.MySql"));
                 break;
 
             case DatabaseProvider.Sqlite:
                 builder.UseSqlite(databaseOptions.ConnectionString,
-                    x => x.MigrationsAssembly(providerAssembly))
+                    x => x.MigrationsAssembly($"{ns}.SqLite"))
                     .EnableSensitiveDataLogging();
                 break;
 
