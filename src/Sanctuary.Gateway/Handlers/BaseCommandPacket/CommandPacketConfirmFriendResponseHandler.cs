@@ -82,10 +82,21 @@ public static class CommandPacketConfirmFriendResponseHandler
     {
         using var dbContext = _dbContextFactory.CreateDbContext();
 
-        var inviterDbCharacter = dbContext.Characters.SingleOrDefault(x => x.Id == GuidHelper.GetPlayerId(inviter.Guid));
-        var inviteeDbCharacter = dbContext.Characters.SingleOrDefault(x => x.Id == GuidHelper.GetPlayerId(invitee.Guid));
+        var inviterId = GuidHelper.GetPlayerId(inviter.Guid);
+        var inviteeId = GuidHelper.GetPlayerId(invitee.Guid);
+
+        var inviterDbCharacter = dbContext.Characters.SingleOrDefault(x => x.Id == inviterId);
+        var inviteeDbCharacter = dbContext.Characters.SingleOrDefault(x => x.Id == inviteeId);
 
         if (inviterDbCharacter is null || inviteeDbCharacter is null)
+            return;
+
+        // Check if friendship already exists
+        var friendshipExists = dbContext.Friends.Any(x =>
+            (x.CharacterId == inviterId && x.FriendCharacterId == inviteeId) ||
+            (x.CharacterId == inviteeId && x.FriendCharacterId == inviterId));
+
+        if (friendshipExists)
             return;
 
         inviterDbCharacter.Friends.Add(new DbFriend

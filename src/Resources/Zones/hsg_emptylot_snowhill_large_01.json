@@ -1,0 +1,21 @@
+{
+  "$type": "Starting",
+  "Id": 104,
+  "Name": "hsg_emptylot_snowhill_large_01",
+  "Type": "Starting",
+  "TileSize": 64,
+  "StartLatitude": 0,
+  "StartLongitude": 0,
+  "EndLatitude": 16,
+  "EndLongitude": 16,
+  "SpawnPosition": [
+    585.7,
+    0,
+    545.5
+  ],
+  "SpawnRotation": [
+    -1,
+    0
+  ],
+  "AreaDefinitions": []
+}

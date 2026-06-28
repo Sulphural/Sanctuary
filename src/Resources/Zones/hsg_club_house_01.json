@@ -1,0 +1,21 @@
+{
+  "$type": "Starting",
+  "Id": 149,
+  "Name": "hsg_club_house_01",
+  "Type": "Starting",
+  "TileSize": 64,
+  "StartLatitude": 0,
+  "StartLongitude": 0,
+  "EndLatitude": 16,
+  "EndLongitude": 16,
+  "SpawnPosition": [
+    444.3,
+    5.2,
+    429.3
+  ],
+  "SpawnRotation": [
+    -1,
+    0
+  ],
+  "AreaDefinitions": []
+}

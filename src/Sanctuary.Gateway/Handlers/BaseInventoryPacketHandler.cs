@@ -20,6 +20,12 @@ public static class BaseInventoryPacketHandler
         _logger = loggerFactory.CreateLogger(nameof(BaseInventoryPacketHandler));
     }
 
+    private static bool LogUnknownImmediateActivation(short opCode, ReadOnlySpan<byte> data)
+    {
+        _logger.LogWarning("ImmediateActivation opCode={op} data={hex}", opCode, Convert.ToHexString(data));
+        return true;
+    }
+
     public static bool HandlePacket(GatewayConnection connection, PacketReader reader)
     {
         if (!reader.TryRead(out short opCode))
@@ -37,6 +43,7 @@ public static class BaseInventoryPacketHandler
             InventoryPacketUseStyleCard.OpCode => InventoryPacketUseStyleCardHandler.HandlePacket(connection, reader.Span),
             InventoryPacketPreviewStyleCard.OpCode => InventoryPacketPreviewStyleCardHandler.HandlePacket(connection, reader.Span),
             InventoryPacketUseStyleCardByItemRecord.OpCode => InventoryPacketUseStyleCardByItemRecordHandler.HandlePacket(connection, reader.Span),
+            15 or 16 => LogUnknownImmediateActivation(opCode, reader.Span),
             _ => false
         };
     }

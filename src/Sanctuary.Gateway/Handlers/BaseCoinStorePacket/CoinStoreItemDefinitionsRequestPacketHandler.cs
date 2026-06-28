@@ -28,6 +28,7 @@ public static class CoinStoreItemDefinitionsRequestPacketHandler
         }
 
         _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(CoinStoreItemDefinitionsRequestPacket), packet);
+        Console.WriteLine($"[165:2] Item definitions request. Count={packet.ItemDefinitions.Count}, Items=[{string.Join(",", packet.ItemDefinitions)}]");
 
         var coinStoreItemDefinitionsResponsePacket = new CoinStoreItemDefinitionsResponsePacket();
 

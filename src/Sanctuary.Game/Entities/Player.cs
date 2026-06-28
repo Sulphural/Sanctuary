@@ -2,11 +2,11 @@
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
 
-using Sanctuary.Core.Collections;
 using Sanctuary.Core.IO;
 using Sanctuary.Game.Interactions;
 using Sanctuary.Game.Zones;
@@ -43,14 +43,10 @@ public sealed class Player : ClientPcData, IEntity
     public List<FriendData> Friends { get; set; } = [];
     public List<IgnoreData> Ignores { get; set; } = [];
 
-    public ConcurrentSet<ulong> IncomingFriendRequests { get; } = [];
-
     public ConcurrentDictionary<ChatChannel, bool> ChatChannelStatus { get; set; } = [];
 
     public int StationCash { get; set; }
     public List<CoinStoreTransactionRecord> CoinStoreTransactions { get; set; } = [];
-
-    public int TimezoneOffset { get; set; }
 
     public Vector4 StartingZonePosition { get; set; }
     public Quaternion StartingZoneRotation { get; set; }
@@ -266,7 +262,7 @@ public sealed class Player : ClientPcData, IEntity
             SendTunneled(playerUpdatePacketAddNpc);
         }
 
-        /* var playerUpdatePacketNpcRelevance = new PlayerUpdatePacketNpcRelevance();
+        var playerUpdatePacketNpcRelevance = new PlayerUpdatePacketNpcRelevance();
 
         foreach (var npc in npcs)
         {
@@ -276,7 +272,7 @@ public sealed class Player : ClientPcData, IEntity
             playerUpdatePacketNpcRelevance.Entries.Add(new PlayerUpdatePacketNpcRelevance.Entry
             {
                 Guid = npc.Guid,
-                HasCursor = true,
+                Unknown = true,
                 CursorId = npc.CursorId,
                 Unknown2 = false
             });
@@ -293,12 +289,13 @@ public sealed class Player : ClientPcData, IEntity
                 continue;
 
             playerUpdatePacketAddNotifications.Notifications.Add(npc.Notification);
-
-            SendTunneled(playerUpdatePacketAddNotifications);
         }
 
+        if (playerUpdatePacketAddNotifications.Notifications.Count > 0)
+            SendTunneled(playerUpdatePacketAddNotifications);
+
         foreach (var npc in npcs)
-            VisibleNpcs.TryAdd(npc.Guid, npc); */
+            VisibleNpcs.TryAdd(npc.Guid, npc);
     }
 
     public void OnAddVisiblePlayers(params IEnumerable<Player> players)
@@ -517,6 +514,8 @@ public sealed class Player : ClientPcData, IEntity
             packet.MountQueuePosition = Mount.QueuePosition;
 
             packet.NameVerticalOffset = Mount.Definition.NameVerticalOffset;
+
+            Debug.WriteLine($"AddPc: {Name} {Guid} | {Mount.Guid} {Mount.Seat} {Mount.QueuePosition}");
         }
 
         return packet;

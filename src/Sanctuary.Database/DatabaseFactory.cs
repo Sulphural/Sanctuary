@@ -40,7 +40,8 @@ internal class DatabaseFactory : IDesignTimeDbContextFactory<DatabaseContext>
 
             case DatabaseProvider.Sqlite:
                 builder.UseSqlite(databaseOptions.ConnectionString,
-                    x => x.MigrationsAssembly(providerAssembly));
+                    x => x.MigrationsAssembly(providerAssembly))
+                    .EnableSensitiveDataLogging();
                 break;
 
             default:

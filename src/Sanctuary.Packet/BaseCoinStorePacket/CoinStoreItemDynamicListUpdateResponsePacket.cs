@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 using Sanctuary.Core.IO;
 using Sanctuary.Packet.Common;
@@ -9,7 +9,7 @@ public class CoinStoreItemDynamicListUpdateResponsePacket : BaseCoinStorePacket,
 {
     public new const short OpCode = 9;
 
-    public Dictionary<int, ItemDefinitionMetaData> DynamicItems = new();
+    public Dictionary<int, ItemDefinitionMetaData> DynamicItems = [];
 
     public CoinStoreItemDynamicListUpdateResponsePacket() : base(OpCode)
     {
@@ -20,7 +20,6 @@ public class CoinStoreItemDynamicListUpdateResponsePacket : BaseCoinStorePacket,
         using var writer = new PacketWriter();
 
         Write(writer);
-
         writer.Write(DynamicItems);
 
         return writer.Buffer;

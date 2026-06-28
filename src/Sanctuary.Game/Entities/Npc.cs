@@ -61,7 +61,7 @@ public class Npc : IEntity
 
     public byte CursorId { get; set; }
 
-    // public NotificationInfo? Notification { get; set; }
+    public NotificationInfo? Notification { get; set; }
 
     public List<CharacterAttachmentData> Attachments { get; set; } = [];
 
@@ -265,7 +265,10 @@ public class Npc : IEntity
 
             NameScale = default,
 
-            NameplateImageId = NameplateImageId
+            NameplateImageId = NameplateImageId,
+
+            NotificationImageSetId = Notification?.ImageId ?? 0,
+            NotificationData = Notification
         };
 
         return packet;

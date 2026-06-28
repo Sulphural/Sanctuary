@@ -209,6 +209,8 @@ public static class CoinStoreSellToClientRequestPacketHandler
 
         coinStoreTransactionCompletePacket.TransactionRecord.Id = connection.Player.CoinStoreTransactions.Count + 1;
 
+        coinStoreTransactionCompletePacket.TransactionRecord.MerchantGuid = connection.Player.ActiveMerchantGuid;
+
         coinStoreTransactionCompletePacket.TransactionRecord.Timestamp = DateTimeOffset.UtcNow;
 
         coinStoreTransactionCompletePacket.TransactionRecord.ItemRecord.Definition = clientItem.Definition;

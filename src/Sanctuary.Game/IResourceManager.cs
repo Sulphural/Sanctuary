@@ -26,11 +26,17 @@ public interface IResourceManager
     StoreBundleCategoryGroupDefinitionCollection StoreBundleCategoryGroups { get; }
 
     ZoneDefinitionCollection Zones { get; }
+    HouseDefinitionCollection Houses { get; }
     MountDefinitionCollection Mounts { get; }
+    PetDefinitionCollection Pets { get; }
     PlayerTitleCollection PlayerTitles { get; }
     ProfileDefinitionCollection Profiles { get; }
     QuickChatDefinitionCollection QuickChats { get; }
     PointOfInterestDefinitionCollection PointOfInterests { get; }
+    NpcSpawnCollection NpcSpawns { get; }
+    NpcVendorCollection NpcVendors { get; }
+
+    ConsumableCollection Consumables { get; }
 
     bool Load();
 }

@@ -37,7 +37,11 @@ public static class PacketMountSpawnByItemDefinitionIdHandler
         if (!_resourceManager.ClientItemDefinitions.TryGetValue(packet.ItemDefinitionId, out var clientItemDefinition))
             return true;
 
+<<<<<<< Updated upstream
         var mountInfo = connection.Player.Mounts.LastOrDefault(x => x.Definition == clientItemDefinition.Param1);
+=======
+        var mountInfo = connection.Player.Mounts.FirstOrDefault(x => x.Definition == clientItemDefinition.Param1);
+>>>>>>> Stashed changes
 
         if (mountInfo is null)
             return true;

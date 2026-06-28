@@ -61,12 +61,16 @@ public class GatewayService : BackgroundService
 
     protected override Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        // Check we can connect to the database.
+        // Check we can connect to the database and apply migrations.
         using var dbContext = _dbContextFactory.CreateDbContext();
 
-        if (!dbContext.Database.CanConnect())
+        try
         {
-            _logger.LogCritical("Cannot start {server}, failed to connect to database.", nameof(GatewayServer));
+            dbContext.Database.Migrate();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex, "Cannot start {server}. Failed to reach database.", nameof(GatewayServer));
 
             _hostApplicationLifetime.StopApplication();
 

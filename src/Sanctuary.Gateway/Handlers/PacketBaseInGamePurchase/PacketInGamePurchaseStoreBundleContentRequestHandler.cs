@@ -35,6 +35,9 @@ public static class PacketInGamePurchaseStoreBundleContentRequestHandler
         }
 
         _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(PacketInGamePurchaseStoreBundleContentRequest), packet);
+        Console.WriteLine($"[66:27] StoreBundleContentRequest: {packet.Requests.Count} request(s)");
+        foreach (var r in packet.Requests)
+            Console.WriteLine($"  StoreId={r.StoreId} BundleId={r.BundleId} MarketingItems=[{string.Join(",", r.MarketingItemIds)}]");
 
         var packetInGamePurchaseStoreBundleContentResponse = new PacketInGamePurchaseStoreBundleContentResponse();
 

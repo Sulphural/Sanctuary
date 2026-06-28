@@ -112,9 +112,17 @@ public static class InventoryPacketEquipByGuidHandler
             dbProfile.Items.Remove(dbItemOld);
         }
 
-        if (dbContext.SaveChanges() <= 0)
+        try
         {
-            _logger.LogWarning("Failed to save to database.");
+            if (dbContext.SaveChanges() <= 0)
+            {
+                _logger.LogWarning("Failed to save to database - no changes detected.");
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save item equipment to database.");
             return true;
         }
 
