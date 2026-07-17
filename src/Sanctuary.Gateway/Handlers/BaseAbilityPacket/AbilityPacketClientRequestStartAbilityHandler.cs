@@ -129,6 +129,25 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         return Math.Max(1, (int)dmg);
     }
 
+    // Brawler offensive traits: Bruising Strikes adds crit CHANCE (an unlocked Brawler rolls crits here);
+    // Savvy makes those crits hit harder (crit MULTIPLIER). Rolled per hit, so AoE specials can crit some
+    // targets and not others. A no-op for non-Brawlers / a Brawler below level 5.
+    private static int ApplyBrawlerTraitDamage(Player player, int baseDamage)
+    {
+        if (!BrawlerWeaponAbilities.HasTrait(player, BrawlerWeaponAbilities.BruisingStrikesLevel))
+            return baseDamage;
+
+        var critChance = BrawlerWeaponAbilities.BaseCritChancePercent + BrawlerWeaponAbilities.BruisingStrikesCritChanceBonus;
+        if (Random.Shared.Next(100) >= critChance)
+            return baseDamage;
+
+        var critMult = BrawlerWeaponAbilities.BaseCritMultiplier;
+        if (BrawlerWeaponAbilities.HasTrait(player, BrawlerWeaponAbilities.SavvyLevel))
+            critMult += BrawlerWeaponAbilities.SavvyCritBonus;
+
+        return Math.Max(1, (int)(baseDamage * critMult));
+    }
+
     // Lucky Shot (L20): a chance on each landed hit to refund a little energy (and kick the regen
     // loop so the bar visibly ticks up).
     private static void TryLuckyShotEnergy(Player player)
@@ -956,9 +975,10 @@ public static class AbilityPacketClientRequestStartAbilityHandler
                     if (!target.IsAlive)
                         continue; // e.g. died to an earlier hit this same tick
 
-                    // Archer traits (basic + specials): Precision adds flat damage + crit chance, Marksmanship
-                    // makes crits hit harder. Rolled per hit so AoE specials can crit some targets and not others.
-                    var hitDamage = ApplyArcherTraitDamage(player, damage);
+                    // Job crit traits (each gated to its own job, so only the active job's applies): Archer
+                    // Precision/Marksmanship, Brawler Bruising Strikes/Savvy. Rolled per hit so AoE specials
+                    // can crit some targets and not others.
+                    var hitDamage = ApplyBrawlerTraitDamage(player, ApplyArcherTraitDamage(player, damage));
 
                     var killed = target.ApplyDamage(hitDamage);
 

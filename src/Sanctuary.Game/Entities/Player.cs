@@ -479,11 +479,23 @@ public sealed class Player : ClientPcData, IEntity
         return pct;
     }
 
-    // Reduce an incoming enemy hit for defensive traits (Ninja's Shrouded Armor). At least 1 damage still lands.
+    // Reduce an incoming enemy hit for defensive traits (Ninja's Shrouded Armor, Brawler's Toughness), and
+    // apply Brawler Resilience (heal-on-hit) as a side effect. At least 1 damage still lands.
     public int ReduceIncomingDamage(int damage)
     {
         if (Combat.NinjaWeaponAbilities.HasTrait(this, Combat.NinjaWeaponAbilities.ShroudedArmorLevel))
             damage = (int)(damage * (1f - Combat.NinjaWeaponAbilities.ShroudedArmorDamageReduction));
+
+        // Brawler Toughness: withstand more damage before being knocked out.
+        if (Combat.BrawlerWeaponAbilities.HasTrait(this, Combat.BrawlerWeaponAbilities.ToughnessLevel))
+            damage = (int)(damage * (1f - Combat.BrawlerWeaponAbilities.ToughnessDamageReduction));
+
+        // Brawler Resilience: gain a little health each time you're hit (capped at max, applied before the
+        // caller subtracts the reduced damage, so a hit can be partly — even fully — offset).
+        if (Combat.BrawlerWeaponAbilities.HasTrait(this, Combat.BrawlerWeaponAbilities.ResilienceLevel)
+            && Stats.TryGetValue(CharacterStatId.MaxHealth, out var maxHpStat))
+            CurrentHitpoints = Math.Min(maxHpStat.Int, CurrentHitpoints + Combat.BrawlerWeaponAbilities.ResilienceHealPerHit);
+
         return Math.Max(1, damage);
     }
 
