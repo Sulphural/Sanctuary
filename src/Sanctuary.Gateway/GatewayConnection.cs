@@ -761,8 +761,14 @@ public class GatewayConnection : UdpConnection
         {
             using var dbContext = _dbContextFactory.CreateDbContext();
 
+            // Items use a per-character composite key (Id, CharacterId) that is NOT DB-generated — character
+            // creation assigns it manually. So compute the next id for this character; relying on auto-increment
+            // left giveitem'd items with Id 0, which the client renders as a stuck equipped weapon.
+            var nextId = (dbContext.Items.Where(x => x.CharacterId == Player.CharacterId).Max(x => (int?)x.Id) ?? 0) + 1;
+
             var dbItem = new DbItem
             {
+                Id = nextId,
                 Tint = item.Tint,
                 Count = item.Count,
                 Definition = item.Definition,
