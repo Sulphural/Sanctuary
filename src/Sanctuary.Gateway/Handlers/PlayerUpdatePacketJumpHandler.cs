@@ -29,8 +29,13 @@ public static class PlayerUpdatePacketJumpHandler
 
         // _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(PlayerUpdatePacketJump), packet);
 
+        // Never trust the client's guid - the packet is rebroadcast to everyone in range below, so a
+        // spoofed guid would move another player's character.
+        packet.Guid = connection.Player.Guid;
+
         connection.Player.Mount?.UpdatePosition(packet.Position, packet.Rotation);
         connection.Player.Pet?.UpdatePosition(packet.Position, packet.Rotation);
+
         connection.Player.UpdatePosition(packet.Position, packet.Rotation);
 
         connection.Player.SendTunneledToVisible(packet);

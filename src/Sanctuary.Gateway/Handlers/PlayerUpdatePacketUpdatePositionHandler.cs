@@ -33,6 +33,10 @@ public static class PlayerUpdatePacketUpdatePositionHandler
 
         // _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(PlayerUpdatePacketUpdatePosition), packet);
 
+        // Never trust the client's guid - the packet is rebroadcast to everyone in range, so a spoofed
+        // guid would move another player's character.
+        packet.Guid = connection.Player.Guid;
+
         connection.Player.Mount?.UpdatePosition(packet.Position, packet.Rotation);
 
         // Update pet position to follow owner
@@ -190,6 +194,7 @@ public static class PlayerUpdatePacketUpdatePositionHandler
                 connection.Player.SendTunneledToVisible(petUpdate, true);
             }
         }
+
 
         connection.Player.UpdatePosition(packet.Position, packet.Rotation);
 
