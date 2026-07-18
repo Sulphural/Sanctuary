@@ -1068,17 +1068,11 @@ public static class AbilityPacketClientRequestStartAbilityHandler
                     // so play it explicitly (the switch away from AttackProcessed had dropped every impact FX).
                     if (effectId > 0)
                     {
-                        // Impact FX now ride op36/14 DetonateProjectile instead of PlayCompositeEffect.
-                        // CompositeEffectId is CONFIRMED (live: id 21 rendered; the same id in the second
-                        // int did nothing), and it plays without a projectile in flight.
-                        // Unknown2/Unknown3 are sent as 0: that is the exact combination verified to
-                        // render, and neither showed any observable local effect across 0/1/500 and
-                        // 0.0/100.0. They are suspected projectile bookkeeping (linking a detonation to an
-                        // in-flight LaunchAndLand projectile) but that is NOT established.
-                        player.SendTunneledToVisible(new AbilityPacketDetonateProjectile
+                        player.SendTunneledToVisible(new PlayerUpdatePacketPlayCompositeEffect
                         {
                             Guid = target.Guid,
                             CompositeEffectId = effectId,
+                            Position = target.Position,
                         }, sendToSelf: true);
                     }
 
