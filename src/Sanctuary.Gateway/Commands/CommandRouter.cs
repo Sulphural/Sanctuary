@@ -64,6 +64,22 @@ public static class CommandRouter
         // Remove the prefix (/ or !)
         var verb = parts[0].Substring(1).ToLowerInvariant();
 
+        // A throwing handler must never wedge the chat pipeline — catch, log, and tell the caller, but always
+        // report the command as handled so it can't fall through to the legacy "!cast"/"!anim" string checks.
+        try
+        {
+            return Dispatch(conn, verb, message, parts);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Command '{Verb}' threw.", verb);
+            SendSystem(conn, $"Command '{verb}' failed: {ex.Message}");
+            return true;
+        }
+    }
+
+    private static bool Dispatch(GatewayConnection conn, string verb, string message, string[] parts)
+    {
         switch (verb)
         {
             case "help":
@@ -78,6 +94,10 @@ public static class CommandRouter
                 return HandleEnforcer(conn, parts);
             case "where":
                 return HandleWhere(conn, parts);
+            case "pos":
+            case "coords":
+            case "loc":
+                return HandlePos(conn, parts);
             case "tp":
                 return HandleTp(conn, parts);
             case "bring":
@@ -175,6 +195,39 @@ public static class CommandRouter
                 SendSystem(conn, "!proster -> sent a candidate S2C GroupUpdate (watch Frida).");
                 return true;
 
+            // ENCOUNTER GAQ RE (2026-07-17): "!ginvite" sends the runner an op41/102 EncounterInvitation so we
+            // can Frida-watch their OWN client's op41 dispatcher (FUN_00aa36c0) parse it + (hopefully) raise the
+            // accept/reject popup / "Waiting…" banner, then sweep the fields. Self-targeted so one client can
+            // iterate. Usage: !ginvite [encId] [instId] [A] [B]  (Guid defaults to self; all default 0/1/0/0).
+            case "ginvite":
+            {
+                int Arg(int i, int def) => parts.Length > i && int.TryParse(parts[i], out var v) ? v : def;
+                var pkt = new EncounterInvitationPacket
+                {
+                    Unknown = Arg(1, 0),   // EncounterId (header)
+                    Unknown2 = Arg(2, 1),  // InstanceId (header)
+                    Guid = conn.Player.Guid, // inviter = self (names the popup)
+                    A = Arg(3, 0),
+                    B = Arg(4, 0),
+                };
+                // Optional 6th arg: a raw guid (numeric) to override the guid field, OR a TARGET PLAYER NAME to
+                // send the popup to (so a leader can sweep A on a member's REAL cross-player popup). Default self.
+                var target = conn.Player;
+                if (parts.Length > 5)
+                {
+                    if (ulong.TryParse(parts[5], out var g))
+                        pkt.Guid = g;
+                    else if (!_zoneManager.TryGetPlayer(parts[5], out target))
+                    {
+                        SendSystem(conn, $"!ginvite: player '{parts[5]}' not found.");
+                        return true;
+                    }
+                }
+                target.SendTunneled(pkt);
+                SendSystem(conn, $"!ginvite -> op41/102 enc={pkt.Unknown} A={pkt.A} B={pkt.B} guid={pkt.Guid} -> {target.Name?.FullName}. Watch their screen.");
+                return true;
+            }
+
             default:
                 SendSystem(conn, $"Unknown command '{verb}'. Try /help.");
                 return true;
@@ -201,20 +254,79 @@ public static class CommandRouter
         return true;
     }
 
+    // Dev mapping helper: print (and log) the caller's current coordinates in copy-paste-ready forms — a raw
+    // Vector4 and the DungeonDefinition center fields — for noting player/enemy spawn spots per dungeon. Stand on
+    // the spot and run "!pos". "!pos npcs" also lists the nearest NPCs + their coords (handy for enemy placement).
+    // Everything is also written to the gateway Info log, so a whole mapping run can be collected from the file.
+    private static bool HandlePos(GatewayConnection conn, string[] parts)
+    {
+        var p = conn.Player;
+        var pos = p.Position;
+        var rot = p.Rotation;
+        var heading = MathF.Atan2(rot.X, rot.Z);
+        var deg = heading * 180f / MathF.PI;
+        var world = p.Zone?.Name ?? "(no zone)";
+
+        SendSystem(conn, $"[POS] {p.Name?.FullName} @ {world}");
+        SendSystem(conn, $"  X={pos.X:0.00}  Y={pos.Y:0.00}  Z={pos.Z:0.00}  heading={deg:0}°");
+        SendSystem(conn, $"  new Vector4({pos.X:0.00}f, {pos.Y:0.00}f, {pos.Z:0.00}f, 1f)");
+        SendSystem(conn, $"  CenterX = {pos.X:0.00}f, CenterZ = {pos.Z:0.00}f, GroundY = {pos.Y:0.00}f");
+
+        // NB: don't reuse {x}/{y}/{z} in this template — NLog binds named placeholders POSITIONALLY, so a
+        // reused name needs another arg (an 11-placeholder template with 8 args threw FormatException on every
+        // !pos). The copy-paste Vector4 form is already shown to the caller via SendSystem above.
+        _logger.LogInformation("[POS] {name} @ {world} | X={x:0.00} Y={y:0.00} Z={z:0.00} W={w:0.00} | heading={deg:0}deg ({h:0.000}rad)",
+            p.Name?.FullName, world, pos.X, pos.Y, pos.Z, pos.W, deg, heading);
+
+        if (parts.Length >= 2 && parts[1].StartsWith("npc", StringComparison.OrdinalIgnoreCase))
+        {
+            var zone = p.Zone;
+            if (zone is not null)
+            {
+                float Dist(Npc n) { var dx = n.Position.X - pos.X; var dz = n.Position.Z - pos.Z; return MathF.Sqrt(dx * dx + dz * dz); }
+                var near = zone.Npcs.Where(n => n.Visible).OrderBy(Dist).Take(12).ToList();
+                SendSystem(conn, $"  -- {near.Count} nearest NPCs --");
+                foreach (var n in near)
+                {
+                    SendSystem(conn, $"  model={n.ModelId} name={n.NameId} @ ({n.Position.X:0.00}, {n.Position.Y:0.00}, {n.Position.Z:0.00}) d={Dist(n):0.0}{(n.IsHostile ? " [hostile]" : "")}");
+                    _logger.LogInformation("[POS-NPC] {world} model={model} nameId={nameId} hostile={h} @ new Vector4({x:0.00}f,{y:0.00}f,{z:0.00}f,1f) dist={d:0.0}",
+                        world, n.ModelId, n.NameId, n.IsHostile, n.Position.X, n.Position.Y, n.Position.Z, Dist(n));
+                }
+            }
+        }
+        return true;
+    }
+
     private static bool HandleHelp(GatewayConnection conn)
     {
         string helpText =
             "Available commands:\n" +
-            "/help\n" +
-            "/listplayers\n" +
+            "/help - This list\n" +
+            "/pos (or /coords, /loc) - Show your coordinates; '/pos npc' also lists nearby NPCs\n" +
+            "/listplayers - List online players\n" +
+            "/hp [full] - HP/Mana status (full = heal to max)\n" +
+            "/respawn - Revive after being knocked out\n" +
+            "/die - Knock yourself out (test)\n" +
+            "/dodge [on|off] - Toggle always-dodge (test)\n" +
+            "/xp [amount] - Grant your active job XP\n" +
+            "/fly - Toggle fly mode\n" +
             "/createhouse [HouseDefId] - Create a new house\n" +
             "/listhouses - List your houses\n" +
             "/gohouse [HouseId] - Enter a house\n" +
             "/petspawn [PetId] - Spawn a pet\n" +
             "/petdespawn - Despawn your active pet\n" +
-            "/respawn - Revive after death\n" +
-            "/hp - Check HP/Mana status\n" +
-            "/hp full - Heal to full HP and Mana";
+            "/petlist - List your pets\n" +
+            "\nParty:\n" +
+            "/paccept - Accept a party invite\n" +
+            "/pleave - Leave your party\n" +
+            "/ptest - (RE) send yourself a candidate group invite\n" +
+            "/proster - (RE) send yourself a candidate group roster\n" +
+            "\nDev/test:\n" +
+            "/dungeon [id] - Enter a combat dungeon by activity id (no arg lists them)\n" +
+            "/spawntest - Spawn a combat test dummy\n" +
+            "/testicons - Icon probe\n" +
+            "/testsubtext - Subtext probe\n" +
+            "/lua [code] - Run a client Lua snippet";
 
         if (IsEnforcer(conn))
         {
@@ -232,12 +344,15 @@ public static class CommandRouter
         {
             helpText += "\n\nAdmin commands:\n" +
                 "/npc spawn [NameId] [ModelId] [TextureAlias]\n" +
-                "/goto x y z\n" +
-                "/announce [Message]\n" +
-                "/admin list\n" +
+                "/goto x y z - Teleport to coordinates\n" +
+                "/announce [Message] - Server-wide announcement\n" +
+                "/admin list - List admins\n" +
+                "/giveitem [ItemId] [quantity] - Give yourself an item\n" +
+                "/spawnenemy [ModelId] [Level] [Name] - Spawn a combat NPC\n" +
                 "/spawnhouse [ModelId] - Test house models\n" +
                 "/testeffect [effectId] [modelId] [animId] [standAnimId]\n" +
-                "/spawnenemy [ModelId] [Level] [Name] - Spawn a combat NPC";
+                "/playeffect [effectId] - Play a composite effect on you\n" +
+                "/testtransform [transformId] - Test a transformation";
         }
 
         SendSystem(conn, helpText);
