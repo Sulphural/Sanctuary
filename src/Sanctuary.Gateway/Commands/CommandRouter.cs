@@ -269,8 +269,35 @@ public static class CommandRouter
                                          $"u={ArgI(2, 0)} u2={ArgI(3, 0)} u3={ArgF(4, 0f)}");
                         return true;
 
+                    case 9:
+                        conn.Player.SendTunneledToVisible(new AbilityPacketStopAura
+                        {
+                            Guid = self,
+                        }, sendToSelf: true);
+                        SendSystem(conn, $"!abil -> op36/9 StopAura guid={self}");
+                        return true;
+
+                    case 15:
+                        conn.Player.SendTunneledToVisible(new AbilityPacketPulseLocationTargeting
+                        {
+                            Enabled = ArgI(2, 1) != 0,
+                            Unknown = ArgF(3, 5f),
+                        }, sendToSelf: true);
+                        SendSystem(conn, $"!abil -> op36/15 PulseLocationTargeting " +
+                                         $"enabled={ArgI(2, 1) != 0} u={ArgF(3, 5f)}");
+                        return true;
+
+                    case 6:
+                        conn.Player.SendTunneledToVisible(new AbilityPacketClientMoveAndCast
+                        {
+                            Position = conn.Player.Position,
+                            Guid = self,
+                        }, sendToSelf: true);
+                        SendSystem(conn, $"!abil -> op36/6 ClientMoveAndCast pos={conn.Player.Position} guid={self}");
+                        return true;
+
                     default:
-                        SendSystem(conn, $"!abil: sub {sub} not implemented yet (have 14, 18).");
+                        SendSystem(conn, $"!abil: sub {sub} not implemented (have 6, 9, 14, 15, 18).");
                         return true;
                 }
             }
