@@ -157,7 +157,10 @@ public static class CommandRouter
             case "giveitem":
                 return HandleGiveItem(conn, parts);
             case "lua":
-                return HandleLua(conn, message);
+                // ADMIN ONLY: asks the client to execute arbitrary Lua. Proven NOT to work on this build
+                // (the client ignores both op36/17 and op47/7), but it must not be player-reachable if the
+                // encoding is ever fixed.
+                return RequireAdmin(conn) && HandleLua(conn, message);
 
             // PARTY (interim accept path until the native accept packet's byte format is captured).
             case "paccept":
@@ -236,6 +239,13 @@ public static class CommandRouter
             //   !abil 14 [int] [int] [float]   DetonateProjectile   (guid, int, int, float)
             case "abil":
             {
+                // ADMIN ONLY. These fire raw, partially-understood ability packets at players: !abil 6 is
+                // proven to FORCE a client cast, and !abil 4 reaches the action-bar system (it triggers a
+                // toolbar cooldown refresh), so a non-admin could wedge someone's toolbar or puppet their
+                // character. Dev probe, not a player command.
+                if (!RequireAdmin(conn))
+                    return true;
+
                 if (parts.Length < 2 || !int.TryParse(parts[1], out var sub))
                 {
                     SendSystem(conn, "Usage: !abil 18 [int] | !abil 14 [int] [int] [float]");
