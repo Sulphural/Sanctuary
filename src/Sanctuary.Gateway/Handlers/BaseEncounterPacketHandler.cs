@@ -25,6 +25,7 @@ namespace Sanctuary.Gateway.Handlers;
 public static class BaseEncounterPacketHandler
 {
     // op41 sub-opcodes (from exports/packet-opcode-map.tsv).
+    private const short EncounterInvitationResponse = 103;         // C2S = the native invite popup's ✓/✗ (accept/reject).
     private const short EncounterParticipantRequestEntrance = 108; // C2S = the GO! / "Press to Teleport" button.
     private const short EncounterRequestExit = 109;                // C2S = the "Leave" button on the encounter UI.
     private const short EncounterParticipantResume = 122;          // C2S = the "Revive" button on the respawn window.
@@ -59,6 +60,7 @@ public static class BaseEncounterPacketHandler
 
         return subOpCode switch
         {
+            EncounterInvitationResponse => HandleInvitationResponse(connection, reader),
             EncounterParticipantRequestEntrance => EncounterParticipantRequestEntranceHandler.HandlePacket(connection, reader),
             EncounterRequestExit => HandleRequestExit(connection),
             EncounterParticipantResume => HandleResume(connection, reader),
@@ -81,6 +83,23 @@ public static class BaseEncounterPacketHandler
         player.SendTunneled(new CommandPacketQuestDialogComplete());
         player.SendTunneled(new MiniGameStateRemovePacket());
         player.SendTunneled(PacketEncounterDataCommon.CreateDefault());
+        return true;
+    }
+
+    // INVITE RESPONSE (op41/sub103): the native group-encounter popup's ✓/✗. Wire format (live Frida+server
+    // capture 2026-07-17): [int EncounterId(0 from client)][int InstanceId][ulong responderGuid][byte accept]
+    // — accept 1 = ✓, 0 = ✗. The responder is this connection; the pending invite is matched by their party.
+    private static bool HandleInvitationResponse(GatewayConnection connection, PacketReader reader)
+    {
+        reader.TryRead(out int _);            // EncounterId (client sends 0)
+        reader.TryRead(out int _);            // InstanceId
+        reader.TryRead(out ulong _);          // responder guid (== connection.Player)
+        reader.TryRead(out byte accept);      // 1 = accept, 0 = reject
+
+        _logger.LogInformation("Encounter invite response from {name}: {ans}.",
+            connection.Player.Name, accept != 0 ? "ACCEPT" : "reject");
+
+        EncounterParticipantRequestEntranceHandler.HandleInviteResponse(connection.Player, accept != 0);
         return true;
     }
 
