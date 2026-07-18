@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using System.Text;
 
 using Sanctuary.Core.IO;
 
@@ -89,10 +90,16 @@ public class AbilityPacketLaunchAndLand : BaseAbilityPacket, ISerializablePacket
         foreach (var b in Nested)
             writer.Write(b);
 
-        // Pad (or the caller over-filled Nested and we simply stop) so the body is exactly what the
-        // client consumes. Measured, not assumed - see BodyLength.
+        // Pad so the body is exactly what the client consumes.
+        //
+        // BodyLength was measured with an EMPTY string (4 bytes of length prefix, no chars). A real name
+        // adds its UTF8 bytes on top, so the target MUST grow by that much. Padding to a fixed 240 with a
+        // non-empty name silently truncates the tail, the client reads past the end into garbage, and it
+        // CRASHES - that is exactly what happened when this was first tested with real asset names.
+        var target = BodyLength + Encoding.UTF8.GetByteCount(Name ?? string.Empty);
+
         var written = writer.Buffer.Length - headerLength;
-        for (var i = written; i < BodyLength; i++)
+        for (var i = written; i < target; i++)
             writer.Write((byte)0);
 
         return writer.Buffer;

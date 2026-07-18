@@ -306,17 +306,25 @@ public static class CommandRouter
                         SendSystem(conn, $"!abil -> op36/6 ClientMoveAndCast pos={conn.Player.Position} guid={self}");
                         return true;
 
+                    // !abil 4 [assetName] - the string at +0x18 is the only text field in any of the 7
+                    // ability packets. A projectile packet with no asset name has nothing to draw, so
+                    // this is the prime suspect for why launches render nothing.
+                    // Try e.g. PRJ_archer_freezing / PRJ_archer_stunning / PRJ_magical_blue_split.
                     case 4:
+                    {
+                        var asset = parts.Length > 2 ? parts[2] : string.Empty;
                         conn.Player.SendTunneledToVisible(new AbilityPacketLaunchAndLand
                         {
                             Guid = self,
+                            Name = asset,
                             Position = conn.Player.Position,
                             Guid2 = self,
                             Guid3 = self,
                         }, sendToSelf: true);
                         SendSystem(conn, $"!abil -> op36/4 LaunchAndLand guid={self} " +
-                                         $"(body padded to {AbilityPacketLaunchAndLand.BodyLength})");
+                                         $"name='{asset}' (body padded to {AbilityPacketLaunchAndLand.BodyLength})");
                         return true;
+                    }
 
                     // RAW SIZE SWEEP: !abil 0 <sub> <bodyBytes>
                     // Sends [op36][sub] + N zero bytes. The deserializer accepts only at the EXACT body
