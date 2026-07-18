@@ -228,6 +228,53 @@ public static class CommandRouter
                 return true;
             }
 
+            // DEV PROBE: fire a newly-reversed ability packet at yourself so we can confirm the client
+            // ACCEPTS the layout before wiring it into combat. Layouts came from the client's own inner
+            // readers (op36 dispatcher FUN_00a35cc0) and the method was validated against StartCasting,
+            // but "parses" and "does what we think" are different claims - this checks the first.
+            //   !abil 18 [int]                 CastInterrupt        (guid, int)
+            //   !abil 14 [int] [int] [float]   DetonateProjectile   (guid, int, int, float)
+            case "abil":
+            {
+                if (parts.Length < 2 || !int.TryParse(parts[1], out var sub))
+                {
+                    SendSystem(conn, "Usage: !abil 18 [int] | !abil 14 [int] [int] [float]");
+                    return true;
+                }
+
+                int ArgI(int i, int def) => parts.Length > i && int.TryParse(parts[i], out var v) ? v : def;
+                float ArgF(int i, float def) => parts.Length > i && float.TryParse(parts[i], out var v) ? v : def;
+
+                var self = conn.Player.Guid;
+                switch (sub)
+                {
+                    case 18:
+                        conn.Player.SendTunneledToVisible(new AbilityPacketCastInterrupt
+                        {
+                            Guid = self,
+                            Unknown = ArgI(2, 0),
+                        }, sendToSelf: true);
+                        SendSystem(conn, $"!abil -> op36/18 CastInterrupt guid={self} u={ArgI(2, 0)}");
+                        return true;
+
+                    case 14:
+                        conn.Player.SendTunneledToVisible(new AbilityPacketDetonateProjectile
+                        {
+                            Guid = self,
+                            Unknown = ArgI(2, 0),
+                            Unknown2 = ArgI(3, 0),
+                            Unknown3 = ArgF(4, 0f),
+                        }, sendToSelf: true);
+                        SendSystem(conn, $"!abil -> op36/14 DetonateProjectile guid={self} " +
+                                         $"u={ArgI(2, 0)} u2={ArgI(3, 0)} u3={ArgF(4, 0f)}");
+                        return true;
+
+                    default:
+                        SendSystem(conn, $"!abil: sub {sub} not implemented yet (have 14, 18).");
+                        return true;
+                }
+            }
+
             default:
                 SendSystem(conn, $"Unknown command '{verb}'. Try /help.");
                 return true;
