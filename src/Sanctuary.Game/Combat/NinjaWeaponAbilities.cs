@@ -156,7 +156,7 @@ public static class NinjaWeaponAbilities
         new(420950, 420974, 11646, InstigationLevel),
     ];
 
-    public static List<AbilityExperience> BuildTraitEntries(int rank) => JobTraits.Build(TraitData, rank);
+    public static List<AbilityExperience> BuildTraitEntries(int rank) => JobTraits.Build(TraitData, rank, NinjaProfileId);
 
     // True when the player is a Ninja whose rank has unlocked the given trait level.
     public static bool HasTrait(Player player, int traitLevel) =>

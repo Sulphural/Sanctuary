@@ -41,18 +41,21 @@ public static class AbilityPacketClientRequestStartAbilityHandler
 
     private const int FoodEffectCooldownMs = 120_000;
 
-    // Basic attack is essentially spammable (2014 capture: presses as fast as 0.17s apart, no real cooldown).
-    // StartCasting ActionTime locks the action-bar slot: tiny window for the basic, short wind-up for specials.
-    private const float MeleeActionTime = 0.15f;   // slot 0 basic attack — spammable, matches live cadence
+    // StartCasting ActionTime locks the action-bar slot for the whole swing/cast so you can't fire again mid-
+    // animation; DamageDelay is when the number lands (as the swing connects / the special resolves).
     private const float SpecialActionTime = 0.4f;  // slot 1 named special — a real wind-up
-    private const float MeleeDamageDelay = 0.15f;  // number pops as the fast swing lands
     private const float SpecialDamageDelay = 0.4f; // number pops at the end of the special's animation
 
-    // Basic attack resolves ONE swing per animation, not per key-press (the client can fire faster than the
-    // clip plays). Pacing is server-side: gate basic resolution to the swing cadence; presses inside the window
-    // are ignored so the animation plays fully and one number lands per swing. ~0.66s between hits (2014-04-01
-    // capture median 0.662s; sub-0.1s bursts are AoE specials). Specials are rate-gated by energy instead.
+    // Basic attack resolves ONE swing per ANIMATION, not per key-press (the client fires faster than the clip
+    // plays). Pace it to the swing animation's length so the slot locks + the damage number land in sync and you
+    // can't spam faster than the swing. Default 660ms (sword/fist; 2014-04-01 capture median 0.662s); 2-handed
+    // hammers wind up slower, so they get their own longer pace below.
     private const int BasicSwingMs = 660;
+    private static readonly System.Collections.Generic.Dictionary<int, int> SwingMsByAnim = new()
+    {
+        [1080] = 1150, // com_2hp_attack — 2-handed hammer swing (Brawler): slow, heavy wind-up
+    };
+    private static int SwingMsForAnimation(int anim) => SwingMsByAnim.GetValueOrDefault(anim, BasicSwingMs);
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, long> _nextBasicSwingTicks = new();
 
     // Energy (from the 2014-04-01 capture): max 100, regen +4/s time-based (full refill 25s, in & out of combat,
@@ -84,7 +87,11 @@ public static class AbilityPacketClientRequestStartAbilityHandler
                 while (GetEnergy(player) < MaxEnergy)
                 {
                     await Task.Delay(1000);
-                    var next = Math.Min(MaxEnergy, GetEnergy(player) + EnergyRegenPerSec);
+                    // Warrior High Morale (L15): energy regenerates faster.
+                    var regen = EnergyRegenPerSec;
+                    if (WarriorWeaponAbilities.HasTrait(player, WarriorWeaponAbilities.HighMoraleLevel))
+                        regen += WarriorWeaponAbilities.HighMoraleEnergyRegenBonus;
+                    var next = Math.Min(MaxEnergy, GetEnergy(player) + regen);
                     _energy[player.Guid] = next;
                     SendEnergy(player, next);
                 }
@@ -146,6 +153,63 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             critMult += BrawlerWeaponAbilities.SavvyCritBonus;
 
         return Math.Max(1, (int)(baseDamage * critMult));
+    }
+
+    // Warrior offensive trait: Piercing Strikes (L10) adds crit CHANCE. A no-op for non-Warriors / below L10.
+    private static int ApplyWarriorTraitDamage(Player player, int baseDamage)
+    {
+        if (!WarriorWeaponAbilities.HasTrait(player, WarriorWeaponAbilities.PiercingStrikesLevel))
+            return baseDamage;
+
+        var critChance = WarriorWeaponAbilities.BaseCritChancePercent + WarriorWeaponAbilities.PiercingStrikesCritChanceBonus;
+        if (Random.Shared.Next(100) >= critChance)
+            return baseDamage;
+
+        return Math.Max(1, (int)(baseDamage * WarriorWeaponAbilities.BaseCritMultiplier));
+    }
+
+    // Wizard offensive traits: Genius (L10) adds crit CHANCE; on a crit, Arcane Flare (L20) absorbs a little
+    // energy back. A no-op for non-Wizards / below L10.
+    private static int ApplyWizardTraitDamage(Player player, int baseDamage)
+    {
+        if (!WizardWeaponAbilities.HasTrait(player, WizardWeaponAbilities.GeniusLevel))
+            return baseDamage;
+
+        var critChance = WizardWeaponAbilities.BaseCritChancePercent + WizardWeaponAbilities.GeniusCritChanceBonus;
+        if (Random.Shared.Next(100) >= critChance)
+            return baseDamage;
+
+        // Arcane Flare: a crit absorbs arcane energy from the target back into the bar.
+        if (WizardWeaponAbilities.HasTrait(player, WizardWeaponAbilities.ArcaneFlareLevel))
+        {
+            var energy = GetEnergy(player);
+            if (energy < MaxEnergy)
+            {
+                var next = Math.Min(MaxEnergy, energy + WizardWeaponAbilities.ArcaneFlareEnergyRestore);
+                _energy[player.Guid] = next;
+                SendEnergy(player, next);
+            }
+        }
+
+        return Math.Max(1, (int)(baseDamage * WizardWeaponAbilities.BaseCritMultiplier));
+    }
+
+    // Ability damage is tuned for a maxed job; scale it down by the caster's job rank so a fresh (level-1)
+    // combat job can't one-shot everything. rank 1 -> LowRankDamageFactor of full, MaxLevel -> full.
+    private const float LowRankDamageFactor = 0.10f;
+    private static int ScaleDamageByRank(Player player, int baseDamage)
+    {
+        int rank;
+        try { rank = player.ActiveProfile.Rank; }
+        catch { return baseDamage; } // no active profile (shouldn't happen mid-cast) -> leave unscaled
+
+        const int max = Sanctuary.Game.Leveling.JobLeveling.MaxLevel;
+        if (rank >= max) return baseDamage;
+        if (rank < 1) rank = 1;
+
+        var t = (rank - 1f) / (max - 1f);              // 0 at rank 1, 1 at max
+        var factor = LowRankDamageFactor + (1f - LowRankDamageFactor) * t;
+        return Math.Max(1, (int)(baseDamage * factor));
     }
 
     // Lucky Shot (L20): a chance on each landed hit to refund a little energy (and kick the regen
@@ -794,20 +858,22 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         // (slot 0 = basic attack/shot, slot 1 = the weapon's named special).
         var ability = JobWeaponAbilities.ResolveAbility(player, packet.Data.Slot);
 
-        // Basic attack (slot 0) is fast/spammable; specials wind up. This controls both the client-side
-        // slot lock (StartCasting.ActionTime) and when the damage number resolves.
+        // Pace the basic attack to its swing ANIMATION (2h hammers wind up slower than swords/fists). The slot
+        // locks for the whole swing (ActionTime) and the number lands as it connects (DamageDelay ~85% in), so
+        // hits sync with the animation instead of firing many per swing when you spam.
         var isBasicMelee = packet.Data.Slot <= 0;
-        var actionTime = isBasicMelee ? MeleeActionTime : SpecialActionTime;
-        var damageDelay = isBasicMelee ? MeleeDamageDelay : SpecialDamageDelay;
+        var swingMs = isBasicMelee ? SwingMsForAnimation(ability.Animation) : 0;
+        var actionTime = isBasicMelee ? swingMs / 1000f : SpecialActionTime;
+        var damageDelay = isBasicMelee ? swingMs * 0.85f / 1000f : SpecialDamageDelay;
 
-        // Pace the basic attack to the swing animation: drop presses that arrive before the current swing
-        // finishes so we get one swing + one damage number per animation, not one per key-press.
-        if (isBasicMelee && BasicSwingMs > 0)
+        // Server-side pace backup: drop presses that arrive before the current swing finishes, so we get one
+        // swing + one damage number per animation, not one per key-press.
+        if (isBasicMelee && swingMs > 0)
         {
             var now = Environment.TickCount64;
             if (_nextBasicSwingTicks.TryGetValue(player.Guid, out var next) && now < next)
                 return true; // still mid-swing — ignore this extra click (no cast, no number)
-            _nextBasicSwingTicks[player.Guid] = now + BasicSwingMs;
+            _nextBasicSwingTicks[player.Guid] = now + swingMs;
         }
 
         // Energy gate (non-basic slots): each ability drains its EnergyCost (weapon specials = full 100, archer
@@ -881,6 +947,12 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         // see each other's moves/FX. Was caster-only, which is why teammates saw enemies die but not the moves.
         player.SendTunneledToVisible(startCasting, sendToSelf: true);
 
+        // Attack-cooldown sweep on the basic-attack button: tell the client the next swing is ready in the swing
+        // cadence (op36/11 MeleeRefresh sets cooldown-end = now + this). Basic attack only; specials are gated by
+        // energy, not this melee cooldown.
+        if (isBasicMelee)
+            player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = BasicSwingMs });
+
         // Weapon-empowering specials (Mysticism / Mystical Blade) bind their FX to the sword (item slot 7)
         // instead of the body. SlotCompositeEffectOverride op35/sub31: Guid + slot + composite effect.
         if (ability.SwordEffectId > 0)
@@ -931,10 +1003,15 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         // here (instead of on every key press) is what stops firing into empty air from flagging you in-combat.
         player.EnterWorldCombat();
 
-        _logger.LogInformation("Ability slot {slot} = '{name}' (dmg {dmg}, anim {anim}, fx {fx}, targets {count})",
-            packet.Data.Slot, ability.Name, ability.Damage, ability.Animation, ability.EffectId, targets.Count);
+        // Scale the ability's (max-level-tuned) damage down by the caster's job rank so a level-1 combat job
+        // doesn't hit as hard as a maxed one (was one-shotting everything). Ramps from LowRankDamageFactor at
+        // rank 1 to full at MaxLevel. Applies to every combat job (they share this path).
+        var scaledDamage = ScaleDamageByRank(player, ability.Damage);
 
-        ResolveDamageAfterCast(player, targets, ability.Damage, ability.EffectId, damageDelay,
+        _logger.LogInformation("Ability slot {slot} = '{name}' (dmg {dmg}->{scaled}, anim {anim}, fx {fx}, targets {count})",
+            packet.Data.Slot, ability.Name, ability.Damage, scaledDamage, ability.Animation, ability.EffectId, targets.Count);
+
+        ResolveDamageAfterCast(player, targets, scaledDamage, ability.EffectId, damageDelay,
             ability.CasterEndEffectId, ability.EnemyExtraEffectId);
 
         return true;
@@ -976,9 +1053,11 @@ public static class AbilityPacketClientRequestStartAbilityHandler
                         continue; // e.g. died to an earlier hit this same tick
 
                     // Job crit traits (each gated to its own job, so only the active job's applies): Archer
-                    // Precision/Marksmanship, Brawler Bruising Strikes/Savvy. Rolled per hit so AoE specials
-                    // can crit some targets and not others.
-                    var hitDamage = ApplyBrawlerTraitDamage(player, ApplyArcherTraitDamage(player, damage));
+                    // Precision/Marksmanship, Brawler Bruising Strikes/Savvy, Warrior Piercing Strikes, Wizard
+                    // Genius/Arcane Flare. Rolled per hit so AoE specials can crit some targets and not others.
+                    var hitDamage = ApplyWizardTraitDamage(player,
+                        ApplyWarriorTraitDamage(player,
+                            ApplyBrawlerTraitDamage(player, ApplyArcherTraitDamage(player, damage))));
 
                     var killed = target.ApplyDamage(hitDamage);
 

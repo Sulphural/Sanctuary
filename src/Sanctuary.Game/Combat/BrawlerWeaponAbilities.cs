@@ -79,7 +79,7 @@ public static class BrawlerWeaponAbilities
         new(420941, 420965, 2056,  ResilienceLevel),      // Resilience (vitality icon)
     ];
 
-    public static List<AbilityExperience> BuildTraitEntries(int rank) => JobTraits.Build(TraitData, rank);
+    public static List<AbilityExperience> BuildTraitEntries(int rank) => JobTraits.Build(TraitData, rank, BrawlerProfileId);
 
     public static bool HasTrait(Player player, int traitLevel) =>
         player.ActiveProfileId == BrawlerProfileId && player.ActiveProfile.Rank >= traitLevel;

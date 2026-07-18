@@ -490,6 +490,10 @@ public sealed class Player : ClientPcData, IEntity
         if (Combat.BrawlerWeaponAbilities.HasTrait(this, Combat.BrawlerWeaponAbilities.ToughnessLevel))
             damage = (int)(damage * (1f - Combat.BrawlerWeaponAbilities.ToughnessDamageReduction));
 
+        // Wizard Magical Shielding: magical shielding prevents some incoming damage.
+        if (Combat.WizardWeaponAbilities.HasTrait(this, Combat.WizardWeaponAbilities.MagicalShieldingLevel))
+            damage = (int)(damage * (1f - Combat.WizardWeaponAbilities.MagicalShieldingDamageReduction));
+
         // Brawler Resilience: gain a little health each time you're hit (capped at max, applied before the
         // caller subtracts the reduced damage, so a hit can be partly — even fully — offset).
         if (Combat.BrawlerWeaponAbilities.HasTrait(this, Combat.BrawlerWeaponAbilities.ResilienceLevel)
@@ -730,6 +734,7 @@ public sealed class Player : ClientPcData, IEntity
         // wiped before it rendered ("effects sometimes won't show when leveling up"). Deferring it onto the
         // tick loop lands it cleanly on the character every time — still one clean burst (no 3-4 repeats).
         _levelUpBurstAtTicks = Environment.TickCount64 + LevelUpBurstDelayMs;
+        _levelUpBurstDeadlineTicks = Environment.TickCount64 + LevelUpBurstMaxWaitMs;
     }
 
     // Rebuild the active profile's Traits list to the current rank so newly-unlocked traits show after a
@@ -895,6 +900,13 @@ public sealed class Player : ClientPcData, IEntity
     // enough to still read as part of the level-up moment.
     private const int LevelUpBurstDelayMs = 300;
 
+    // How long the deferred burst keeps retrying while the player isn't renderable (mid zone-transfer) before
+    // giving up — long enough to outlast a dungeon-return teleport, short enough to never fire "much later".
+    private const int LevelUpBurstMaxWaitMs = 8000;
+
+    // Wall-clock deadline (ticks) for the retry above; set alongside _levelUpBurstAtTicks.
+    private long _levelUpBurstDeadlineTicks;
+
     // When to fire the deferred level-up burst (Environment.TickCount64), or 0 for none. Set by
     // ApplyLevelUpEffects, consumed by LevelUpBurstTick on the tick loop.
     private long _levelUpBurstAtTicks;
@@ -905,6 +917,16 @@ public sealed class Player : ClientPcData, IEntity
     {
         if (_levelUpBurstAtTicks == 0 || Environment.TickCount64 < _levelUpBurstAtTicks)
             return;
+
+        // Not renderable yet (mid zone-transfer — e.g. leveling on the last dungeon kill just before the return
+        // teleport)? Retry on later ticks instead of dropping the burst, up to a deadline. Dropping it here is
+        // why the level-up effect "sometimes" didn't play — the deferred burst landed during a transfer with
+        // Visible == false and was lost.
+        if (!Visible && Environment.TickCount64 < _levelUpBurstDeadlineTicks)
+        {
+            _levelUpBurstAtTicks = Environment.TickCount64 + LevelUpBurstDelayMs;
+            return;
+        }
 
         _levelUpBurstAtTicks = 0;
         FireLevelUpBurst();

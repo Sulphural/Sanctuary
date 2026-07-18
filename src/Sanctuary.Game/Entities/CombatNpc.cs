@@ -303,6 +303,25 @@ public class CombatNpc : Npc
         foreach (var player in VisiblePlayers.Values)
             player.SendTunneled(attack);
 
+        // Warrior Counterattack (L20): reflect a share of the hit back at us (the attacker). Pops a floating
+        // number on us via a second AttackProcessed with the roles swapped.
+        if (Combat.WarriorWeaponAbilities.HasTrait(target, Combat.WarriorWeaponAbilities.CounterattackLevel))
+        {
+            var reflect = System.Math.Max(1, (int)(finalDamage * Combat.WarriorWeaponAbilities.CounterattackReflectPercent));
+            ApplyDamage(reflect);
+            var counter = new CombatPacketAttackProcessed
+            {
+                AttackerGuid = target.Guid,
+                TargetGuid = Guid,
+                Damage = reflect,
+                MaxHealth = MaxHealth,
+                CurrentHealth = Health,
+                CompositeEffectId = 0,
+            };
+            foreach (var player in VisiblePlayers.Values)
+                player.SendTunneled(counter);
+        }
+
         // Models whose default combat-contact event doesn't animate get an explicit swing clip so they
         // don't hit while frozen (e.g. the Abominable Snowman boss).
         if (ExplicitAttackAnimByModel.TryGetValue(ModelId, out var swingAnimId))

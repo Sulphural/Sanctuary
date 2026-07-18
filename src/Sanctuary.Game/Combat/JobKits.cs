@@ -15,6 +15,8 @@ public static class JobKits
         new NinjaJobKit(),
         new ArcherJobKit(),
         new BrawlerJobKit(),
+        new WarriorJobKit(),
+        new WizardJobKit(),
     }.ToDictionary(kit => kit.ProfileId);
 
     public static IEnumerable<IJobKit> All => ByProfileId.Values;
