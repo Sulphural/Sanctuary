@@ -601,7 +601,7 @@ public sealed class StartingZone : BaseZone
         enemy.ShowHealthBar = true;
         enemy.MovementType = 2;             // PHYSICS — grounded with gravity (CONTROLLER/1 left them "flying")
 
-        enemy.InitializeFromLevel(WorldEnemyLevel); // HP / damage / XP / attack cadence
+        enemy.InitializeFromLevel(WorldEnemyLevel, Entities.EnemyTiers.FromName(definition.Name)); // HP/damage/XP by tier
         enemy.Speed = enemy.CombatSpeed;
 
         // The player's ability handler damages via Npc.Health and routes the kill through OnNpcKilled, so
@@ -639,7 +639,7 @@ public sealed class StartingZone : BaseZone
         enemy.ShowHealthBar = true;
         enemy.MovementType = 2;             // PHYSICS — grounded with gravity (CONTROLLER/1 left them "flying")
 
-        enemy.InitializeFromLevel(level);
+        enemy.InitializeFromLevel(level, Entities.EnemyTiers.FromName(name));
         enemy.Speed = enemy.CombatSpeed;
         enemy.MaxHealth = enemy.MaxHitpoints;
         enemy.Health = enemy.CurrentHitpoints;

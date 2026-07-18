@@ -76,15 +76,20 @@ public class CombatNpc : Npc
         Disposition = 0; // Hostile
     }
 
-    // Initialize combat stats based on level.
-    public void InitializeFromLevel(int level)
+    // Initialize combat stats from level + a difficulty TIER (classified from the enemy's name — see
+    // EnemyTiers.FromName). Tiers give variety so not every enemy is the same fight: a Grunt/Initiate is a
+    // quick kill, a Bruiser/Guardian is a slog, a boss is a real fight. Base HP is tankier than before (was
+    // 200+level*150 = a 650-HP level-3 that a fresh player 2-shot) and per-kill XP is lower (was 50+level*25 =
+    // ~125, only ~8 kills per early level).
+    public void InitializeFromLevel(int level, EnemyTier tier = EnemyTier.Normal)
     {
+        var m = tier.Multipliers();
         Level = level;
-        MaxHitpoints = 200 + (level * 150);
+        MaxHitpoints = (int)((350 + level * 200) * m.Hp);
         CurrentHitpoints = MaxHitpoints;
-        AttackDamage = 20 + (level * 15);
+        AttackDamage = (int)((20 + level * 15) * m.Damage);
         Defense = level * 5;
-        XpReward = 50 + (level * 25);
+        XpReward = (int)((25 + level * 8) * m.Xp);
         AttackIntervalSeconds = Math.Max(1.5f, 2.5f - (level * 0.05f));
     }
 

@@ -208,7 +208,10 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         if (rank < 1) rank = 1;
 
         var t = (rank - 1f) / (max - 1f);              // 0 at rank 1, 1 at max
-        var factor = LowRankDamageFactor + (1f - LowRankDamageFactor) * t;
+        // Ease-IN (t^2) rather than linear: a fresh job ramps up its damage gradually so early combat isn't a
+        // 2-shot (the old linear curve gave rank 3 ~20% of full = still a 2-hit kill on a 650-HP overworld
+        // enemy). Power still climbs to full by max rank, where a basic 1-shots basic enemies as retail did.
+        var factor = LowRankDamageFactor + (1f - LowRankDamageFactor) * t * t;
         return Math.Max(1, (int)(baseDamage * factor));
     }
 
