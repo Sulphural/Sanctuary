@@ -20,10 +20,14 @@ public class AbilityPacketDetonateProjectile : BaseAbilityPacket, ISerializableP
 {
     public new const short OpCode = 14;
 
-    public ulong Guid;        // projectile owner / target - to be confirmed
-    public int Unknown;
-    public int Unknown2;
-    public float Unknown3;
+    // SEMANTICS CONFIRMED LIVE: sending CompositeEffectId=21 (PFX_smoke_black_explosion) played the
+    // effect on screen; putting the same id in Unknown2 instead did nothing. So the effect id is this
+    // first int. It plays WITHOUT a projectile having to be in flight, which makes this packet usable
+    // directly as an impact/detonation effect.
+    public ulong Guid;              // entity the detonation plays on
+    public int CompositeEffectId;   // CONFIRMED: the effect that plays
+    public int Unknown2;            // still unknown - putting an effect id here did nothing
+    public float Unknown3;          // still unknown - suspected scale/radius, not yet distinguished
 
     public AbilityPacketDetonateProjectile() : base(OpCode)
     {
@@ -36,7 +40,7 @@ public class AbilityPacketDetonateProjectile : BaseAbilityPacket, ISerializableP
         base.Write(writer);   // [op 36][sub 14]
 
         writer.Write(Guid);
-        writer.Write(Unknown);
+        writer.Write(CompositeEffectId);
         writer.Write(Unknown2);
         writer.Write(Unknown3);
 

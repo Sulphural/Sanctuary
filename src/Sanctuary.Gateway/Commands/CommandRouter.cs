@@ -261,7 +261,7 @@ public static class CommandRouter
                         conn.Player.SendTunneledToVisible(new AbilityPacketDetonateProjectile
                         {
                             Guid = self,
-                            Unknown = ArgI(2, 0),
+                            CompositeEffectId = ArgI(2, 0),
                             Unknown2 = ArgI(3, 0),
                             Unknown3 = ArgF(4, 0f),
                         }, sendToSelf: true);
