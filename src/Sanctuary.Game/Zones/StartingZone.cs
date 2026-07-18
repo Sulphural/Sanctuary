@@ -59,6 +59,36 @@ public sealed class StartingZone : BaseZone
     // offer ONLY for this spirit; the rest are fightable world enemies.
     public ulong SpiritEntranceGuid => _spiritEntranceGuid;
 
+    // NPCs that have their OWN authored lines, taken from the dialogue ids Quests.json already pairs with
+    // them (GiverDialogueId / TargetDialogueId / per-goal DialogueId). These are the real retail words that
+    // character speaks. Only lines that survive as a bubble are listed: the client renders <BR> but NOT
+    // <font>, so markup-bearing and paragraph-length quest text is deliberately left out — it would show
+    // raw tags over the NPC's head. Everyone else falls back to AmbientGreetingIds.
+    private static readonly Dictionary<ulong, int[]> NpcOwnLineIds = new()
+    {
+        [100000001557] = [78867],         // Chloe: "And that's how the Flying Dragons do things! You're a natural, kid."
+        [100000002049] = [94388],         // Ricky Danger: "That lamp post? Came out of nowhere, I swear!"
+        [100000002335] = [72906, 73239],  // Nomi: homework / worried about Hasti
+        [100000002889] = [104100],        // Raina Rush: "Aren't my fans great!..."
+        [100000003016] = [140679],        // Hasti: "Ah jeez, tell Nomi I'll be home in a bit..."
+        [100000033082] = [104152],        // Gerold: "Nice job! Thanks to you, the Growlers won't be..."
+    };
+
+    // Real retail greeting lines (Global.Text ids, recovered from the client locale) that friendly NPCs
+    // bubble when a player walks up. Sent with IsChatLogged=false, so they never touch the chat log.
+    private static readonly int[] AmbientGreetingIds =
+    [
+        8026,  // "Hello, traveler!"
+        39666, // "Hello and welcome!"
+        8130,  // "Welcome to Free Realms!"
+        8179,  // "Safe travels"
+        8128,  // "Good luck!"
+        38360, // "Come back soon!"
+        39599, // "Glad you visited. Have a good day!"
+        20628, // "Thank you for helping us. Come back anytime."
+        8123,  // "How are you?"
+    ];
+
     private void SpawnNpcs()
     {
         int spawnedCount = 0;
@@ -179,6 +209,17 @@ public sealed class StartingZone : BaseZone
             {
                 npc.CursorId = 11;
                 npc.InteractRange = 15;
+            }
+
+            // Friendly, interactive NPCs (vendors + quest folk) greet passers-by. Enemies, props and
+            // kill-targets stay silent — CombatNpc never gets lines assigned. Characters with their own
+            // authored dialogue use it; the rest get the generic retail greetings.
+            if (npc is not CombatNpc &&
+                (_resourceManager.NpcVendors.ContainsKey(guid) || _questManager.IsQuestNpc(guid)))
+            {
+                npc.AmbientLineIds = NpcOwnLineIds.TryGetValue(guid, out var ownLines)
+                    ? ownLines
+                    : AmbientGreetingIds;
             }
 
             npc.UpdatePosition(definition.Position, definition.Rotation);

@@ -206,6 +206,54 @@ public class Npc : IEntity
             VisiblePlayers.TryAdd(player.Guid, player);
     }
 
+    // ---- Ambient greeting bubbles ----
+    // Localized Global.Text ids this NPC greets with (real retail lines). Null/empty = silent, which is
+    // every enemy and prop. Driven by BaseZone.UpdateAmbientChatter, not the visibility hook.
+    public int[]? AmbientLineIds { get; set; }
+
+    // "Walked up to them" distance, not tile-visibility distance.
+    public const float AmbientGreetRange = 18f;
+    public const float AmbientGreetRangeSquared = AmbientGreetRange * AmbientGreetRange;
+
+    private const int AmbientGreetCooldownMs = 25_000;
+    private long _nextAmbientGreetTicks;
+
+    public void TryAmbientGreet()
+    {
+        if (AmbientLineIds is null || AmbientLineIds.Length == 0)
+            return;
+
+        var now = Environment.TickCount64;
+        if (now < _nextAmbientGreetTicks)
+            return;
+
+        _nextAmbientGreetTicks = now + AmbientGreetCooldownMs;
+
+        // IsChatLogged=false: bubble over the head, nothing in the chat log.
+        SayStringId(AmbientLineIds[Random.Shared.Next(AmbientLineIds.Length)]);
+    }
+
+    // Speak a LOCALIZED line as an overhead bubble. This is the retail path: the client's chat handler takes
+    // an isChatLogged flag straight off this packet, so IsChatLogged=false gives a bubble with NO chat-log
+    // line (verified: Ui.ShowChatBubble native c1ec70 draws for NPC guids just like player guids).
+    public void SayStringId(int stringId, bool logged = false)
+    {
+        if (stringId <= 0 || VisiblePlayers.IsEmpty)
+            return;
+
+        var bubble = new ChatPacketFromStringId
+        {
+            SpeakerGuid = Guid,
+            StringId = stringId,
+            IsEmote = false,
+            IsChatLogged = logged,
+            OwnerGuid = Guid,
+        };
+
+        foreach (var player in VisiblePlayers.Values)
+            player.SendTunneled(bubble);
+    }
+
     public virtual void OnRemoveVisibleNpcs(params IEnumerable<Npc> npcs)
     {
         foreach (var npc in npcs)

@@ -594,10 +594,39 @@ public abstract class BaseZone : IZone, IDisposable
 
                     entity.Value.UpdateEverySecond();
                 }
+
+                UpdateAmbientChatter();
             }
             catch (Exception ex)
             {
                 _logger.LogCritical(ex, $"{Name} ({Id}) - Zone Exception");
+            }
+        }
+    }
+
+    // NPC greeting bubbles. Driven from the PLAYER side on purpose: the loop above skips Static NPCs (which
+    // is most talkers), and the visibility hook is tile-based (~64-192 units) and only fires once on entry —
+    // far too coarse for "a player walked up to me". Sweeping each player's already-known visible NPCs keeps
+    // this cheap while letting us apply a real proximity gate.
+    private void UpdateAmbientChatter()
+    {
+        foreach (var player in _players.Values)
+        {
+            if (player.Zone != this)
+                continue;
+
+            foreach (var npc in player.VisibleNpcs.Values)
+            {
+                if (npc.AmbientLineIds is null || npc.AmbientLineIds.Length == 0)
+                    continue;
+
+                var dx = npc.Position.X - player.Position.X;
+                var dy = npc.Position.Y - player.Position.Y;
+                var dz = npc.Position.Z - player.Position.Z;
+                if (dx * dx + dy * dy + dz * dz > Npc.AmbientGreetRangeSquared)
+                    continue;
+
+                npc.TryAmbientGreet();
             }
         }
     }
