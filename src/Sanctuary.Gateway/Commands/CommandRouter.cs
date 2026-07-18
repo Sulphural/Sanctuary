@@ -296,8 +296,41 @@ public static class CommandRouter
                         SendSystem(conn, $"!abil -> op36/6 ClientMoveAndCast pos={conn.Player.Position} guid={self}");
                         return true;
 
+                    case 4:
+                        conn.Player.SendTunneledToVisible(new AbilityPacketLaunchAndLand
+                        {
+                            Guid = self,
+                            Position = conn.Player.Position,
+                            Guid2 = self,
+                            Guid3 = self,
+                        }, sendToSelf: true);
+                        SendSystem(conn, $"!abil -> op36/4 LaunchAndLand guid={self} " +
+                                         $"(body padded to {AbilityPacketLaunchAndLand.BodyLength})");
+                        return true;
+
+                    // RAW SIZE SWEEP: !abil 0 <sub> <bodyBytes>
+                    // Sends [op36][sub] + N zero bytes. The deserializer accepts only at the EXACT body
+                    // length, so sweeping N and watching the hook's return value pins the packet size.
+                    case 0:
+                    {
+                        if (parts.Length < 4 ||
+                            !int.TryParse(parts[2], out var rawSub) ||
+                            !int.TryParse(parts[3], out var len))
+                        {
+                            SendSystem(conn, "Usage: !abil 0 raw <sub> <bodyBytes>");
+                            return true;
+                        }
+
+                        conn.Player.SendTunneledToVisible(new AbilityPacketRawProbe((short)rawSub)
+                        {
+                            Body = new byte[len],
+                        }, sendToSelf: true);
+                        SendSystem(conn, $"!abil raw -> op36/{rawSub} body={len} bytes");
+                        return true;
+                    }
+
                     default:
-                        SendSystem(conn, $"!abil: sub {sub} not implemented (have 6, 9, 14, 15, 18).");
+                        SendSystem(conn, $"!abil: sub {sub} not implemented (have 6, 9, 14, 15, 18, 0=raw).");
                         return true;
                 }
             }
