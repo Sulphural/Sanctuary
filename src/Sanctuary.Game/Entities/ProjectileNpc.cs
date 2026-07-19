@@ -139,25 +139,20 @@ public sealed class ProjectileNpc : Npc
                     Clear = false,
                 });
 
+        // Remove the carrier so the attached trail EMITTER stops - but do NOT send op35/42
+        // (RemoveEffectTagCompositeEffect), which hard-kills every existing particle at once (the abrupt
+        // cut). Removing the actor stops emission and lets the already-emitted trail particles live out
+        // their natural lifetime (fade cleanly). Animate:true + a short Duration gives the removal a beat.
         foreach (var player in VisiblePlayers.Values)
-        {
-            // Stop the attached trail, then remove the carrier.
-            if (_effectId > 0)
-                player.SendTunneled(new PlayerUpdatePacketRemoveEffectTagCompositeEffect
-                {
-                    Guid = Guid,
-                    TagId = TrailTagId,
-                });
             player.SendTunneled(new PlayerUpdatePacketRemovePlayerGracefully
             {
                 Guid = Guid,
-                Animate = false,
+                Animate = true,
                 Delay = 0,
                 EffectDelay = 0,
                 CompositeEffectId = 0,
-                Duration = 0,
+                Duration = 500,
             });
-        }
 
         Dispose();
     }
