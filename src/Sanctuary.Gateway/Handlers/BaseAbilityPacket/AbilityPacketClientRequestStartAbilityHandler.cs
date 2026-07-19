@@ -63,8 +63,11 @@ public static class AbilityPacketClientRequestStartAbilityHandler
     // same op38/sub13 ClientUpdatePacketMana the real server used.
     private const int MaxEnergy = 100;
     private const int SpecialEnergyCost = NinjaWeaponAbilities.SpecialEnergyCost; // 100 — shared with the toolbar's slot ManaCost (client grey-out)
-    // Live value = 4 (25s refill, 04-01 capture). Bump locally for faster energy while iterating.
-    private const int EnergyRegenPerSec = 4;
+    // Special cadence: a special costs the full 100 bar, so full-refill time = the effective special
+    // cooldown. 10/sec => 100/10 = 10s to refill => a special every ~10 seconds (the retail pace we want).
+    // (The 2014-04-01 capture value was 4/sec = 25s, which felt too slow.) Half-cost archer level abilities
+    // (50) come back in ~5s, proportionally.
+    private const int EnergyRegenPerSec = 10;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, int> _energy = new();
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, bool> _regenRunning = new();
 
