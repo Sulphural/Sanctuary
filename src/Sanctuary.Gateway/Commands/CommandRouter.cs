@@ -331,8 +331,13 @@ public static class CommandRouter
                         System.BitConverter.GetBytes(z).CopyTo(body, off + 8);
                         System.BitConverter.GetBytes(w).CopyTo(body, off + 12);
                     }
+                    // The client reads the guid as (firstDword << 32) | secondDword, i.e. dword-swapped vs
+                    // a normal little-endian ulong (live trace: writing self plain gave the client self<<32).
+                    // So write the dword-swapped value; the client swaps it back to the real caster guid.
+                    var swapMode = LI(3, 1);
+                    var gval = swapMode == 1 ? ((self & 0xFFFFFFFFUL) << 32) | (self >> 32) : self;
                     if (guidOff >= 0 && guidOff + 8 <= body.Length)
-                        System.BitConverter.GetBytes(self).CopyTo(body, guidOff); // source guid = caster
+                        System.BitConverter.GetBytes(gval).CopyTo(body, guidOff); // source guid = caster
                     PutVec(24, p.X, p.Y + 1.2f, p.Z, 1f);          // START = caster
                     PutVec(40, tpos.X, tpos.Y + 1.2f, tpos.Z, 1f); // END = target
                     var vx = tpos.X - p.X; var vz = tpos.Z - p.Z;
