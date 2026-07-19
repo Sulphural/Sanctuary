@@ -50,16 +50,25 @@ public sealed class ProjectileNpc : Npc
         player.SendTunneled(new PlayerUpdatePacketExpectedSpeed { Guid = Guid, ExpectedSpeed = _speed });
     }
 
-    // Attach a PRJ_ composite effect to the carrier so it travels with the projectile (op35/16, Guid=self).
+    // Tag id for the projectile's attached trail (keyed per-actor, so a fixed id is fine - each carrier
+    // is its own NPC). Removed implicitly when the carrier despawns.
+    private const int TrailTagId = 90001;
+
+    // Attach a PRJ_ composite effect that FOLLOWS the carrier as it moves. op35/16 PlayCompositeEffect is
+    // world-anchored (it stuck to the spawn point), so we use op35/41 AddEffectTagCompositeEffect - the
+    // looping buff-style attach that tracks the actor's position (ground truth: the heart-pickup heal
+    // shower followed the player). Guid = the carrier; SourceGuid = the carrier itself.
     public void AttachEffect(int effectId)
     {
         foreach (var player in VisiblePlayers.Values)
-            player.SendTunneled(new PlayerUpdatePacketPlayCompositeEffect
+            player.SendTunneled(new PlayerUpdatePacketAddEffectTagCompositeEffect
             {
                 Guid = Guid,
+                TagId = TrailTagId,
                 CompositeEffectId = effectId,
-                Position = Position,
-                Clear = false,
+                SourceGuid = Guid,
+                Unknown = 0,
+                Unknown2 = 0,
             });
     }
 
@@ -125,6 +134,12 @@ public sealed class ProjectileNpc : Npc
                 });
 
         foreach (var player in VisiblePlayers.Values)
+        {
+            player.SendTunneled(new PlayerUpdatePacketRemoveEffectTagCompositeEffect
+            {
+                Guid = Guid,
+                TagId = TrailTagId,
+            });
             player.SendTunneled(new PlayerUpdatePacketRemovePlayerGracefully
             {
                 Guid = Guid,
@@ -134,6 +149,7 @@ public sealed class ProjectileNpc : Npc
                 CompositeEffectId = 0,
                 Duration = 0,
             });
+        }
 
         Dispose();
     }
