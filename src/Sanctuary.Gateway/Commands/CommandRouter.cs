@@ -306,6 +306,17 @@ public static class CommandRouter
                         SendSystem(conn, $"!abil -> op36/6 ClientMoveAndCast pos={conn.Player.Position} guid={self}");
                         return true;
 
+                    // op36/11 MeleeRefresh - the ability system's OWN cooldown packet (already drives the
+                    // BASIC attack radial sweep). !abil 11 [ms] sends a visible-length cooldown so we can
+                    // SEE which ability button it sweeps (basic only, or the special too). Default 10000ms.
+                    case 11:
+                    {
+                        var ms = ArgI(2, 10000);
+                        conn.Player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = ms });
+                        SendSystem(conn, $"!abil -> op36/11 MeleeRefresh {ms}ms - watch which button sweeps");
+                        return true;
+                    }
+
                     // sub 4 LaunchAndLand. CRASH-SAFE BY DEFAULT: a NON-EMPTY string field crashes the
                     // client (proven twice), so the string is EMPTY unless explicitly requested. With an
                     // empty string this packet is safe and refreshes the ability toolbar cooldown - so we
