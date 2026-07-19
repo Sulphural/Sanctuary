@@ -279,6 +279,64 @@ public static class CommandRouter
                 return true;
             }
 
+            // NATIVE op35/62 LaunchProjectile probe. Wire = [35][62] + 008e8910 trajectory struct + int32.
+            //   !lp <N>        send N zero body bytes (SIZE SWEEP - find the exact accepted length)
+            //   !lp traj [g]   trajectory: start=caster@24, end=target@40, velocity@68; g=source guid mode
+            // Watch the frida op35/62 trace (does 92f460 case 0x3e run + 984960 resolve + a projectile spawn).
+            case "lp":
+            {
+                if (!RequireAdmin(conn))
+                    return true;
+
+                int LI(int i, int def) => parts.Length > i && int.TryParse(parts[i], out var v) ? v : def;
+
+                var self = conn.Player.Guid;
+                var p = conn.Player.Position;
+                ulong target = 0; var tpos = p;
+                if (conn.Player.Zone is { } lz)
+                {
+                    var best = float.MaxValue;
+                    foreach (var n in lz.Npcs)
+                    {
+                        if (!n.Visible || !n.IsHostile) continue;
+                        var dx0 = n.Position.X - p.X; var dz0 = n.Position.Z - p.Z;
+                        var d0 = dx0 * dx0 + dz0 * dz0;
+                        if (d0 < best) { best = d0; target = n.Guid; tpos = n.Position; }
+                    }
+                }
+
+                byte[] body;
+                if (parts.Length > 1 && parts[1] == "traj")
+                {
+                    // 008e8910 nested (safe zero fill) + trailing int32. Vectors in the two flat slots (24,40)
+                    // + velocity (68); wall bytes 56..67 stay 0. Nested ~149B, then int32 -> pad to 160.
+                    body = new byte[160];
+                    void PutVec(int off, float x, float y, float z, float w)
+                    {
+                        System.BitConverter.GetBytes(x).CopyTo(body, off);
+                        System.BitConverter.GetBytes(y).CopyTo(body, off + 4);
+                        System.BitConverter.GetBytes(z).CopyTo(body, off + 8);
+                        System.BitConverter.GetBytes(w).CopyTo(body, off + 12);
+                    }
+                    PutVec(24, p.X, p.Y + 1.2f, p.Z, 1f);          // START = caster
+                    PutVec(40, tpos.X, tpos.Y + 1.2f, tpos.Z, 1f); // END = target
+                    // velocity toward target
+                    var vx = tpos.X - p.X; var vz = tpos.Z - p.Z;
+                    var len = (float)System.Math.Sqrt(vx * vx + vz * vz);
+                    if (len > 0.01f) { vx = vx / len * 45f; vz = vz / len * 45f; }
+                    PutVec(68, vx, 0f, vz, 0f);                    // VELOCITY
+                }
+                else
+                {
+                    body = new byte[LI(1, 160)];   // size sweep: N zero bytes
+                }
+
+                conn.Player.SendTunneledToVisible(new PlayerUpdateLaunchProjectilePacket { Body = body },
+                    sendToSelf: true);
+                SendSystem(conn, $"!lp -> op35/62 bodyLen={body.Length} target={target}");
+                return true;
+            }
+
             // SERVER-AUTHORITATIVE TRAVELLING PROJECTILE. The client's own fly path (op36/4) is gated on
             // combat state we cannot set, so we fly a real actor instead: an invisible carrier NPC that
             // moves caster->enemy with a PRJ_ effect attached (see ProjectileNpc). This works with NO client
