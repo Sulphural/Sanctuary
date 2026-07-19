@@ -318,9 +318,12 @@ public static class CommandRouter
                 byte[] body;
                 if (parts.Length > 1 && parts[1] == "traj")
                 {
-                    // 008e8910 nested (safe zero fill) + trailing int32. Vectors in the two flat slots (24,40)
-                    // + velocity (68); wall bytes 56..67 stay 0. Nested ~149B, then int32 -> pad to 160.
-                    body = new byte[160];
+                    // Body = 149 bytes (pinned live: pktLen 153 - 4 header). = 008e8910 nested struct (145B,
+                    // wire offset 0) + trailing int32 @145. Trajectory Vector4s at nested 24/40/68 (start/end/
+                    // velocity). Source guid = caster, placed at a probe offset (default nested wire 0 = the
+                    // first int-pair, the likeliest source-entity field): "!lp traj <guidOffset>".
+                    var guidOff = LI(2, 0);
+                    body = new byte[149];
                     void PutVec(int off, float x, float y, float z, float w)
                     {
                         System.BitConverter.GetBytes(x).CopyTo(body, off);
@@ -328,17 +331,19 @@ public static class CommandRouter
                         System.BitConverter.GetBytes(z).CopyTo(body, off + 8);
                         System.BitConverter.GetBytes(w).CopyTo(body, off + 12);
                     }
+                    if (guidOff >= 0 && guidOff + 8 <= body.Length)
+                        System.BitConverter.GetBytes(self).CopyTo(body, guidOff); // source guid = caster
                     PutVec(24, p.X, p.Y + 1.2f, p.Z, 1f);          // START = caster
                     PutVec(40, tpos.X, tpos.Y + 1.2f, tpos.Z, 1f); // END = target
-                    // velocity toward target
                     var vx = tpos.X - p.X; var vz = tpos.Z - p.Z;
                     var len = (float)System.Math.Sqrt(vx * vx + vz * vz);
                     if (len > 0.01f) { vx = vx / len * 45f; vz = vz / len * 45f; }
                     PutVec(68, vx, 0f, vz, 0f);                    // VELOCITY
+                    SendSystem(conn, $"!lp traj guidOff={guidOff} guid={self} start=({p.X:0.#},{p.Z:0.#}) end=({tpos.X:0.#},{tpos.Z:0.#})");
                 }
                 else
                 {
-                    body = new byte[LI(1, 160)];   // size sweep: N zero bytes
+                    body = new byte[LI(1, 149)];   // size sweep default = the pinned 149
                 }
 
                 conn.Player.SendTunneledToVisible(new PlayerUpdateLaunchProjectilePacket { Body = body },
