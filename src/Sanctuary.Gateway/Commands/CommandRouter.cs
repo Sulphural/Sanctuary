@@ -299,6 +299,7 @@ public static class CommandRouter
                 var speed = PF(3, 45f);
                 var impactEffId = PI(4, 0);
                 var scale = PF(5, 1f);
+                var lingerMs = PI(6, 1500);     // keep carrier alive after arrival so the trail fades out
 
                 if (conn.Player.Zone is not { } pz)
                 {
@@ -327,7 +328,7 @@ public static class CommandRouter
                 proj.ModelId = modelId;
                 proj.Scale = scale;
                 proj.SetTrail(effId);           // PRJ trail effect attached to the flying carrier model
-                proj.Launch(start, tgt, speed, impactEffId);
+                proj.Launch(start, tgt, speed, impactEffId, lingerMs);
                 proj.ShowTo(conn.Player);      // register visibility + AddNpc + ExpectedSpeed
                 proj.AttachTrail();             // op35/41 attach (follows the model); removed on landing
 

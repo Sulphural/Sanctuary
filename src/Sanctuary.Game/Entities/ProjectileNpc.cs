@@ -18,18 +18,22 @@ public sealed class ProjectileNpc : Npc
     private Vector4 _target;
     private float _speed;
     private int _impactEffectId;
+    private int _lingerMs;
     private bool _done;
+    private bool _arrived;
     private DateTime _expireAt;
+    private DateTime _removeAt;
 
     public ProjectileNpc(IZone zone) : base(zone)
     {
     }
 
-    public void Launch(Vector4 start, Vector4 target, float speed, int impactEffectId)
+    public void Launch(Vector4 start, Vector4 target, float speed, int impactEffectId, int lingerMs = 1500)
     {
         _target = target;
         _speed = speed;
         _impactEffectId = impactEffectId;
+        _lingerMs = lingerMs;
         _expireAt = DateTime.UtcNow.AddSeconds(4); // safety despawn if it never reaches the target
 
         MovementType = 1;                    // CONTROLLER: interpolate to sent pos, no gravity
@@ -83,9 +87,19 @@ public sealed class ProjectileNpc : Npc
         if (_done)
             return;
 
+        // Reached the target: stop moving and LINGER (keep the carrier alive) so the attached trail plays
+        // out its lifetime and fades naturally. Removing the carrier kills the attached particles instantly
+        // (the "instant cut"), so we wait _lingerMs before finalizing.
+        if (_arrived)
+        {
+            if (DateTime.UtcNow >= _removeAt)
+                Finalize();
+            return;
+        }
+
         if (DateTime.UtcNow > _expireAt)
         {
-            Arrive();
+            ReachTarget();
             return;
         }
 
@@ -96,7 +110,7 @@ public sealed class ProjectileNpc : Npc
 
         if (dist < 1.5f)
         {
-            Arrive();
+            ReachTarget();
             return;
         }
 
@@ -122,13 +136,15 @@ public sealed class ProjectileNpc : Npc
             player.SendTunneled(packet);
     }
 
-    private void Arrive()
+    // Projectile hit the target: play the impact burst and START the linger. The carrier stays put and
+    // stops sending position updates (so the trail stops trailing); the trail then fades over _lingerMs.
+    private void ReachTarget()
     {
-        if (_done)
+        if (_arrived)
             return;
-        _done = true;
+        _arrived = true;
+        _removeAt = DateTime.UtcNow.AddMilliseconds(_lingerMs);
 
-        // Impact burst at the target point (world-positioned, not attached).
         if (_impactEffectId > 0)
             foreach (var player in VisiblePlayers.Values)
                 player.SendTunneled(new PlayerUpdatePacketPlayCompositeEffect
@@ -138,20 +154,24 @@ public sealed class ProjectileNpc : Npc
                     Position = _target,
                     Clear = false,
                 });
+    }
 
-        // Remove the carrier so the attached trail EMITTER stops - but do NOT send op35/42
-        // (RemoveEffectTagCompositeEffect), which hard-kills every existing particle at once (the abrupt
-        // cut). Removing the actor stops emission and lets the already-emitted trail particles live out
-        // their natural lifetime (fade cleanly). Animate:true + a short Duration gives the removal a beat.
+    // Linger elapsed: remove the carrier. By now the trail has faded on its own, so nothing gets cut.
+    private void Finalize()
+    {
+        if (_done)
+            return;
+        _done = true;
+
         foreach (var player in VisiblePlayers.Values)
             player.SendTunneled(new PlayerUpdatePacketRemovePlayerGracefully
             {
                 Guid = Guid,
-                Animate = true,
+                Animate = false,
                 Delay = 0,
                 EffectDelay = 0,
                 CompositeEffectId = 0,
-                Duration = 500,
+                Duration = 0,
             });
 
         Dispose();
