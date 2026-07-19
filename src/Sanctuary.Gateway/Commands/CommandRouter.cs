@@ -294,8 +294,8 @@ public static class CommandRouter
                 int PI(int i, int def) => parts.Length > i && int.TryParse(parts[i], out var v) ? v : def;
                 float PF(int i, float def) => parts.Length > i && float.TryParse(parts[i], out var v) ? v : def;
 
-                var effId = PI(1, 16110);
-                var modelId = PI(2, 0);
+                var effId = PI(1, 16110);       // trail effect, attached to the flying model (0 = none)
+                var modelId = PI(2, 1982);      // carrier projectile model (1982 = sg_fireball_bbe)
                 var speed = PF(3, 45f);
                 var impactEffId = PI(4, 0);
                 var scale = PF(5, 1f);
@@ -326,9 +326,10 @@ public static class CommandRouter
 
                 proj.ModelId = modelId;
                 proj.Scale = scale;
-                proj.SetTrail(effId);           // PRJ effect emitted per-tick along the flight path
+                proj.SetTrail(effId);           // PRJ trail effect attached to the flying carrier model
                 proj.Launch(start, tgt, speed, impactEffId);
                 proj.ShowTo(conn.Player);      // register visibility + AddNpc + ExpectedSpeed
+                proj.AttachTrail();             // op35/41 attach (follows the model); removed on landing
 
                 SendSystem(conn, $"!proj -> eff={effId} model={modelId} speed={speed} from=({start.X:0.#},{start.Y:0.#},{start.Z:0.#}) to=({tgt.X:0.#},{tgt.Y:0.#},{tgt.Z:0.#})");
                 return true;
