@@ -22,8 +22,12 @@ public sealed class ProjectileNpc : Npc
     private int _lingerMs;
     private bool _done;
     private bool _arrived;
+    private bool _seekMode;   // when true, the CLIENT drives motion (op35/59 SeekTarget); we only despawn on expiry
     private DateTime _expireAt;
     private DateTime _removeAt;
+
+    // Let the client's native SeekMovementController fly this carrier instead of server op125 updates.
+    public void EnableSeekMode() => _seekMode = true;
 
     public ProjectileNpc(IZone zone) : base(zone)
     {
@@ -127,6 +131,10 @@ public sealed class ProjectileNpc : Npc
             ReachTarget();
             return;
         }
+
+        // Seek mode: the client drives motion via SeekTarget - server sends no op125. Wait for expiry.
+        if (_seekMode)
+            return;
 
         var dx = _target.X - Position.X;
         var dy = _target.Y - Position.Y;

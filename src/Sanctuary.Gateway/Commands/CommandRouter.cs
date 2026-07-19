@@ -279,6 +279,64 @@ public static class CommandRouter
                 return true;
             }
 
+            // NATIVE SEEK: spawn an invisible carrier + attach a trail effect + op35/59 SeekTarget it at the
+            // enemy so the CLIENT flies it natively (ProxiedCharacterSeekMovementController) - no per-tick
+            // op125, no +0x508. This is the server way to a native flying projectile. !seek [effId] [speed]
+            case "seek":
+            {
+                if (!RequireAdmin(conn))
+                    return true;
+
+                int SI(int i, int def) => parts.Length > i && int.TryParse(parts[i], out var v) ? v : def;
+                float SF(int i, float def) => parts.Length > i && float.TryParse(parts[i], out var v) ? v : def;
+                var seekEff = SI(1, 16110);
+                var seekSpeed = SF(2, 25f);
+
+                if (conn.Player.Zone is not { } sz)
+                {
+                    SendSystem(conn, "!seek: no zone.");
+                    return true;
+                }
+
+                var sp = conn.Player.Position;
+                var start = new System.Numerics.Vector4(sp.X, sp.Y + 1.2f, sp.Z, 1f);
+                ulong enemy = 0; var epos = new System.Numerics.Vector4(sp.X, sp.Y + 1.2f, sp.Z + 20f, 1f);
+                var sbest = float.MaxValue;
+                foreach (var n in sz.Npcs)
+                {
+                    if (!n.Visible || !n.IsHostile) continue;
+                    var dx = n.Position.X - sp.X; var dz = n.Position.Z - sp.Z; var d = dx * dx + dz * dz;
+                    if (d < sbest) { sbest = d; enemy = n.Guid; epos = new System.Numerics.Vector4(n.Position.X, n.Position.Y + 1.2f, n.Position.Z, 1f); }
+                }
+
+                if (!sz.TryCreateProjectileNpc(out var seekNpc))
+                {
+                    SendSystem(conn, "!seek: spawn failed.");
+                    return true;
+                }
+                seekNpc.ModelId = 1056; // invisible-with-skeleton carrier
+                seekNpc.Scale = 1f;
+                seekNpc.SetTrail(seekEff);
+                seekNpc.Launch(start, epos, seekSpeed, 0, 4000); // sets MovementType=1, position=start
+                seekNpc.EnableSeekMode();                        // client drives motion via SeekTarget (no op125)
+                seekNpc.ShowTo(conn.Player);
+                foreach (var viewer in conn.Player.VisiblePlayers.Values) seekNpc.ShowTo(viewer);
+                seekNpc.AttachTrail();
+
+                // Send SeekTarget so the client flies the carrier to the enemy natively.
+                conn.Player.SendTunneledToVisible(new PlayerUpdatePacketSeekTarget
+                {
+                    CharacterGuid = seekNpc.Guid,
+                    TargetGuid = enemy,
+                    Speed = seekSpeed,
+                    Position1 = start,
+                    Position2 = epos,
+                }, sendToSelf: true);
+
+                SendSystem(conn, $"!seek -> carrier={seekNpc.Guid} seeks enemy={enemy} eff={seekEff} speed={seekSpeed}");
+                return true;
+            }
+
             // NATIVE op35/62 LaunchProjectile probe. Wire = [35][62] + 008e8910 trajectory struct + int32.
             //   !lp <N>        send N zero body bytes (SIZE SWEEP - find the exact accepted length)
             //   !lp traj [g]   trajectory: start=caster@24, end=target@40, velocity@68; g=source guid mode
