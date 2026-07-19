@@ -315,7 +315,7 @@ public static class CommandRouter
                     //   [int type-id][Vector4 16B][guid 8B]  for type-id 1 (TargetCharacterGuid)
                     // SOURCE Target @ wire 60 (after START@24, END@40, blob@56). DEST Target after it.
                     var effId = LI(2, 16110);   // ProjectileParameters effect/model id (probe which field)
-                    var effField = LI(3, 0);    // which header wire offset to put it at: 0,4,16,20
+                    var effField = LI(3, -1);   // -1 = set all header int slots (0,4,16,20)+trailing; >=0 = one slot
                     var vx2 = tpos.X - p.X; var vz2 = tpos.Z - p.Z;
                     var l2 = (float)System.Math.Sqrt(vx2 * vx2 + vz2 * vz2);
                     if (l2 > 0.01f) { vx2 = vx2 / l2 * 45f; vz2 = vz2 / l2 * 45f; }
@@ -328,8 +328,18 @@ public static class CommandRouter
                             System.BitConverter.GetBytes(x).CopyTo(b, o); System.BitConverter.GetBytes(y).CopyTo(b, o + 4);
                             System.BitConverter.GetBytes(z).CopyTo(b, o + 8); System.BitConverter.GetBytes(w).CopyTo(b, o + 12);
                         }
-                        // ProjectileParameters header (wire 0..23): put the effect/model id at the probe field.
-                        System.BitConverter.GetBytes(effId).CopyTo(b, effField);
+                        // ProjectileParameters header (wire 0..23) = PP+0x10/+0x14/+0x18/+0x1c/+0x28/+0x2c.
+                        // Set the effect/model id at every INT header slot (0,4,16,20) to find which renders;
+                        // effField>=0 overrides to a single slot for bisecting. Also the trailing int32.
+                        if (effField < 0)
+                        {
+                            System.BitConverter.GetBytes(effId).CopyTo(b, 0);
+                            System.BitConverter.GetBytes(effId).CopyTo(b, 4);
+                            System.BitConverter.GetBytes(effId).CopyTo(b, 16);
+                            System.BitConverter.GetBytes(effId).CopyTo(b, 20);
+                            if (total >= 8) System.BitConverter.GetBytes(effId).CopyTo(b, total - 4);
+                        }
+                        else System.BitConverter.GetBytes(effId).CopyTo(b, effField);
                         PV2(24, p.X, p.Y + 1.2f, p.Z, 1f);              // START
                         PV2(40, tpos.X, tpos.Y + 1.2f, tpos.Z, 1f);     // END
                         // wire 56-59 blob count = 0
