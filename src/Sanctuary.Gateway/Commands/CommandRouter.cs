@@ -305,6 +305,39 @@ public static class CommandRouter
                     }
                 }
 
+                // "!lp src [guidMode]" - construct the SOURCE TargetCharacterGuid (factory type-id 1) at the
+                // Target wire offset (60, after the START/END vectors + the empty variable blob @56) and sweep
+                // the total size to find the parse (deser ret=1) + guid resolve. type-id written as int 1
+                // (crash-safe: reads as 1 whether the type-id is 1 or 4 bytes). guid at 64 (after int type-id).
+                if (parts.Length > 1 && parts[1] == "src")
+                {
+                    var guidMode = LI(2, 0); // 0=normal self, 1=dword-swapped
+                    var g = guidMode == 1 ? ((self & 0xFFFFFFFFUL) << 32) | (self >> 32) : self;
+                    var vx2 = tpos.X - p.X; var vz2 = tpos.Z - p.Z;
+                    var l2 = (float)System.Math.Sqrt(vx2 * vx2 + vz2 * vz2);
+                    if (l2 > 0.01f) { vx2 = vx2 / l2 * 45f; vz2 = vz2 / l2 * 45f; }
+                    for (var total = 150; total <= 185; total++)
+                    {
+                        var b = new byte[total];
+                        void PV2(int o, float x, float y, float z, float w)
+                        {
+                            if (o + 16 > b.Length) return;
+                            System.BitConverter.GetBytes(x).CopyTo(b, o); System.BitConverter.GetBytes(y).CopyTo(b, o + 4);
+                            System.BitConverter.GetBytes(z).CopyTo(b, o + 8); System.BitConverter.GetBytes(w).CopyTo(b, o + 12);
+                        }
+                        PV2(24, p.X, p.Y + 1.2f, p.Z, 1f);              // START
+                        PV2(40, tpos.X, tpos.Y + 1.2f, tpos.Z, 1f);     // END
+                        // wire 56-59 blob count = 0 (already zero)
+                        System.BitConverter.GetBytes(1).CopyTo(b, 60);  // SOURCE Target type-id = 1 (TargetCharacterGuid)
+                        System.BitConverter.GetBytes(g).CopyTo(b, 64);  // source guid @ 64
+                        // wire 72-75 DEST Target type-id = 0 (null, already zero)
+                        PV2(76, vx2, 0f, vz2, 0f);                      // VELOCITY after dest target
+                        conn.Player.SendTunneledToVisible(new PlayerUpdateLaunchProjectilePacket { Body = b }, sendToSelf: true);
+                    }
+                    SendSystem(conn, $"!lp src guidMode={guidMode} -> swept 150..185 w/ TargetCharacterGuid(type1)+guid={g:x}; check trace");
+                    return true;
+                }
+
                 // "!lp sweep" - fire one packet per body size 120..180 so the trace pins the exact length
                 // (deser ret=1 = PARSED OK at that pktLen). One test instead of many.
                 if (parts.Length > 1 && parts[1] == "sweep")
