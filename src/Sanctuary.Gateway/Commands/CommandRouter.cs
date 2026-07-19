@@ -295,7 +295,7 @@ public static class CommandRouter
                 float PF(int i, float def) => parts.Length > i && float.TryParse(parts[i], out var v) ? v : def;
 
                 var effId = PI(1, 16110);       // trail effect, attached to the flying model (0 = none)
-                var modelId = PI(2, 1982);      // carrier projectile model (1982 = sg_fireball_bbe)
+                var modelId = PI(2, 1056);      // carrier model (1056 = invisible_cube_with_skeleton: invisible + bone)
                 var speed = PF(3, 45f);
                 var impactEffId = PI(4, 0);
                 var scale = PF(5, 1f);
