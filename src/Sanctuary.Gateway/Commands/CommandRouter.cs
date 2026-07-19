@@ -231,6 +231,54 @@ public static class CommandRouter
                 return true;
             }
 
+            // DEV PROBE: PlayCompositeEffect (op35/16) as a DIFFERENT projectile mechanism than op36/4.
+            // op36/4's fly path is gated on caster ProxiedCharacter+0x508 (client combat state we cannot set).
+            // op35/16 carries TWO guids (Guid + Unknown2); its sibling AddEffectTagCompositeEffect uses a
+            // SourceGuid, so a projectile composite effect played source->target may TRAVEL. This tests it.
+            //   !fx [effId] [mode]   effId default 5479 (PRJ_fireball). mode 0: Guid=caster,Unknown2=target
+            //                        (effect emanates FROM caster). mode 1: Guid=target,Unknown2=caster.
+            case "fx":
+            {
+                if (!RequireAdmin(conn))
+                    return true;
+
+                int FxI(int i, int def) => parts.Length > i && int.TryParse(parts[i], out var v) ? v : def;
+                var effId = FxI(1, 5479);
+                var mode = FxI(2, 0);
+
+                var self = conn.Player.Guid;
+                var p = conn.Player.Position;
+                ulong target = 0;
+                var tpos = p;
+                if (conn.Player.Zone is { } z)
+                {
+                    var best = float.MaxValue;
+                    foreach (var n in z.Npcs)
+                    {
+                        if (!n.Visible || !n.IsHostile) continue;
+                        var dx = n.Position.X - p.X; var dz = n.Position.Z - p.Z;
+                        var d = dx * dx + dz * dz;
+                        if (d < best) { best = d; target = n.Guid; tpos = n.Position; }
+                    }
+                }
+
+                // mode 0: emanate FROM caster toward target; mode 1: swap the two guids.
+                ulong g, u2; System.Numerics.Vector4 pos;
+                if (mode == 1) { g = target; u2 = self; pos = tpos; }
+                else { g = self; u2 = target; pos = new System.Numerics.Vector4(p.X, p.Y + 1f, p.Z, 1f); }
+
+                conn.Player.SendTunneledToVisible(new PlayerUpdatePacketPlayCompositeEffect
+                {
+                    Guid = g,
+                    Unknown2 = u2,
+                    CompositeEffectId = effId,
+                    Position = pos,
+                    Clear = false,
+                }, sendToSelf: true);
+                SendSystem(conn, $"!fx -> op35/16 PlayCompositeEffect eff={effId} mode={mode} guid={g} unk2={u2} target={target}");
+                return true;
+            }
+
             // DEV PROBE: fire a newly-reversed ability packet at yourself so we can confirm the client
             // ACCEPTS the layout before wiring it into combat. Layouts came from the client's own inner
             // readers (op36 dispatcher FUN_00a35cc0) and the method was validated against StartCasting,
