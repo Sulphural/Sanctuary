@@ -369,10 +369,34 @@ public static class CommandRouter
                         // what supplies the projectile visual.
                         launch.Flag1 = true;
 
-                        // NOTE: "!abil 4 proj" (nested-struct trajectory) is DISABLED - it crashed the client.
-                        // The nested struct 8e8910 has a variable/polymorphic sub-field (FUN_00894b10 /
-                        // FUN_008d53b0) that raw Vector4 bytes corrupt (same failure class as the +0x18 list).
-                        // It must be mapped precisely before any non-empty nested body is sent.
+                        // "!abil 4 traj" - CRASH-SAFE trajectory. The nested struct 8e8910 was mapped
+                        // statically: after six header ints/floats (wire 0..23) come TWO guaranteed 16-byte
+                        // Vector4 slots - Vector1 @ wire offset 24 (in_ECX+0x50) and Vector2 @ wire offset 40
+                        // (in_ECX+0x60) - BEFORE the variable blob (56) and the two polymorphic sub-object
+                        // deserializers (60+). The old "proj" crash put a velocity Vector4 at offset 60, which
+                        // is the polymorphic region, not Vector3. This path writes ONLY the two safe Vector4
+                        // slots (start=caster @24, end=target @40) and leaves 56+ zeroed, so it cannot corrupt
+                        // the polymorphic fields. Start+end alone should define the projectile path.
+                        if (parts.Length > 2 && parts[2] == "traj")
+                        {
+                            var startX = p.X; var startY = p.Y + 1f; var startZ = p.Z;
+                            var endP = launch.Position;   // = target pos if an enemy was found, else 20u ahead
+                            var nested = new byte[56];     // header(24) + Vector1(16) + Vector2(16); rest padded 0
+                            void PutVec(int off, float x, float y, float zz, float w)
+                            {
+                                System.BitConverter.GetBytes(x).CopyTo(nested, off);
+                                System.BitConverter.GetBytes(y).CopyTo(nested, off + 4);
+                                System.BitConverter.GetBytes(zz).CopyTo(nested, off + 8);
+                                System.BitConverter.GetBytes(w).CopyTo(nested, off + 12);
+                            }
+                            PutVec(24, startX, startY, startZ, 1f);              // Vector1 = start (caster)
+                            PutVec(40, endP.X, endP.Y, endP.Z, 1f);             // Vector2 = end   (target)
+                            launch.Nested = nested;
+                            conn.Player.SendTunneledToVisible(launch, sendToSelf: true);
+                            SendSystem(conn, $"!abil -> op36/4 TRAJ start=({startX:0.#},{startY:0.#},{startZ:0.#}) " +
+                                             $"end=({endP.X:0.#},{endP.Y:0.#},{endP.Z:0.#}) target={launch.Guid2}");
+                            return true;
+                        }
 
                         switch (field)
                         {
