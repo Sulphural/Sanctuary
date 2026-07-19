@@ -517,7 +517,11 @@ public static class ArcherWeaponAbilities
         // slots — even a maxed ninja's set was 2 full + 6 empty. The UI's remaining slots are
         // BATTLE-ITEM slots (wire Type 2 + ItemDefinitionId — health potions etc.), NOT abilities;
         // the Sniper/Rain definitions below stay parked until battle-item slots are implemented.
-        def.Slots.Add(MakeSlot(SpecialSlotDefId, weapon.Special.IconImageId, nameId, manaCost: weapon.Special.EnergyCost));
+        // manaCost 0: a mana-cost slot GREYS on low stamina, and a greyed button won't draw the ~1s
+        // MeleeRefresh radial flash (retail showed that flash on every ability button). So the slot no
+        // longer greys; the stamina BAR still drains (server-side) and gates re-use. See the ability
+        // handler's special-fire path.
+        def.Slots.Add(MakeSlot(SpecialSlotDefId, weapon.Special.IconImageId, nameId, manaCost: 0));
 
         return def;
     }

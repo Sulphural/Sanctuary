@@ -312,7 +312,9 @@ public static class NinjaWeaponAbilities
         // server gate lives in AbilityPacketClientRequestStartAbilityHandler). The slot's ManaCost is what
         // makes the CLIENT grey the button out while current energy (op38/sub13) is below the cost — with
         // 0 the client thinks it's free and the blocked presses just look dead.
-        def.Slots.Add(MakeSlot(SpecialSlotDefId, DebugSpecialIcon ?? weapon.Special.IconImageId, nameId, manaCost: SpecialEnergyCost));
+        // manaCost 0 so the slot doesn't grey (a greyed button won't draw the ~1s radial flash); the
+        // stamina bar still drains + gates re-use. See ArcherWeaponAbilities / the ability handler.
+        def.Slots.Add(MakeSlot(SpecialSlotDefId, DebugSpecialIcon ?? weapon.Special.IconImageId, nameId, manaCost: 0));
 
         return def;
     }

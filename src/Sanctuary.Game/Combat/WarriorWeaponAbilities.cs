@@ -262,7 +262,9 @@ public static class WarriorWeaponAbilities
         var def = new AbilityPacketSetDefinition { ProfileId = WarriorProfileId, SlotCount = 8 };
 
         def.Slots.Add(MakeSlot(MeleeSlotDefId, weapon.Melee.IconImageId, nameId, manaCost: 0));
-        def.Slots.Add(MakeSlot(SpecialSlotDefId, weapon.Special.IconImageId, nameId, manaCost: SpecialEnergyCost));
+        // manaCost 0 so the slot doesn't grey (a greyed button won't draw the ~1s radial flash); the
+        // stamina bar still drains + gates re-use. See ArcherWeaponAbilities / the ability handler.
+        def.Slots.Add(MakeSlot(SpecialSlotDefId, weapon.Special.IconImageId, nameId, manaCost: 0));
 
         return def;
     }
