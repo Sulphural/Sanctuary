@@ -331,7 +331,11 @@ public static class CommandRouter
                         // ProjectileParameters header (wire 0..23) = PP+0x10/+0x14/+0x18/+0x1c/+0x28/+0x2c.
                         // Set the effect/model id at every INT header slot (0,4,16,20) to find which renders;
                         // effField>=0 overrides to a single slot for bisecting. Also the trailing int32.
-                        if (effField < 0)
+                        if (effField == -2)
+                        {
+                            System.BitConverter.GetBytes(effId).CopyTo(b, total - 4);   // trailing int32 only
+                        }
+                        else if (effField < 0)
                         {
                             System.BitConverter.GetBytes(effId).CopyTo(b, 0);
                             System.BitConverter.GetBytes(effId).CopyTo(b, 4);
