@@ -306,23 +306,54 @@ public static class CommandRouter
                         SendSystem(conn, $"!abil -> op36/6 ClientMoveAndCast pos={conn.Player.Position} guid={self}");
                         return true;
 
-                    // !abil 4 [assetName] - the string at +0x18 is the only text field in any of the 7
-                    // ability packets. A projectile packet with no asset name has nothing to draw, so
-                    // this is the prime suspect for why launches render nothing.
-                    // Try e.g. PRJ_archer_freezing / PRJ_archer_stunning / PRJ_magical_blue_split.
+                    // sub 4 LaunchAndLand. CRASH-SAFE BY DEFAULT: a NON-EMPTY string field crashes the
+                    // client (proven twice), so the string is EMPTY unless explicitly requested. With an
+                    // empty string this packet is safe and refreshes the ability toolbar cooldown - so we
+                    // use it to hunt which numeric field controls the cooldown DURATION.
+                    //   !abil 4                 empty string, all zeros (safe; does the cooldown refresh)
+                    //   !abil 4 <field> <val>   set ONE int field (1..11) to val, string stays empty (safe)
+                    //   !abil 4 name <asset>    DANGEROUS: sends the string (the crasher). Explicit only.
                     case 4:
                     {
-                        var asset = parts.Length > 2 ? parts[2] : string.Empty;
-                        conn.Player.SendTunneledToVisible(new AbilityPacketLaunchAndLand
+                        var launch = new AbilityPacketLaunchAndLand
                         {
                             Guid = self,
-                            Name = asset,
                             Position = conn.Player.Position,
                             Guid2 = self,
                             Guid3 = self,
-                        }, sendToSelf: true);
-                        SendSystem(conn, $"!abil -> op36/4 LaunchAndLand guid={self} " +
-                                         $"name='{asset}' (body padded to {AbilityPacketLaunchAndLand.BodyLength})");
+                        };
+
+                        if (parts.Length >= 3 && parts[1].Equals("4", StringComparison.Ordinal) &&
+                            parts.Length > 2 && parts[2].Equals("name", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Explicit, dangerous string test.
+                            launch.Name = parts.Length > 3 ? parts[3] : string.Empty;
+                            conn.Player.SendTunneledToVisible(launch, sendToSelf: true);
+                            SendSystem(conn, $"!abil -> op36/4 LaunchAndLand name='{launch.Name}' " +
+                                             $"(DANGEROUS string send)");
+                            return true;
+                        }
+
+                        // Safe numeric sweep: !abil 4 <field 1..11> <value>. String stays empty.
+                        var field = ArgI(2, 0);
+                        var val = ArgI(3, 0);
+                        switch (field)
+                        {
+                            case 1: launch.Unknown1 = val; break;
+                            case 2: launch.Unknown2 = val; break;
+                            case 3: launch.Unknown3 = val; break;
+                            case 4: launch.Unknown4 = val; break;
+                            case 5: launch.Unknown5 = val; break;
+                            case 6: launch.Unknown6 = val; break;
+                            case 7: launch.Unknown7 = val; break;
+                            case 8: launch.Unknown8 = val; break;
+                            case 10: launch.Unknown10 = val; break;
+                            case 11: launch.Unknown11 = val; break;
+                        }
+
+                        conn.Player.SendTunneledToVisible(launch, sendToSelf: true);
+                        SendSystem(conn, $"!abil -> op36/4 LaunchAndLand (empty string, safe) " +
+                                         $"field{field}={val}");
                         return true;
                     }
 
