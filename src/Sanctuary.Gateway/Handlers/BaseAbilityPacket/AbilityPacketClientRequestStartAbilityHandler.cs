@@ -899,14 +899,8 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             _energy[player.Guid] = remaining;
             SendEnergy(player, remaining);   // op38/sub13: bar drops by the cost
             StartEnergyRegen(player);        // begin the +4/sec refill
-
-            // RETAIL SPECIAL COOLDOWN = stamina grey-out + MeleeRefresh radial sweep TOGETHER. The stamina
-            // drain (above) greys the special button until energy refills (~10s at cost 100 / regen 10);
-            // this MeleeRefresh (op36/11) draws the animated radial over that greyed button, matched to the
-            // same refill time. (MeleeRefresh alone at full stamina showed ~nothing because the button
-            // wasn't greyed — the two are meant to run together.)
-            var cooldownMs = cost * 1000 / Math.Max(1, EnergyRegenPerSec);
-            player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = cooldownMs });
+            // NOTE: the special's MeleeRefresh cooldown radial is sent AFTER StartCasting (below), not here
+            // — StartCasting re-touches the slot and would wipe a radial sent before it.
         }
 
         // Lingering cast FX (CastEffectStopMs > 0: projectile trails / loops that never self-terminate): play as
@@ -961,11 +955,19 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         // see each other's moves/FX. Was caster-only, which is why teammates saw enemies die but not the moves.
         player.SendTunneledToVisible(startCasting, sendToSelf: true);
 
-        // Attack-cooldown sweep on the basic-attack button: tell the client the next swing is ready in the swing
-        // cadence (op36/11 MeleeRefresh sets cooldown-end = now + this). Basic attack only; specials are gated by
-        // energy, not this melee cooldown.
+        // Attack-cooldown sweep (op36/11 MeleeRefresh sets cooldown-end = now + this). Sent AFTER
+        // StartCasting so it isn't wiped by the slot re-touch. Basic = the swing cadence; special = the
+        // stamina-refill time, so the radial sweeps over the stamina-greyed special button for the full
+        // ~10s cooldown (retail showed both together).
         if (isBasicMelee)
+        {
             player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = BasicSwingMs });
+        }
+        else
+        {
+            var specialCooldownMs = ability.EnergyCost * 1000 / Math.Max(1, EnergyRegenPerSec);
+            player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = specialCooldownMs });
+        }
 
         // Weapon-empowering specials (Mysticism / Mystical Blade) bind their FX to the sword (item slot 7)
         // instead of the body. SlotCompositeEffectOverride op35/sub31: Guid + slot + composite effect.
