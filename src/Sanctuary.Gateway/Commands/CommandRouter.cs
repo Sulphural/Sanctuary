@@ -317,7 +317,7 @@ public static class CommandRouter
                     var vx2 = tpos.X - p.X; var vz2 = tpos.Z - p.Z;
                     var l2 = (float)System.Math.Sqrt(vx2 * vx2 + vz2 * vz2);
                     if (l2 > 0.01f) { vx2 = vx2 / l2 * 45f; vz2 = vz2 / l2 * 45f; }
-                    for (var total = 160; total <= 195; total++)
+                    for (var total = 185; total <= 220; total++)
                     {
                         var b = new byte[total];
                         void PV2(int o, float x, float y, float z, float w)
@@ -329,12 +329,15 @@ public static class CommandRouter
                         PV2(24, p.X, p.Y + 1.2f, p.Z, 1f);              // START
                         PV2(40, tpos.X, tpos.Y + 1.2f, tpos.Z, 1f);     // END
                         // wire 56-59 blob count = 0
-                        System.BitConverter.GetBytes(1).CopyTo(b, 60);  // SOURCE type-id = 1 (TargetCharacterGuid)
-                        PV2(64, p.X, p.Y + 1.2f, p.Z, 1f);              // source Target Vector4 (TCG+0x10) = caster pos
-                        if (80 + 8 <= b.Length)
-                            System.BitConverter.GetBytes(self).CopyTo(b, 80); // source guid @ 80 (LE, normal)
-                        // wire 88-91 DEST type-id = 0 (null)
-                        PV2(92, vx2, 0f, vz2, 0f);                      // VELOCITY after both targets
+                        // SOURCE Target (caster) @ wire 60: [int 1][Vector4 16][guid 8] = 28B (wire 60..87)
+                        System.BitConverter.GetBytes(1).CopyTo(b, 60);
+                        PV2(64, p.X, p.Y + 1.2f, p.Z, 1f);
+                        if (80 + 8 <= b.Length) System.BitConverter.GetBytes(self).CopyTo(b, 80);
+                        // DEST Target (enemy) @ wire 88: [int 1][Vector4 16][guid 8] = 28B (wire 88..115)
+                        System.BitConverter.GetBytes(1).CopyTo(b, 88);
+                        PV2(92, tpos.X, tpos.Y + 1.2f, tpos.Z, 1f);
+                        if (108 + 8 <= b.Length) System.BitConverter.GetBytes(target).CopyTo(b, 108);
+                        PV2(116, vx2, 0f, vz2, 0f);                     // VELOCITY after both targets (wire 116)
                         conn.Player.SendTunneledToVisible(new PlayerUpdateLaunchProjectilePacket { Body = b }, sendToSelf: true);
                     }
                     SendSystem(conn, $"!lp src -> swept 160..195; TargetCharacterGuid(type1)+vec+guid={self} @ wire60/80; check trace");
