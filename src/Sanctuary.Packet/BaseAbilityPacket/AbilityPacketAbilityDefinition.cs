@@ -23,6 +23,18 @@ public class AbilityPacketAbilityDefinition : BaseAbilityPacket, ISerializablePa
     public int AuraDuration;       // +0x60
     public int MaxAoeTargets;      // +0x68
 
+    // Candidate COOLDOWN/recast fields (currently all 0). The cooldown duration is one of the def's
+    // still-unnamed floats; these let a probe sweep them to find which drives the ability-slot cooldown
+    // sweep length. All default 0 = no behaviour change.
+    public float Probe44;          // +0x44
+    public float Probe48;          // +0x48
+    public float Probe6c;          // +0x6c
+    public float Probe78;          // +0x78
+    public float Probe7c;          // +0x7c
+    public float Probe8c;          // +0x8c
+    public float Probe90;          // +0x90
+    public float ProbeA8;          // +0xa8
+
     public AbilityPacketAbilityDefinition() : base(OpCode)
     {
     }
@@ -49,8 +61,8 @@ public class AbilityPacketAbilityDefinition : BaseAbilityPacket, ISerializablePa
         writer.Write(ManaCost);          // +0x38
         writer.Write(0);                 // +0x3c
         writer.Write(0);                 // +0x40
-        writer.Write(0f);                // +0x44 (float)
-        writer.Write(0f);                // +0x48 (float)
+        writer.Write(Probe44);           // +0x44 (float)
+        writer.Write(Probe48);           // +0x48 (float)
         writer.Write(0);                 // +0x4c
         writer.Write(0);                 // +0x50
         writer.Write(ManaCostPerSecond); // +0x58
@@ -58,16 +70,16 @@ public class AbilityPacketAbilityDefinition : BaseAbilityPacket, ISerializablePa
         writer.Write(AuraDuration);      // +0x60
         writer.Write(0);                 // +0x64
         writer.Write(MaxAoeTargets);     // +0x68
-        writer.Write(0f);                // +0x6c (float)
+        writer.Write(Probe6c);           // +0x6c (float)
         writer.Write(0);                 // +0x70
         writer.Write(0);                 // +0x74
-        writer.Write(0f);                // +0x78 (float)
-        writer.Write(0f);                // +0x7c (float)
+        writer.Write(Probe78);           // +0x78 (float)
+        writer.Write(Probe7c);           // +0x7c (float)
         writer.Write(0);                 // +0x80
         writer.Write(0);                 // +0x84
         writer.Write(0);                 // +0x88
-        writer.Write(0f);                // +0x8c (float)
-        writer.Write(0f);                // +0x90 (float)
+        writer.Write(Probe8c);           // +0x8c (float)
+        writer.Write(Probe90);           // +0x90 (float)
         writer.Write(false);             // +0x94
         writer.Write(0);                 // +0x98
         writer.Write(0);                 // +0x9c
@@ -75,7 +87,7 @@ public class AbilityPacketAbilityDefinition : BaseAbilityPacket, ISerializablePa
         writer.Write(false);             // +0xa1
         writer.Write(false);             // +0xa2
         writer.Write(0);                 // +0xa4
-        writer.Write(0f);                // +0xa8 (float)
+        writer.Write(ProbeA8);           // +0xa8 (float)
         writer.Write(0);                 // +0xb0 — variable list: count 0 (no entries)
         writer.Write(false);             // +0xad — trailing bool (read after the list)
 

@@ -346,8 +346,12 @@ public static class CommandRouter
                         }
 
                         // Safe numeric sweep: !abil 4 <field 1..11> <value>. String stays empty.
+                        // Unknown3 is the sweep TRIGGER (set to 1 so a sweep always shows), and we vary
+                        // ONE other field to find which controls the sweep DURATION. Field 9 is the float.
                         var field = ArgI(2, 0);
                         var val = ArgI(3, 0);
+                        var fval = ArgF(3, 0f);
+                        launch.Unknown3 = 1; // trigger the sweep so duration changes are visible
                         switch (field)
                         {
                             case 1: launch.Unknown1 = val; break;
@@ -358,13 +362,14 @@ public static class CommandRouter
                             case 6: launch.Unknown6 = val; break;
                             case 7: launch.Unknown7 = val; break;
                             case 8: launch.Unknown8 = val; break;
+                            case 9: launch.Unknown9 = fval; break;   // the float (+0x60), likely seconds
                             case 10: launch.Unknown10 = val; break;
                             case 11: launch.Unknown11 = val; break;
                         }
 
                         conn.Player.SendTunneledToVisible(launch, sendToSelf: true);
-                        SendSystem(conn, $"!abil -> op36/4 LaunchAndLand (empty string, safe) " +
-                                         $"field{field}={val}");
+                        SendSystem(conn, $"!abil -> op36/4 (empty str) field{field}=" +
+                                         (field == 9 ? $"{fval}f" : $"{val}") + "  (Unknown3 trigger on)");
                         return true;
                     }
 
@@ -393,6 +398,54 @@ public static class CommandRouter
                         SendSystem(conn, $"!abil: sub {sub} not implemented (have 6, 9, 14, 15, 18, 0=raw).");
                         return true;
                 }
+            }
+
+            // Find the ability-cooldown field: re-send the SPECIAL's AbilityDefinition (op36/13) with ONE
+            // candidate float set, then fire a special (op36/4 triggers the cooldown, reading the def's
+            // duration). !abildef <1..8> <seconds>. Slots map to the def's still-zero floats:
+            //   1=+0x44 2=+0x48 3=+0x6c 4=+0x78 5=+0x7c 6=+0x8c 7=+0x90 8=+0xa8
+            case "abildef":
+            {
+                if (!RequireAdmin(conn))
+                    return true;
+                if (parts.Length < 3 || !int.TryParse(parts[1], out var which) ||
+                    !float.TryParse(parts[2], out var secs))
+                {
+                    SendSystem(conn, "Usage: !abildef <1..8> <seconds>  (then fire a special to test)");
+                    return true;
+                }
+
+                var kit = Sanctuary.Game.Combat.JobKits.Active(conn.Player);
+                if (kit is null || kit.SlotAbilityDefIds.Count < 2)
+                {
+                    SendSystem(conn, "!abildef: no active combat kit / special def.");
+                    return true;
+                }
+
+                var specialDefId = kit.SlotAbilityDefIds[1];
+                var def = Sanctuary.Game.Combat.JobWeaponAbilities.ResolveAbilityDefinition(conn.Player, specialDefId);
+                var packet = new AbilityPacketAbilityDefinition
+                {
+                    AbilityId = specialDefId,
+                    NameId = def?.NameId ?? 0,
+                    DescriptionId = def?.DescId ?? 0,
+                    IconId = def?.IconId ?? 0,
+                };
+                switch (which)
+                {
+                    case 1: packet.Probe44 = secs; break;
+                    case 2: packet.Probe48 = secs; break;
+                    case 3: packet.Probe6c = secs; break;
+                    case 4: packet.Probe78 = secs; break;
+                    case 5: packet.Probe7c = secs; break;
+                    case 6: packet.Probe8c = secs; break;
+                    case 7: packet.Probe90 = secs; break;
+                    case 8: packet.ProbeA8 = secs; break;
+                }
+                conn.Player.SendTunneled(packet);
+                SendSystem(conn, $"!abildef -> special def {specialDefId} field{which}={secs}. " +
+                                 $"Now fire a special and watch the sweep length.");
+                return true;
             }
 
             default:
