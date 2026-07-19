@@ -1,6 +1,4 @@
-using System;
 using System.Numerics;
-using System.Text;
 
 using Sanctuary.Core.IO;
 
@@ -33,7 +31,7 @@ public class AbilityPacketLaunchAndLand : BaseAbilityPacket, ISerializablePacket
     public const int BodyLength = 240;
 
     public ulong Guid;              // +0x10
-    public string Name = string.Empty; // +0x18 - length-prefixed string (a2fab0), NOT a Vector4
+    // +0x18 is an empty LIST (int count 0), NOT a string - see the serializer. No field to set.
     public int Unknown1;            // +0x28
     public int Unknown2;            // +0x2c
     public int Unknown3;            // +0x30
@@ -68,7 +66,10 @@ public class AbilityPacketLaunchAndLand : BaseAbilityPacket, ISerializablePacket
         var headerLength = writer.Buffer.Length;
 
         writer.Write(Guid);
-        writer.Write(Name);
+        // +0x18 is a length-prefixed LIST (reader a2fab0: [int count][item]xcount), NOT a string. We send
+        // an EMPTY list (count 0). A non-zero count makes the client parse garbage items through the
+        // polymorphic factory (valid type-ids 1..6, else null-deref crash) - that was the "string" crash.
+        writer.Write(0);
         writer.Write(Unknown1);
         writer.Write(Unknown2);
         writer.Write(Unknown3);
@@ -90,16 +91,9 @@ public class AbilityPacketLaunchAndLand : BaseAbilityPacket, ISerializablePacket
         foreach (var b in Nested)
             writer.Write(b);
 
-        // Pad so the body is exactly what the client consumes.
-        //
-        // BodyLength was measured with an EMPTY string (4 bytes of length prefix, no chars). A real name
-        // adds its UTF8 bytes on top, so the target MUST grow by that much. Padding to a fixed 240 with a
-        // non-empty name silently truncates the tail, the client reads past the end into garbage, and it
-        // CRASHES - that is exactly what happened when this was first tested with real asset names.
-        var target = BodyLength + Encoding.UTF8.GetByteCount(Name ?? string.Empty);
-
+        // Pad the body to the measured 240 bytes (the +0x18 list is always empty, so the size is fixed).
         var written = writer.Buffer.Length - headerLength;
-        for (var i = written; i < target; i++)
+        for (var i = written; i < BodyLength; i++)
             writer.Write((byte)0);
 
         return writer.Buffer;

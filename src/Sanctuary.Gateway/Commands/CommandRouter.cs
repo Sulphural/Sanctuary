@@ -334,24 +334,36 @@ public static class CommandRouter
                             Guid3 = self,
                         };
 
-                        if (parts.Length >= 3 && parts[1].Equals("4", StringComparison.Ordinal) &&
-                            parts.Length > 2 && parts[2].Equals("name", StringComparison.OrdinalIgnoreCase))
-                        {
-                            // Explicit, dangerous string test.
-                            launch.Name = parts.Length > 3 ? parts[3] : string.Empty;
-                            conn.Player.SendTunneledToVisible(launch, sendToSelf: true);
-                            SendSystem(conn, $"!abil -> op36/4 LaunchAndLand name='{launch.Name}' " +
-                                             $"(DANGEROUS string send)");
-                            return true;
-                        }
+                        // NOTE: the old "!abil 4 name <asset>" path is GONE - the +0x18 field is a LIST, not
+                        // a string; a non-empty value made the client parse garbage items and crash. The
+                        // packet now always sends an empty list, so LaunchAndLand is crash-safe.
 
-                        // Safe numeric sweep: !abil 4 <field 1..11> <value>. String stays empty.
-                        // Unknown3 is the sweep TRIGGER (set to 1 so a sweep always shows), and we vary
-                        // ONE other field to find which controls the sweep DURATION. Field 9 is the float.
+                        // PROJECTILE HUNT (now fully safe): set ONE int
+                        // field to a real archer projectile-effect id and watch for a travelling projectile.
+                        // Guid = caster; Position = a point ~20u in front of the player = the LAND target;
+                        // Guid2 = nearest enemy (the projectile's target), else self. !abil 4 <field> <effectId>
+                        // e.g. !abil 4 1 16110  (16110 = PRJ_archer_freezing-shot_trail).
                         var field = ArgI(2, 0);
                         var val = ArgI(3, 0);
                         var fval = ArgF(3, 0f);
-                        launch.Unknown3 = 1; // trigger the sweep so duration changes are visible
+
+                        // Land point ~20u ahead of the player (rough forward; good enough to see a projectile).
+                        var p = conn.Player.Position;
+                        launch.Position = new System.Numerics.Vector4(p.X, p.Y + 1f, p.Z + 20f, 1f);
+
+                        // Target the nearest visible enemy if there is one.
+                        if (conn.Player.Zone is { } z)
+                        {
+                            var best = float.MaxValue;
+                            foreach (var n in z.Npcs)
+                            {
+                                if (!n.Visible || !n.IsHostile) continue;
+                                var dx = n.Position.X - p.X; var dz = n.Position.Z - p.Z;
+                                var d = dx * dx + dz * dz;
+                                if (d < best) { best = d; launch.Guid2 = n.Guid; launch.Guid3 = n.Guid; launch.Position = n.Position; }
+                            }
+                        }
+
                         switch (field)
                         {
                             case 1: launch.Unknown1 = val; break;
@@ -362,14 +374,14 @@ public static class CommandRouter
                             case 6: launch.Unknown6 = val; break;
                             case 7: launch.Unknown7 = val; break;
                             case 8: launch.Unknown8 = val; break;
-                            case 9: launch.Unknown9 = fval; break;   // the float (+0x60), likely seconds
+                            case 9: launch.Unknown9 = fval; break;   // the float (+0x60)
                             case 10: launch.Unknown10 = val; break;
                             case 11: launch.Unknown11 = val; break;
                         }
 
                         conn.Player.SendTunneledToVisible(launch, sendToSelf: true);
-                        SendSystem(conn, $"!abil -> op36/4 (empty str) field{field}=" +
-                                         (field == 9 ? $"{fval}f" : $"{val}") + "  (Unknown3 trigger on)");
+                        SendSystem(conn, $"!abil -> op36/4 PROJECTILE probe (empty str, safe) field{field}=" +
+                                         (field == 9 ? $"{fval}f" : $"{val}") + $" target={launch.Guid2} pos={launch.Position}");
                         return true;
                     }
 
@@ -445,6 +457,28 @@ public static class CommandRouter
                 conn.Player.SendTunneled(packet);
                 SendSystem(conn, $"!abildef -> special def {specialDefId} field{which}={secs}. " +
                                  $"Now fire a special and watch the sweep length.");
+                return true;
+            }
+
+            // Find where a LONG, server-TICKED radial cooldown renders on the combat ability slots. This is
+            // the item-cooldown mechanism (ClientUpdatePacketUpdateActionBarSlot, ticked every second) that
+            // DOES show long radials (boombox 120s). Sweep <bar>/<slot> to find the combat special.
+            // !cd <bar> <slot> <seconds>   e.g. !cd 1 1 10  (bar 1, slot 1 = special, 10s)
+            case "cd":
+            {
+                if (!RequireAdmin(conn))
+                    return true;
+                if (parts.Length < 4 || !int.TryParse(parts[1], out var bar) ||
+                    !int.TryParse(parts[2], out var slot) || !int.TryParse(parts[3], out var secs))
+                {
+                    SendSystem(conn, "Usage: !cd <bar> <slot> <seconds>  e.g. !cd 1 1 10");
+                    return true;
+                }
+
+                var ab = Sanctuary.Game.Combat.JobWeaponAbilities.ResolveAbility(conn.Player, slot);
+                conn.Player.StartActionBarCooldown(bar, slot, ab.IconImageId, 0, 1, secs * 1000);
+                SendSystem(conn, $"!cd -> bar {bar} slot {slot} for {secs}s (ticked radial). " +
+                                 $"Watch if the special icon shows a {secs}s sweep.");
                 return true;
             }
 
