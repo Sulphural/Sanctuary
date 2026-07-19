@@ -23,6 +23,7 @@ public sealed class ProjectileNpc : Npc
     private bool _done;
     private bool _arrived;
     private bool _seekMode;   // when true, the CLIENT drives motion (op35/59 SeekTarget); we only despawn on expiry
+    private DateTime _arriveAt;
     private DateTime _expireAt;
     private DateTime _removeAt;
 
@@ -55,6 +56,7 @@ public sealed class ProjectileNpc : Npc
             proj.ShowTo(viewer);
 
         proj.AttachTrail();
+        proj.GlideToTarget();
     }
 
     public void Launch(Vector4 start, Vector4 target, float speed, int impactEffectId, int lingerMs = 1500)
@@ -63,7 +65,6 @@ public sealed class ProjectileNpc : Npc
         _speed = speed;
         _impactEffectId = impactEffectId;
         _lingerMs = lingerMs;
-        _expireAt = DateTime.UtcNow.AddSeconds(4); // safety despawn if it never reaches the target
 
         MovementType = 1;                    // CONTROLLER: interpolate to sent pos, no gravity
         Speed = speed;                       // baked ExpectedSpeed
@@ -73,6 +74,38 @@ public sealed class ProjectileNpc : Npc
         // Position/Rotation have private setters - set them through UpdatePosition. updateZoneArea:false
         // keeps a fast mover out of the tile relevance churn (we register visibility ourselves via ShowTo).
         UpdatePosition(start, FacingRotation(target.X - start.X, target.Z - start.Z), false);
+
+        // Flight time = distance / speed. The client interpolates the WHOLE path in one glide (see
+        // GlideToTarget), so we don't step per-tick; we just time the arrival to fire the impact.
+        var dx = target.X - start.X;
+        var dy = target.Y - start.Y;
+        var dz = target.Z - start.Z;
+        var dist = MathF.Sqrt(dx * dx + dy * dy + dz * dz);
+        var flightSec = speed > 0.1f ? dist / speed : 0.3f;
+        _arriveAt = DateTime.UtcNow.AddSeconds(flightSec);
+        _expireAt = DateTime.UtcNow.AddSeconds(flightSec + 3); // safety despawn
+    }
+
+    // Retail-smooth motion: send ONE op125 to the destination and let the MovementType=1 CONTROLLER
+    // client-side interpolate the render (and the attached trail, which rides the interpolated position)
+    // there at ExpectedSpeed - a single continuous glide instead of ~10 visible steps/sec. Call AFTER
+    // ShowTo (client must have the entity) and AttachTrail (so the trail is on before it moves).
+    public void GlideToTarget()
+    {
+        if (_seekMode)
+            return; // seek probe drives motion via op35/59 instead
+
+        UpdatePosition(_target, Rotation, false);
+        var packet = new PlayerUpdatePacketUpdatePosition
+        {
+            Guid = Guid,
+            Position = _target,
+            Rotation = Rotation,
+            State = 1, // moving
+            Unknown = 0,
+        };
+        foreach (var player in VisiblePlayers.Values)
+            player.SendTunneled(packet);
     }
 
     // Register the projectile with a viewer: send AddNpc + ExpectedSpeed so the client can interpolate it.
@@ -126,47 +159,11 @@ public sealed class ProjectileNpc : Npc
             return;
         }
 
-        if (DateTime.UtcNow > _expireAt)
-        {
+        // The client is gliding the carrier along the single op125 waypoint (GlideToTarget). We just wait
+        // for the computed flight time to elapse, then fire the impact. _expireAt is the safety net.
+        var now = DateTime.UtcNow;
+        if (now >= _arriveAt || now > _expireAt)
             ReachTarget();
-            return;
-        }
-
-        // Seek mode: the client drives motion via SeekTarget - server sends no op125. Wait for expiry.
-        if (_seekMode)
-            return;
-
-        var dx = _target.X - Position.X;
-        var dy = _target.Y - Position.Y;
-        var dz = _target.Z - Position.Z;
-        var dist = MathF.Sqrt(dx * dx + dy * dy + dz * dz);
-
-        if (dist < 1.5f)
-        {
-            ReachTarget();
-            return;
-        }
-
-        var step = MathF.Min(_speed * 0.1f, dist);  // ~10 ticks/sec
-        var inv = step / dist;
-        var newPos = new Vector4(
-            Position.X + dx * inv,
-            Position.Y + dy * inv,
-            Position.Z + dz * inv,
-            1f);
-
-        UpdatePosition(newPos, FacingRotation(dx, dz), false);
-
-        var packet = new PlayerUpdatePacketUpdatePosition
-        {
-            Guid = Guid,
-            Position = Position,
-            Rotation = Rotation,
-            State = 1, // moving
-            Unknown = 0,
-        };
-        foreach (var player in VisiblePlayers.Values)
-            player.SendTunneled(packet);
     }
 
     // Projectile hit the target: STOP the trail emitter (op35/42) so no new particles spawn at the enemy

@@ -328,7 +328,13 @@ public static class CommandRouter
                 {
                     CharacterGuid = seekNpc.Guid,
                     TargetGuid = enemy,
+                    // The controller's rate field is param_7 (= wire +0x24), not +0x28. Set all float slots
+                    // to the speed to guarantee the rate field is non-zero; bisect once it moves.
+                    Unknown1 = seekSpeed,
+                    Unknown2 = seekSpeed,
                     Speed = seekSpeed,
+                    Unknown4 = seekSpeed,
+                    Unknown5 = seekSpeed,
                     Position = epos,
                 }, sendToSelf: true);
 
@@ -523,6 +529,7 @@ public static class CommandRouter
                 proj.Launch(start, tgt, speed, impactEffId, lingerMs);
                 proj.ShowTo(conn.Player);      // register visibility + AddNpc + ExpectedSpeed
                 proj.AttachTrail();             // op35/41 attach (follows the model); removed on landing
+                proj.GlideToTarget();           // single op125 -> client interpolates the whole flight smoothly
 
                 SendSystem(conn, $"!proj -> eff={effId} model={modelId} speed={speed} from=({start.X:0.#},{start.Y:0.#},{start.Z:0.#}) to=({tgt.X:0.#},{tgt.Y:0.#},{tgt.Z:0.#})");
                 return true;
