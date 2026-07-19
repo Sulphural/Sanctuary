@@ -329,8 +329,7 @@ public static class CommandRouter
                     CharacterGuid = seekNpc.Guid,
                     TargetGuid = enemy,
                     Speed = seekSpeed,
-                    Position1 = start,
-                    Position2 = epos,
+                    Position = epos,
                 }, sendToSelf: true);
 
                 SendSystem(conn, $"!seek -> carrier={seekNpc.Guid} seeks enemy={enemy} eff={seekEff} speed={seekSpeed}");

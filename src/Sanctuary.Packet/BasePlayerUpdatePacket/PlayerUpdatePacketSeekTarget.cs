@@ -14,15 +14,14 @@ public class PlayerUpdatePacketSeekTarget : BasePlayerUpdatePacket, ISerializabl
 {
     public new const short OpCode = 59;
 
-    public ulong CharacterGuid;   // the entity to control (the projectile)
-    public ulong TargetGuid;      // the entity to seek toward (the enemy)
-    public float Unknown1;
-    public float Unknown2;
-    public float Speed;           // best-guess speed field (probe live)
-    public float Unknown4;
-    public float Unknown5;
-    public Vector4 Position1;      // start / current position
-    public Vector4 Position2;      // target / destination position
+    public ulong CharacterGuid;   // +0x10 the entity to control (the projectile)
+    public ulong TargetGuid;      // +0x18 the entity to seek toward (the enemy)
+    public float Unknown1;        // +0x20
+    public float Unknown2;        // +0x24
+    public float Speed;           // +0x28 (best-guess; probe live)
+    public float Unknown4;        // +0x2c
+    public float Unknown5;        // +0x30
+    public Vector4 Position;      // +0x40 (single Vector4 - destination/offset)
 
     public PlayerUpdatePacketSeekTarget() : base(OpCode)
     {
@@ -41,8 +40,7 @@ public class PlayerUpdatePacketSeekTarget : BasePlayerUpdatePacket, ISerializabl
         writer.Write(Speed);
         writer.Write(Unknown4);
         writer.Write(Unknown5);
-        writer.Write(Position1);
-        writer.Write(Position2);
+        writer.Write(Position);
 
         return writer.Buffer;
     }
