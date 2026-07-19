@@ -305,6 +305,16 @@ public static class CommandRouter
                     }
                 }
 
+                // "!lp sweep" - fire one packet per body size 120..180 so the trace pins the exact length
+                // (deser ret=1 = PARSED OK at that pktLen). One test instead of many.
+                if (parts.Length > 1 && parts[1] == "sweep")
+                {
+                    for (var n = 120; n <= 184; n++)
+                        conn.Player.SendTunneledToVisible(new PlayerUpdateLaunchProjectilePacket { Body = new byte[n] }, sendToSelf: true);
+                    SendSystem(conn, "!lp sweep -> sent op35/62 bodies 120..184; check the trace for deser ret=1");
+                    return true;
+                }
+
                 byte[] body;
                 if (parts.Length > 1 && parts[1] == "traj")
                 {
