@@ -364,6 +364,16 @@ public static class CommandRouter
                             }
                         }
 
+                        // Flag1 is the CONFIRMED projectile trigger (fires the projectile source 958220). Set
+                        // it so the spawn block runs, then sweep an EFFECT/MODEL id across the fields to find
+                        // what supplies the projectile visual.
+                        launch.Flag1 = true;
+
+                        // NOTE: "!abil 4 proj" (nested-struct trajectory) is DISABLED - it crashed the client.
+                        // The nested struct 8e8910 has a variable/polymorphic sub-field (FUN_00894b10 /
+                        // FUN_008d53b0) that raw Vector4 bytes corrupt (same failure class as the +0x18 list).
+                        // It must be mapped precisely before any non-empty nested body is sent.
+
                         switch (field)
                         {
                             case 1: launch.Unknown1 = val; break;
@@ -377,6 +387,21 @@ public static class CommandRouter
                             case 9: launch.Unknown9 = fval; break;   // the float (+0x60)
                             case 10: launch.Unknown10 = val; break;
                             case 11: launch.Unknown11 = val; break;
+                            // The bool FLAGS - the processor gates the projectile on a flag (local_274).
+                            case 12: launch.Flag1 = val != 0; break;   // +0x3c
+                            case 13: launch.Flag2 = val != 0; break;   // +0x3d
+                            case 14: launch.Flag3 = val != 0; break;   // +0x80
+                        }
+
+                        // NESTED-STRUCT ints: field 100+N writes 'val' as an int at nested int-index N (the
+                        // 8e8910 struct that holds the projectile MODEL/trajectory). Nested int 0/1 (+0x10/
+                        // +0x14) are non-NaN-checked -> the prime suspects for the projectile MODEL id.
+                        if (field >= 100)
+                        {
+                            var idx = field - 100;
+                            var nested = new byte[(idx + 1) * 4];
+                            System.BitConverter.GetBytes(val).CopyTo(nested, idx * 4);
+                            launch.Nested = nested;
                         }
 
                         conn.Player.SendTunneledToVisible(launch, sendToSelf: true);
