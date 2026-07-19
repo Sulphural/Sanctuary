@@ -28,13 +28,6 @@ public static class JobWeaponAbilities
     // Bow range for archers, melee envelope otherwise.
     public static float AutoTargetReach(Player player) => JobKits.Active(player)?.AutoTargetReach ?? 7f;
 
-    // Name/icon for the pressed slot on the player's equipped weapon (slot 0 = basic, 1 = special), for the
-    // ability-cooldown sweep. Null if the active job has no kit.
-    public static (int NameId, int DescId, int IconId)? SlotNameIcon(Player player, int slot) =>
-        JobKits.Active(player) is { } kit
-            ? kit.SlotNameIcon(player.GetEquippedWeaponDefinitionId(), slot)
-            : null;
-
     // Send the toolbar and warm its FX cache. False when the job has no kit.
     public static bool SendToolbarWithFxPreload(Player player, IResourceManager resources)
     {
