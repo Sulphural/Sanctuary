@@ -136,8 +136,11 @@ public sealed class ProjectileNpc : Npc
             player.SendTunneled(packet);
     }
 
-    // Projectile hit the target: play the impact burst and START the linger. The carrier stays put and
-    // stops sending position updates (so the trail stops trailing); the trail then fades over _lingerMs.
+    // Projectile hit the target: STOP the trail emitter (op35/42) so no new particles spawn at the enemy
+    // (otherwise the looping emitter keeps pooling there and the projectile "sits" on the target), play the
+    // impact burst, and START the linger. We keep the carrier alive through _lingerMs so op35/42 STOPS
+    // emission without the carrier-removal hard-killing the already-laid trail particles - those fade out
+    // over their own lifetime. The carrier is removed only after the fade.
     private void ReachTarget()
     {
         if (_arrived)
@@ -145,8 +148,16 @@ public sealed class ProjectileNpc : Npc
         _arrived = true;
         _removeAt = DateTime.UtcNow.AddMilliseconds(_lingerMs);
 
-        if (_impactEffectId > 0)
-            foreach (var player in VisiblePlayers.Values)
+        foreach (var player in VisiblePlayers.Values)
+        {
+            if (_effectId > 0)
+                player.SendTunneled(new PlayerUpdatePacketRemoveEffectTagCompositeEffect
+                {
+                    Guid = Guid,
+                    TagId = TrailTagId,
+                });
+
+            if (_impactEffectId > 0)
                 player.SendTunneled(new PlayerUpdatePacketPlayCompositeEffect
                 {
                     Guid = 0,
@@ -154,6 +165,7 @@ public sealed class ProjectileNpc : Npc
                     Position = _target,
                     Clear = false,
                 });
+        }
     }
 
     // Linger elapsed: remove the carrier. By now the trail has faded on its own, so nothing gets cut.
