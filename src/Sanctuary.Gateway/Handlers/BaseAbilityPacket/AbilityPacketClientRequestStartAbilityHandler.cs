@@ -887,11 +887,6 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             _nextBasicSwingTicks[player.Guid] = now + swingMs;
         }
 
-        // Deferred stamina drain: the drain (SendEnergy) GREYS the special button, and a greyed button
-        // won't draw the MeleeRefresh radial FLASH. So we deduct energy now but send the visual drain AFTER
-        // the flash (below), so the flash lands on a still-lit button, then the button greys.
-        int? deferredStaminaDrain = null;
-
         // Energy gate (non-basic slots): each ability drains its EnergyCost (weapon specials = full 100, archer
         // level abilities = 50). Can't afford it => drop the press. Matches the server-gated special.
         if (!isBasicMelee)
@@ -906,11 +901,13 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             }
 
             var remaining = energy - cost;
-            _energy[player.Guid] = remaining;   // server state drops now
-            deferredStaminaDrain = remaining;   // but the visual drain (grey) is sent after the flash
-            StartEnergyRegen(player);           // begin the refill
-            // NOTE: the special's MeleeRefresh cooldown radial is sent AFTER StartCasting (below), not here
-            // — StartCasting re-touches the slot and would wipe a radial sent before it.
+            _energy[player.Guid] = remaining;
+            SendEnergy(player, remaining);   // op38/sub13: bar drops by the cost (BEFORE the flash, so the
+                                             // mana update doesn't re-touch the slot and wipe the radial)
+            StartEnergyRegen(player);        // begin the refill
+            // NOTE: the special's MeleeRefresh radial FLASH is sent as the LAST slot-touch (after
+            // StartCasting, below) so nothing wipes it — a mana update (SendEnergy) or StartCasting after it
+            // would clear it.
         }
 
         // Lingering cast FX (CastEffectStopMs > 0: projectile trails / loops that never self-terminate): play as
@@ -976,13 +973,10 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         else
         {
             // Specials get the same ~1s radial FLASH the basic move shows (retail showed it on every
-            // ability button). Send the flash FIRST — on a still-lit button — then apply the stamina
-            // drain (which greys the button). If we greyed first, the greyed button wouldn't draw the
-            // flash (the bug). The stamina bar is the real re-use gate (~10s); this is just the flash.
+            // ability button). Sent here as the LAST slot-touch — the stamina drain already went out
+            // above, so no later mana update / StartCasting wipes this radial. The stamina bar is the real
+            // re-use gate (~10s); this is just the visual flash.
             player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = SpecialRadialFlashMs });
-
-            if (deferredStaminaDrain is int drained)
-                SendEnergy(player, drained);   // NOW drop the bar / grey the button, after the flash
         }
 
         // Weapon-empowering specials (Mysticism / Mystical Blade) bind their FX to the sword (item slot 7)
