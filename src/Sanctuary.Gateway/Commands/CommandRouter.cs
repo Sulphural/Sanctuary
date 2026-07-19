@@ -311,12 +311,13 @@ public static class CommandRouter
                 // (crash-safe: reads as 1 whether the type-id is 1 or 4 bytes). guid at 64 (after int type-id).
                 if (parts.Length > 1 && parts[1] == "src")
                 {
-                    var guidMode = LI(2, 0); // 0=normal self, 1=dword-swapped
-                    var g = guidMode == 1 ? ((self & 0xFFFFFFFFUL) << 32) | (self >> 32) : self;
+                    // Target wire (RE'd from 0101c850 + TargetCharacterGuid reader 0101c7c0):
+                    //   [int type-id][Vector4 16B][guid 8B]  for type-id 1 (TargetCharacterGuid)
+                    // SOURCE Target @ wire 60 (after START@24, END@40, blob@56). DEST Target after it.
                     var vx2 = tpos.X - p.X; var vz2 = tpos.Z - p.Z;
                     var l2 = (float)System.Math.Sqrt(vx2 * vx2 + vz2 * vz2);
                     if (l2 > 0.01f) { vx2 = vx2 / l2 * 45f; vz2 = vz2 / l2 * 45f; }
-                    for (var total = 150; total <= 185; total++)
+                    for (var total = 160; total <= 195; total++)
                     {
                         var b = new byte[total];
                         void PV2(int o, float x, float y, float z, float w)
@@ -327,14 +328,16 @@ public static class CommandRouter
                         }
                         PV2(24, p.X, p.Y + 1.2f, p.Z, 1f);              // START
                         PV2(40, tpos.X, tpos.Y + 1.2f, tpos.Z, 1f);     // END
-                        // wire 56-59 blob count = 0 (already zero)
-                        System.BitConverter.GetBytes(1).CopyTo(b, 60);  // SOURCE Target type-id = 1 (TargetCharacterGuid)
-                        System.BitConverter.GetBytes(g).CopyTo(b, 64);  // source guid @ 64
-                        // wire 72-75 DEST Target type-id = 0 (null, already zero)
-                        PV2(76, vx2, 0f, vz2, 0f);                      // VELOCITY after dest target
+                        // wire 56-59 blob count = 0
+                        System.BitConverter.GetBytes(1).CopyTo(b, 60);  // SOURCE type-id = 1 (TargetCharacterGuid)
+                        PV2(64, p.X, p.Y + 1.2f, p.Z, 1f);              // source Target Vector4 (TCG+0x10) = caster pos
+                        if (80 + 8 <= b.Length)
+                            System.BitConverter.GetBytes(self).CopyTo(b, 80); // source guid @ 80 (LE, normal)
+                        // wire 88-91 DEST type-id = 0 (null)
+                        PV2(92, vx2, 0f, vz2, 0f);                      // VELOCITY after both targets
                         conn.Player.SendTunneledToVisible(new PlayerUpdateLaunchProjectilePacket { Body = b }, sendToSelf: true);
                     }
-                    SendSystem(conn, $"!lp src guidMode={guidMode} -> swept 150..185 w/ TargetCharacterGuid(type1)+guid={g:x}; check trace");
+                    SendSystem(conn, $"!lp src -> swept 160..195; TargetCharacterGuid(type1)+vec+guid={self} @ wire60/80; check trace");
                     return true;
                 }
 
