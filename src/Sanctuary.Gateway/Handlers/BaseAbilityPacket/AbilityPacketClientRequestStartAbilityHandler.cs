@@ -56,6 +56,10 @@ public static class AbilityPacketClientRequestStartAbilityHandler
     // button, basic + specials). Just the visual flash — the stamina bar is the real re-use gate. Kept
     // short because a large MeleeRefresh value only animates the final second (shows nothing up front).
     private const int SpecialRadialFlashMs = 1000;
+
+    // Delay before sending the special's radial flash — just past the cast lock (SpecialActionTime 0.4s),
+    // so the flash lands on a button that's out of the fresh-cast state that otherwise swallows it.
+    private const int SpecialFlashDelayMs = 450;
     private static readonly System.Collections.Generic.Dictionary<int, int> SwingMsByAnim = new()
     {
         [1080] = 1150, // com_2hp_attack — 2-handed hammer swing (Brawler): slow, heavy wind-up
@@ -972,11 +976,22 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         }
         else
         {
-            // Specials get the same ~1s radial FLASH the basic move shows (retail showed it on every
-            // ability button). Sent here as the LAST slot-touch — the stamina drain already went out
-            // above, so no later mana update / StartCasting wipes this radial. The stamina bar is the real
-            // re-use gate (~10s); this is just the visual flash.
-            player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = SpecialRadialFlashMs });
+            // Specials get the same ~1s radial FLASH the basic shows. Frida trace proved MeleeRefresh IS
+            // received and sets the cooldown — but when sent in the same instant as StartCasting, the
+            // button's fresh cast-state swallows the radial. So DELAY the flash until just after the cast
+            // settles; then it lands on a button that's out of the cast-lock and the radial renders.
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(SpecialFlashDelayMs);
+                    player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = SpecialRadialFlashMs });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Special cooldown-flash send failed.");
+                }
+            });
         }
 
         // Weapon-empowering specials (Mysticism / Mystical Blade) bind their FX to the sword (item slot 7)
