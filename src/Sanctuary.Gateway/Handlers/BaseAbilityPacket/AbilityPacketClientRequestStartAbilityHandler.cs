@@ -899,6 +899,14 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             _energy[player.Guid] = remaining;
             SendEnergy(player, remaining);   // op38/sub13: bar drops by the cost
             StartEnergyRegen(player);        // begin the +4/sec refill
+
+            // RETAIL SPECIAL COOLDOWN = stamina grey-out + MeleeRefresh radial sweep TOGETHER. The stamina
+            // drain (above) greys the special button until energy refills (~10s at cost 100 / regen 10);
+            // this MeleeRefresh (op36/11) draws the animated radial over that greyed button, matched to the
+            // same refill time. (MeleeRefresh alone at full stamina showed ~nothing because the button
+            // wasn't greyed — the two are meant to run together.)
+            var cooldownMs = cost * 1000 / Math.Max(1, EnergyRegenPerSec);
+            player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = cooldownMs });
         }
 
         // Lingering cast FX (CastEffectStopMs > 0: projectile trails / loops that never self-terminate): play as
