@@ -18,6 +18,7 @@ public sealed class ProjectileNpc : Npc
     private Vector4 _target;
     private float _speed;
     private int _impactEffectId;
+    private ulong _impactTargetGuid;
     private int _lingerMs;
     private bool _done;
     private bool _arrived;
@@ -26,6 +27,30 @@ public sealed class ProjectileNpc : Npc
 
     public ProjectileNpc(IZone zone) : base(zone)
     {
+    }
+
+    // Play the impact burst ON this actor (auto-fades) instead of world-anchored (world effects never clean).
+    public void SetImpactTarget(ulong guid) => _impactTargetGuid = guid;
+
+    // One-call spawn+configure+launch of a projectile from caster to target, visible to the caster and
+    // everyone who can see them. trailEffId rides the invisible carrier; impactEffId plays on the target.
+    public static void Fire(IZone zone, Player caster, Vector4 start, Vector4 target, ulong targetGuid,
+        int trailEffId, int impactEffId, float speed = 55f, int modelId = 1056, float scale = 1f, int lingerMs = 1500)
+    {
+        if (!zone.TryCreateProjectileNpc(out var proj))
+            return;
+
+        proj.ModelId = modelId;
+        proj.Scale = scale;
+        proj.SetTrail(trailEffId);
+        proj.SetImpactTarget(targetGuid);
+        proj.Launch(start, target, speed, impactEffId, lingerMs);
+
+        proj.ShowTo(caster);
+        foreach (var viewer in caster.VisiblePlayers.Values)
+            proj.ShowTo(viewer);
+
+        proj.AttachTrail();
     }
 
     public void Launch(Vector4 start, Vector4 target, float speed, int impactEffectId, int lingerMs = 1500)
@@ -160,7 +185,8 @@ public sealed class ProjectileNpc : Npc
             if (_impactEffectId > 0)
                 player.SendTunneled(new PlayerUpdatePacketPlayCompositeEffect
                 {
-                    Guid = 0,
+                    // Play ON the target actor when we have one (auto-fades); else world-anchored fallback.
+                    Guid = _impactTargetGuid,
                     CompositeEffectId = _impactEffectId,
                     Position = _target,
                     Clear = false,

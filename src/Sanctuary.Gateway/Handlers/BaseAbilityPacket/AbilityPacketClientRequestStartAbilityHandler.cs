@@ -41,6 +41,12 @@ public static class AbilityPacketClientRequestStartAbilityHandler
 
     private const int FoodEffectCooldownMs = 120_000;
 
+    // Fallback projectile trails for ranged shots whose ability has no elemental trail of its own (plain
+    // basics/specials). Element-specific abilities use their own CastEffectId. 15483 = PRJ_magical_green_arrow,
+    // 16188 = PRJ_sparkles_purple_trail_loop (an arcane bolt).
+    private const int DefaultArcherTrailFx = 15483;
+    private const int DefaultWizardTrailFx = 16188;
+
     // StartCasting ActionTime locks the action-bar slot for the whole swing/cast so you can't fire again mid-
     // animation; DamageDelay is when the number lands (as the swing connects / the special resolves).
     private const float SpecialActionTime = 0.4f;  // slot 1 named special — a real wind-up
@@ -901,11 +907,39 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             StartEnergyRegen(player);        // begin the +4/sec refill
         }
 
-        // Lingering cast FX (CastEffectStopMs > 0: projectile trails / loops that never self-terminate): play as
-        // an effect tag on the caster and remove after the window, so the trail flashes with the shot instead of
-        // lingering. One-shot cast FX keep riding StartCasting's CompositeEffectId.
         var startCastingFx = ability.CastEffectId;
-        if (startCastingFx > 0 && ability.CastEffectStopMs > 0)
+
+        // RANGED jobs (Archer/Wizard): fly a real travelling projectile from caster -> target carrying the
+        // ability's OWN trail (CastEffectId - freezing/fire/lightning/arcane per weapon), instead of pinning
+        // the trail on the caster. Server-authoritative (ProjectileNpc: invisible carrier + attached trail,
+        // stopped + faded on hit). The impact FX (EffectId) is played ON THE VICTIM by ResolveDamageAfterCast,
+        // so the projectile carries no impact here (impactEffId 0) to avoid double-playing.
+        var firedProjectile = false;
+        var isArcher = player.ActiveProfileId == ArcherWeaponAbilities.ArcherProfileId;
+        var isWizard = player.ActiveProfileId == WizardWeaponAbilities.WizardProfileId;
+        // Single-target ranged shots fly a projectile. AoE specials (area bursts) keep their ground FX - a
+        // single travelling projectile doesn't fit "hits everything in a radius".
+        if ((isArcher || isWizard) && targetNpc is not null && ability.AoeRadius <= 0f && player.Zone is { } projectileZone)
+        {
+            // The trail is the ability's OWN CastEffectId when it has one (the elemental signature specials);
+            // otherwise a job-appropriate default arrow/bolt so every basic + plain special still fires one.
+            var trailFx = ability.CastEffectId > 0
+                ? ability.CastEffectId
+                : (isWizard ? DefaultWizardTrailFx : DefaultArcherTrailFx);
+
+            var muzzle = new System.Numerics.Vector4(player.Position.X, player.Position.Y + 1.2f, player.Position.Z, 1f);
+            var aim = new System.Numerics.Vector4(targetNpc.Position.X, targetNpc.Position.Y + 1.2f, targetNpc.Position.Z, 1f);
+            ProjectileNpc.Fire(projectileZone, player, muzzle, aim, targetNpc.Guid,
+                trailEffId: trailFx, impactEffId: 0,
+                lingerMs: ability.CastEffectStopMs > 0 ? ability.CastEffectStopMs : 1200);
+            firedProjectile = true;
+            startCastingFx = 0; // the projectile carries the trail — nothing pinned on the caster
+        }
+
+        // MELEE jobs: lingering cast FX (CastEffectStopMs > 0: trails/loops that never self-terminate) play as
+        // an effect tag on the caster and remove after the window, so the trail flashes with the swing instead
+        // of lingering. One-shot cast FX keep riding StartCasting's CompositeEffectId.
+        if (!firedProjectile && startCastingFx > 0 && ability.CastEffectStopMs > 0)
         {
             startCastingFx = 0;
 

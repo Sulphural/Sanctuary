@@ -347,7 +347,7 @@ public static class ArcherWeaponAbilities
         new(basic, special, SniperShot(specialDmg), RainOfArrows(specialDmg));
 
     private static ArcherWeapon Volleys(int icon, int basicDmg, int specialDmg) => Make(
-        new("Barrage", icon, basicDmg, BasicShotAnim, BasicHitFx),
+        new("Barrage", icon, basicDmg, BasicShotAnim, BasicHitFx, 15489, CastEffectStopMs: 1200), // PRJ_magical_multi-arrow
         // Volley rains arrows AROUND the archer (wiki: "rains arrows down around you striking nearby
         // opponents") — a caster-centered AoE like the ninja's 1000 Storms. Launch 1110 fires the
         // arrows up; the rain-loop 16204 lands at the caster's feet at the end; 1111 dusts each victim.
@@ -363,8 +363,8 @@ public static class ArcherWeaponAbilities
         specialDmg);
 
     private static ArcherWeapon Explosions(int icon, int basicDmg, int specialDmg) => Make(
-        new("Charged Shot", icon, basicDmg, BasicShotAnim, BasicHitFx),
-        new("Explosive Shot", ExplosiveIcon, specialDmg, SpecialAnim, 15373),    // explosive-arrow-land
+        new("Charged Shot", icon, basicDmg, BasicShotAnim, BasicHitFx, 15479, CastEffectStopMs: 1200), // PRJ_flaming_orange_arrow
+        new("Explosive Shot", ExplosiveIcon, specialDmg, SpecialAnim, 15373, 15479, CastEffectStopMs: 1200),    // explosive-arrow-land; flaming trail
         specialDmg);
 
     private static ArcherWeapon Splintering(int icon, int basicDmg, int specialDmg) => Make(
@@ -374,37 +374,37 @@ public static class ArcherWeaponAbilities
         specialDmg);
 
     private static ArcherWeapon Stunning(int icon, int basicDmg, int specialDmg) => Make(
-        new("Power Shot", icon, basicDmg, BasicShotAnim, BasicHitFx),
+        new("Power Shot", icon, basicDmg, BasicShotAnim, BasicHitFx, 16050, CastEffectStopMs: 1200), // stunning-shot trail
         // 16050 is a PRJ trail (see the Blizzards note) — tag-played with a timed stop.
         new("Stunning Shot", StunningIcon, specialDmg, SpecialAnim, 16054, 16050, CastEffectStopMs: 1200),
         specialDmg);
 
     private static ArcherWeapon Flame(int icon, int basicDmg, int specialDmg) => Make(
-        new("Smoldering Shot", icon, basicDmg, BasicShotAnim, BasicHitFx),
-        new("Flaming Arrow", FireArrowIcon, specialDmg, SpecialAnim, 16121),     // PFX_archer_fire-arrow on the victim
+        new("Smoldering Shot", icon, basicDmg, BasicShotAnim, BasicHitFx, 15479, CastEffectStopMs: 1200), // PRJ_flaming_orange_arrow
+        new("Flaming Arrow", FireArrowIcon, specialDmg, SpecialAnim, 16121, 15479, CastEffectStopMs: 1200),     // PFX_archer_fire-arrow on the victim; flaming trail
         specialDmg);
 
     private static ArcherWeapon Lightning(int icon, int basicDmg, int specialDmg) => Make(
-        new("Electric Arrow", icon, basicDmg, BasicShotAnim, BasicHitFx),
-        new("Lightning Call", LightningIcon, specialDmg, SpecialAnim, 16117),    // rooted lightning strike on the victim
+        new("Electric Arrow", icon, basicDmg, BasicShotAnim, BasicHitFx, 5492, CastEffectStopMs: 1200), // PRJ_lightning_ball_light-blue
+        new("Lightning Call", LightningIcon, specialDmg, SpecialAnim, 16117, 5492, CastEffectStopMs: 1200),    // rooted lightning strike on the victim; lightning trail
         specialDmg);
 
     private static ArcherWeapon Booming(int icon, int basicDmg, int specialDmg) => Make(
-        new("Sonic Arrow", icon, basicDmg, BasicShotAnim, BasicHitFx),
+        new("Sonic Arrow", icon, basicDmg, BasicShotAnim, BasicHitFx, 15501, CastEffectStopMs: 1200), // PRJ_beam_gray_trail_arrow
         // No dedicated sonic-boom archer FX in the client — 5710 shockwave ground-pound stands in
         // (live-probe TODO, same iteration loop the ninja specials went through).
-        new("Sonic Boom", ConcussiveIcon, specialDmg, SpecialAnim, 5710),
+        new("Sonic Boom", ConcussiveIcon, specialDmg, SpecialAnim, 5710, 15501, CastEffectStopMs: 1200), // beam trail
         specialDmg);
 
     private static ArcherWeapon Ricochet(int icon, int basicDmg, int specialDmg) => Make(
-        new("Cover Fire", icon, basicDmg, BasicShotAnim, BasicHitFx),
+        new("Cover Fire", icon, basicDmg, BasicShotAnim, BasicHitFx, 16214, CastEffectStopMs: 1200), // ricochet trail
         // 16214 is a PRJ trail (see the Blizzards note) — tag-played with a timed stop.
         new("Ricochet", RicochetIcon, specialDmg, SpecialAnim, 16215, 16214, CastEffectStopMs: 1200),
         specialDmg);
 
     private static ArcherWeapon Firebomb(int icon, int basicDmg, int specialDmg) => Make(
-        new("Ember Arrow", icon, basicDmg, BasicShotAnim, BasicHitFx),
-        new("Firebomb", FireBombIcon, specialDmg, SpecialAnim, 16118),           // firebomb MIRV burst on the victim
+        new("Ember Arrow", icon, basicDmg, BasicShotAnim, BasicHitFx, 15479, CastEffectStopMs: 1200), // PRJ_flaming_orange_arrow
+        new("Firebomb", FireBombIcon, specialDmg, SpecialAnim, 16118, 15479, CastEffectStopMs: 1200),           // firebomb MIRV burst on the victim; flaming trail
         specialDmg);
 
     // weapon def id -> abilities, every retail bow (75000-75029), damage by the bow's level tier.

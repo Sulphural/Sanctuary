@@ -75,43 +75,43 @@ public static class WizardWeaponAbilities
     // ── SPECIALS (10) ── basic cast (slot 0) + the named special (slot 1). AoeRadius > 0 => hits every hostile
     // in range. Protective Barrier's shield FX loops on the caster (CastEffectStopMs).
     private static readonly WizardWeapon ShockKit = new(
-        new("Zap", MeleeIcon, 2000, CastAnim, CastHitFx),
-        new("Lightning Blast", IcoLightningBlast, 8000, 1131, 16305)); // electricity burst
+        new("Zap", MeleeIcon, 2000, CastAnim, CastHitFx, 5492, CastEffectStopMs: 1200), // lightning ball bolt
+        new("Lightning Blast", IcoLightningBlast, 8000, 1131, 16305, 5492, CastEffectStopMs: 1200)); // electricity burst; lightning trail
 
     private static readonly WizardWeapon GlaciersKit = new(
-        new("Chill", MeleeIcon, 2000, CastAnim, CastHitFx),
+        new("Chill", MeleeIcon, 2000, CastAnim, CastHitFx, 16110, CastEffectStopMs: 1200), // freezing bolt
         new("Ice Nova", IcoIceNova, 9000, 1132, 16172, AoeRadius: 10f)); // ice explosion
 
     private static readonly WizardWeapon FirestormKit = new(
-        new("Burn", MeleeIcon, 2100, CastAnim, CastHitFx),
+        new("Burn", MeleeIcon, 2100, CastAnim, CastHitFx, 5479, CastEffectStopMs: 1200), // fireball bolt
         new("Firestorm", IcoFirestorm, 10000, 1133, 16026, AoeRadius: 10f));
 
     private static readonly WizardWeapon TsunamiKit = new(
-        new("Splash", MeleeIcon, 2000, CastAnim, CastHitFx),
+        new("Splash", MeleeIcon, 2000, CastAnim, CastHitFx, 15610, CastEffectStopMs: 1200), // water trail bolt
         new("Tsunami", IcoTsunami, 9500, 1134, 16187, AoeRadius: 10f));
 
     private static readonly WizardWeapon VortexKit = new(
-        new("Blast", MeleeIcon, 2100, CastAnim, CastHitFx),
+        new("Blast", MeleeIcon, 2100, CastAnim, CastHitFx, 16188, CastEffectStopMs: 1200), // arcane sparkles bolt
         new("Energy Vortex", IcoEnergyVortex, 8500, 1135, 16151, AoeRadius: 8f));
 
     private static readonly WizardWeapon LightningKit = new(
-        new("Shock", MeleeIcon, 2100, CastAnim, CastHitFx),
+        new("Shock", MeleeIcon, 2100, CastAnim, CastHitFx, 5492, CastEffectStopMs: 1200), // lightning ball bolt
         new("Chain Lightning", IcoChainLightning, 9000, 1136, 16291, AoeRadius: 8f)); // lightning trail, chains
 
     private static readonly WizardWeapon ArcaneFireKit = new(
-        new("Scorch", MeleeIcon, 2200, CastAnim, CastHitFx),
+        new("Scorch", MeleeIcon, 2200, CastAnim, CastHitFx, 5479, CastEffectStopMs: 1200), // fireball bolt
         new("Arcane Chain", IcoArcaneChain, 9500, 1137, 16041, CastEffectId: 16036, CastEffectStopMs: 1200));
 
     private static readonly WizardWeapon EnergyKit = new(
-        new("Freeze", MeleeIcon, 2000, CastAnim, CastHitFx),
+        new("Freeze", MeleeIcon, 2000, CastAnim, CastHitFx, 16110, CastEffectStopMs: 1200), // freezing bolt
         new("Protective Barrier", IcoProtBarrier, 3000, 1138, CastHitFx, CastEffectId: 16124, CastEffectStopMs: 3000));
 
     private static readonly WizardWeapon ChaosKit = new(
-        new("Boom", MeleeIcon, 2300, CastAnim, CastHitFx),
+        new("Boom", MeleeIcon, 2300, CastAnim, CastHitFx, 5479, CastEffectStopMs: 1200), // fireball bolt
         new("Chaos Explosion", IcoChaos, 12000, 1139, 16126, CastEffectId: 16125, AoeRadius: 10f, CastEffectStopMs: 1000));
 
     private static readonly WizardWeapon TransmuteKit = new(
-        new("Flare", MeleeIcon, 2200, CastAnim, CastHitFx),
+        new("Flare", MeleeIcon, 2200, CastAnim, CastHitFx, 16188, CastEffectStopMs: 1200), // arcane sparkles bolt
         new("Mass Transfigure", IcoMassTransfig, 10000, 1140, 16261, AoeRadius: 10f));
 
     // weapon def id -> kit. Real client Wizard wands (Sparkle Twig L1, Wand L5, Bone Wand L8, Jewel Wand L12,
