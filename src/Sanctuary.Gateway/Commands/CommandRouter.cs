@@ -326,9 +326,9 @@ public static class CommandRouter
 
                 proj.ModelId = modelId;
                 proj.Scale = scale;
+                proj.SetTrail(effId);           // PRJ effect emitted per-tick along the flight path
                 proj.Launch(start, tgt, speed, impactEffId);
                 proj.ShowTo(conn.Player);      // register visibility + AddNpc + ExpectedSpeed
-                proj.AttachEffect(effId);       // op35/16 PRJ effect that travels with the carrier
 
                 SendSystem(conn, $"!proj -> eff={effId} model={modelId} speed={speed} from=({start.X:0.#},{start.Y:0.#},{start.Z:0.#}) to=({tgt.X:0.#},{tgt.Y:0.#},{tgt.Z:0.#})");
                 return true;

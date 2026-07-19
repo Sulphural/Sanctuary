@@ -50,25 +50,26 @@ public sealed class ProjectileNpc : Npc
         player.SendTunneled(new PlayerUpdatePacketExpectedSpeed { Guid = Guid, ExpectedSpeed = _speed });
     }
 
-    // Tag id for the projectile's attached trail (keyed per-actor, so a fixed id is fine - each carrier
-    // is its own NPC). Removed implicitly when the carrier despawns.
-    private const int TrailTagId = 90001;
+    // The PRJ_ trail effect, EMITTED per-tick at the carrier's current position rather than attached.
+    // Learned live: op35/41 (attach) DOES follow the actor, but (a) it needs a visible model/bone so an
+    // invisible carrier shows nothing, and (b) a "_trail" effect is a short one-shot that dies mid-flight.
+    // A real projectile trail is emitted continuously along the trajectory - so we world-anchor a puff
+    // (op35/16) at each step. This lays a continuous trail from caster to target AND works invisibly.
+    private int _effectId;
 
-    // Attach a PRJ_ composite effect that FOLLOWS the carrier as it moves. op35/16 PlayCompositeEffect is
-    // world-anchored (it stuck to the spawn point), so we use op35/41 AddEffectTagCompositeEffect - the
-    // looping buff-style attach that tracks the actor's position (ground truth: the heart-pickup heal
-    // shower followed the player). Guid = the carrier; SourceGuid = the carrier itself.
-    public void AttachEffect(int effectId)
+    public void SetTrail(int effectId) => _effectId = effectId;
+
+    private void EmitTrailPuff()
     {
+        if (_effectId <= 0)
+            return;
         foreach (var player in VisiblePlayers.Values)
-            player.SendTunneled(new PlayerUpdatePacketAddEffectTagCompositeEffect
+            player.SendTunneled(new PlayerUpdatePacketPlayCompositeEffect
             {
-                Guid = Guid,
-                TagId = TrailTagId,
-                CompositeEffectId = effectId,
-                SourceGuid = Guid,
-                Unknown = 0,
-                Unknown2 = 0,
+                Guid = 0,                 // world-anchored at the current position
+                CompositeEffectId = _effectId,
+                Position = Position,
+                Clear = false,
             });
     }
 
@@ -114,6 +115,9 @@ public sealed class ProjectileNpc : Npc
         };
         foreach (var player in VisiblePlayers.Values)
             player.SendTunneled(packet);
+
+        // Lay a trail puff at the new position (continuous emission = a trail along the trajectory).
+        EmitTrailPuff();
     }
 
     private void Arrive()
@@ -134,12 +138,6 @@ public sealed class ProjectileNpc : Npc
                 });
 
         foreach (var player in VisiblePlayers.Values)
-        {
-            player.SendTunneled(new PlayerUpdatePacketRemoveEffectTagCompositeEffect
-            {
-                Guid = Guid,
-                TagId = TrailTagId,
-            });
             player.SendTunneled(new PlayerUpdatePacketRemovePlayerGracefully
             {
                 Guid = Guid,
@@ -149,7 +147,6 @@ public sealed class ProjectileNpc : Npc
                 CompositeEffectId = 0,
                 Duration = 0,
             });
-        }
 
         Dispose();
     }
