@@ -896,27 +896,6 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             _energy[player.Guid] = remaining;
             SendEnergy(player, remaining);   // op38/sub13: bar drops by the cost
             StartEnergyRegen(player);        // begin the +4/sec refill
-
-            // RETAIL COOLDOWN SWEEP on the special buttons. CONFIRMED live (`!abil 4 3 5000` swept all
-            // ability buttons except basic): op36/4 LaunchAndLand with Unknown3 = duration drives the
-            // ability-slot cooldown radial. This is the ability system's OWN cooldown (the item-hotbar
-            // ClientUpdatePacketUpdateActionBarSlot was the wrong subsystem and rendered nothing).
-            //   * The sweep is GLOBAL across the specials — correct, because firing one drains all energy,
-            //     so every special is unavailable together.
-            //   * Duration = energy-refill time (cost / regen), so the sweep clears exactly when the
-            //     special is affordable again.
-            //   * Name MUST stay empty — a non-empty string in this packet crashes the client. Guids are
-            //     the player (matches the working probe); zeros are avoided.
-            var cooldownMs = cost * 1000 / Math.Max(1, EnergyRegenPerSec);
-            player.SendTunneled(new AbilityPacketLaunchAndLand
-            {
-                Guid = player.Guid,
-                Name = string.Empty,
-                Position = player.Position,
-                Unknown3 = cooldownMs,
-                Guid2 = player.Guid,
-                Guid3 = player.Guid,
-            });
         }
 
         // Lingering cast FX (CastEffectStopMs > 0: projectile trails / loops that never self-terminate): play as
