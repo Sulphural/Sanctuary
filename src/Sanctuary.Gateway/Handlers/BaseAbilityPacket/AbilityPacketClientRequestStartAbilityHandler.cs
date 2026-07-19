@@ -51,6 +51,11 @@ public static class AbilityPacketClientRequestStartAbilityHandler
     // can't spam faster than the swing. Default 660ms (sword/fist; 2014-04-01 capture median 0.662s); 2-handed
     // hammers wind up slower, so they get their own longer pace below.
     private const int BasicSwingMs = 660;
+
+    // The ~1s radial FLASH shown on a special button when fired (retail showed this on every ability
+    // button, basic + specials). Just the visual flash — the stamina bar is the real re-use gate. Kept
+    // short because a large MeleeRefresh value only animates the final second (shows nothing up front).
+    private const int SpecialRadialFlashMs = 1000;
     private static readonly System.Collections.Generic.Dictionary<int, int> SwingMsByAnim = new()
     {
         [1080] = 1150, // com_2hp_attack — 2-handed hammer swing (Brawler): slow, heavy wind-up
@@ -965,8 +970,11 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         }
         else
         {
-            var specialCooldownMs = ability.EnergyCost * 1000 / Math.Max(1, EnergyRegenPerSec);
-            player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = specialCooldownMs });
+            // Specials get the same ~1s radial FLASH the basic move shows (retail showed it on every
+            // ability button). The stamina bar is the real re-use gate (~10s); this is just the visual
+            // flash on use. A LARGE value here animates only the final second (shows nothing up front) —
+            // that was the bug — so use a short window like the basic.
+            player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = SpecialRadialFlashMs });
         }
 
         // Weapon-empowering specials (Mysticism / Mystical Blade) bind their FX to the sword (item slot 7)
