@@ -279,6 +279,61 @@ public static class CommandRouter
                 return true;
             }
 
+            // SERVER-AUTHORITATIVE TRAVELLING PROJECTILE. The client's own fly path (op36/4) is gated on
+            // combat state we cannot set, so we fly a real actor instead: an invisible carrier NPC that
+            // moves caster->enemy with a PRJ_ effect attached (see ProjectileNpc). This works with NO client
+            // combat state.  !proj [effId] [modelId] [speed] [impactEffId] [scale]
+            //   effId   default 16110 (PRJ_archer_freezing-shot_trail)
+            //   modelId carrier model (default 0 = hopefully invisible; the effect is the visual)
+            //   speed   units/sec (default 45)
+            case "proj":
+            {
+                if (!RequireAdmin(conn))
+                    return true;
+
+                int PI(int i, int def) => parts.Length > i && int.TryParse(parts[i], out var v) ? v : def;
+                float PF(int i, float def) => parts.Length > i && float.TryParse(parts[i], out var v) ? v : def;
+
+                var effId = PI(1, 16110);
+                var modelId = PI(2, 0);
+                var speed = PF(3, 45f);
+                var impactEffId = PI(4, 0);
+                var scale = PF(5, 1f);
+
+                if (conn.Player.Zone is not { } pz)
+                {
+                    SendSystem(conn, "!proj: no zone.");
+                    return true;
+                }
+
+                var start = conn.Player.Position;
+                start = new System.Numerics.Vector4(start.X, start.Y + 1.2f, start.Z, 1f); // chest height
+                var tgt = new System.Numerics.Vector4(start.X, start.Y, start.Z + 20f, 1f); // 20u ahead fallback
+                var best = float.MaxValue;
+                foreach (var n in pz.Npcs)
+                {
+                    if (!n.Visible || !n.IsHostile) continue;
+                    var dx0 = n.Position.X - start.X; var dz0 = n.Position.Z - start.Z;
+                    var d0 = dx0 * dx0 + dz0 * dz0;
+                    if (d0 < best) { best = d0; tgt = new System.Numerics.Vector4(n.Position.X, n.Position.Y + 1.2f, n.Position.Z, 1f); }
+                }
+
+                if (!pz.TryCreateProjectileNpc(out var proj))
+                {
+                    SendSystem(conn, "!proj: spawn failed.");
+                    return true;
+                }
+
+                proj.ModelId = modelId;
+                proj.Scale = scale;
+                proj.Launch(start, tgt, speed, impactEffId);
+                proj.ShowTo(conn.Player);      // register visibility + AddNpc + ExpectedSpeed
+                proj.AttachEffect(effId);       // op35/16 PRJ effect that travels with the carrier
+
+                SendSystem(conn, $"!proj -> eff={effId} model={modelId} speed={speed} from=({start.X:0.#},{start.Y:0.#},{start.Z:0.#}) to=({tgt.X:0.#},{tgt.Y:0.#},{tgt.Z:0.#})");
+                return true;
+            }
+
             // DEV PROBE: fire a newly-reversed ability packet at yourself so we can confirm the client
             // ACCEPTS the layout before wiring it into combat. Layouts came from the client's own inner
             // readers (op36 dispatcher FUN_00a35cc0) and the method was validated against StartCasting,

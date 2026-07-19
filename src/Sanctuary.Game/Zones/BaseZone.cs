@@ -323,6 +323,16 @@ public abstract class BaseZone : IZone, IDisposable
         return _npcs.TryAdd(entryNpc.Guid, entryNpc) && _entities.TryAdd(entryNpc.Guid, entryNpc);
     }
 
+    public bool TryCreateProjectileNpc([MaybeNullWhen(false)] out ProjectileNpc projectileNpc)
+    {
+        projectileNpc = new ProjectileNpc(this)
+        {
+            Guid = _uniqueGuid++
+        };
+
+        return _npcs.TryAdd(projectileNpc.Guid, projectileNpc) && _entities.TryAdd(projectileNpc.Guid, projectileNpc);
+    }
+
     public bool TryCreatePlayer(ulong guid, UdpConnection connection, [MaybeNullWhen(false)] out Player player)
     {
         player = new Player(this, connection, _resourceManager)
