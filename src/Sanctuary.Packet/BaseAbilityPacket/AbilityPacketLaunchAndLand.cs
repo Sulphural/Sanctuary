@@ -43,9 +43,11 @@ public class AbilityPacketLaunchAndLand : BaseAbilityPacket, ISerializablePacket
     public int Unknown7;            // +0x44
     public int Unknown8;            // +0x48
     public Vector4 Position;        // +0x50 - 4 floats (8e2410)
-    public float Unknown9;          // +0x60 - float (NaN-checked), not an int
+    public float Unknown9;          // +0x60 - float (NaN-checked)
+    public float Unknown9b;         // +0x64 - SECOND float (NaN-checked). Was MISSING - its absence
+                                    //         shifted Guid2/Guid3/Flag3 4 bytes early (Frida wiretrace).
     public int Unknown10;           // +0x68
-    public ulong Guid2;             // via 8dadd0
+    public ulong Guid2;             // via 8dadd0 - wire needs this at the correct offset now
     public int Unknown11;           // +0x74
     public ulong Guid3;             // +0x78
     public bool Flag3;              // +0x80
@@ -82,6 +84,7 @@ public class AbilityPacketLaunchAndLand : BaseAbilityPacket, ISerializablePacket
         writer.Write(Unknown8);
         writer.Write(Position);
         writer.Write(Unknown9);
+        writer.Write(Unknown9b);   // +0x64 - the previously-missing float that fixes the guid alignment
         writer.Write(Unknown10);
         writer.Write(Guid2);
         writer.Write(Unknown11);
