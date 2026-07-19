@@ -51,15 +51,6 @@ public static class AbilityPacketClientRequestStartAbilityHandler
     // can't spam faster than the swing. Default 660ms (sword/fist; 2014-04-01 capture median 0.662s); 2-handed
     // hammers wind up slower, so they get their own longer pace below.
     private const int BasicSwingMs = 660;
-
-    // The ~1s radial FLASH shown on a special button when fired (retail showed this on every ability
-    // button, basic + specials). Just the visual flash — the stamina bar is the real re-use gate. Kept
-    // short because a large MeleeRefresh value only animates the final second (shows nothing up front).
-    private const int SpecialRadialFlashMs = 1000;
-
-    // Delay before sending the special's radial flash — just past the cast lock (SpecialActionTime 0.4s),
-    // so the flash lands on a button that's out of the fresh-cast state that otherwise swallows it.
-    private const int SpecialFlashDelayMs = 450;
     private static readonly System.Collections.Generic.Dictionary<int, int> SwingMsByAnim = new()
     {
         [1080] = 1150, // com_2hp_attack — 2-handed hammer swing (Brawler): slow, heavy wind-up
@@ -906,12 +897,8 @@ public static class AbilityPacketClientRequestStartAbilityHandler
 
             var remaining = energy - cost;
             _energy[player.Guid] = remaining;
-            SendEnergy(player, remaining);   // op38/sub13: bar drops by the cost (BEFORE the flash, so the
-                                             // mana update doesn't re-touch the slot and wipe the radial)
-            StartEnergyRegen(player);        // begin the refill
-            // NOTE: the special's MeleeRefresh radial FLASH is sent as the LAST slot-touch (after
-            // StartCasting, below) so nothing wipes it — a mana update (SendEnergy) or StartCasting after it
-            // would clear it.
+            SendEnergy(player, remaining);   // op38/sub13: bar drops by the cost
+            StartEnergyRegen(player);        // begin the +4/sec refill
         }
 
         // Lingering cast FX (CastEffectStopMs > 0: projectile trails / loops that never self-terminate): play as
@@ -966,33 +953,11 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         // see each other's moves/FX. Was caster-only, which is why teammates saw enemies die but not the moves.
         player.SendTunneledToVisible(startCasting, sendToSelf: true);
 
-        // Attack-cooldown sweep (op36/11 MeleeRefresh sets cooldown-end = now + this). Sent AFTER
-        // StartCasting so it isn't wiped by the slot re-touch. Basic = the swing cadence; special = the
-        // stamina-refill time, so the radial sweeps over the stamina-greyed special button for the full
-        // ~10s cooldown (retail showed both together).
+        // Attack-cooldown sweep on the basic-attack button: tell the client the next swing is ready in the swing
+        // cadence (op36/11 MeleeRefresh sets cooldown-end = now + this). Basic attack only; specials are gated by
+        // energy, not this melee cooldown.
         if (isBasicMelee)
-        {
             player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = BasicSwingMs });
-        }
-        else
-        {
-            // Specials get the same ~1s radial FLASH the basic shows. Frida trace proved MeleeRefresh IS
-            // received and sets the cooldown — but when sent in the same instant as StartCasting, the
-            // button's fresh cast-state swallows the radial. So DELAY the flash until just after the cast
-            // settles; then it lands on a button that's out of the cast-lock and the radial renders.
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await Task.Delay(SpecialFlashDelayMs);
-                    player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = SpecialRadialFlashMs });
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Special cooldown-flash send failed.");
-                }
-            });
-        }
 
         // Weapon-empowering specials (Mysticism / Mystical Blade) bind their FX to the sword (item slot 7)
         // instead of the body. SlotCompositeEffectOverride op35/sub31: Guid + slot + composite effect.
