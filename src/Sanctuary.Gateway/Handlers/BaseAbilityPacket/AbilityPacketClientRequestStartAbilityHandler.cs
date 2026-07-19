@@ -1015,7 +1015,7 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             packet.Data.Slot, ability.Name, ability.Damage, scaledDamage, ability.Animation, ability.EffectId, targets.Count);
 
         ResolveDamageAfterCast(player, targets, scaledDamage, ability.EffectId, damageDelay,
-            ability.CasterEndEffectId, ability.EnemyExtraEffectId);
+            ability.CasterEndEffectId, ability.EnemyExtraEffectId, ability.AoeRadius);
 
         return true;
     }
@@ -1025,7 +1025,8 @@ public static class AbilityPacketClientRequestStartAbilityHandler
     // Runs off-thread so the cast time elapses first. AoE specials pass the whole in-radius pack (one
     // HitPointModification per victim in a burst, like the 04-01 capture).
     private static void ResolveDamageAfterCast(Player player, System.Collections.Generic.IReadOnlyList<Npc> targets,
-        int damage, int effectId, float damageDelay, int casterEndEffectId = 0, int enemyExtraEffectId = 0)
+        int damage, int effectId, float damageDelay, int casterEndEffectId = 0, int enemyExtraEffectId = 0,
+        float aoeRadius = 0f)
     {
         _ = Task.Run(async () =>
         {
@@ -1068,12 +1069,35 @@ public static class AbilityPacketClientRequestStartAbilityHandler
                     // so play it explicitly (the switch away from AttackProcessed had dropped every impact FX).
                     if (effectId > 0)
                     {
-                        player.SendTunneledToVisible(new PlayerUpdatePacketPlayCompositeEffect
+                        // SINGLE-TARGET impacts ride op36/14 DetonateProjectile, the retail impact packet.
+                        // Its CompositeEffectId is confirmed live (effect id 21 rendered; the same id in the
+                        // second int did nothing) and it renders safely.
+                        //
+                        // AoE deliberately KEEPS PlayCompositeEffect: DetonateProjectile attaches the effect
+                        // to a GUID and structurally cannot carry a position (its whole 20-byte body holds
+                        // exactly one float - there is no room for a Vector4), whereas the AoE path relies on
+                        // passing target.Position explicitly. The two are not interchangeable; swapping AoE
+                        // over made ground effects snap to entities.
+                        //
+                        // Unknown2/Unknown3 stay 0 - the exact combination verified to render, and neither
+                        // showed any observable effect across 0/1/500 and 0.0/100.0.
+                        if (aoeRadius <= 0f)
                         {
-                            Guid = target.Guid,
-                            CompositeEffectId = effectId,
-                            Position = target.Position,
-                        }, sendToSelf: true);
+                            player.SendTunneledToVisible(new AbilityPacketDetonateProjectile
+                            {
+                                Guid = target.Guid,
+                                CompositeEffectId = effectId,
+                            }, sendToSelf: true);
+                        }
+                        else
+                        {
+                            player.SendTunneledToVisible(new PlayerUpdatePacketPlayCompositeEffect
+                            {
+                                Guid = target.Guid,
+                                CompositeEffectId = effectId,
+                                Position = target.Position,
+                            }, sendToSelf: true);
+                        }
                     }
 
                     // EnemyExtraEffectId plays an ADDITIONAL effect on each victim on top of the hit FX
