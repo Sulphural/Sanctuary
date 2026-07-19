@@ -101,7 +101,7 @@ public sealed class Player : ClientPcData, IEntity
     public DateTimeOffset? TemporaryAppearanceExpiresAt { get; set; }
     private int _temporaryAppearanceEffectId;
 
-    private record PendingCooldown(int ActionBarId, int SlotIndex, int IconId, int NameId, int Count, int CooldownMs, DateTimeOffset StartedAt);
+    private record PendingCooldown(int ActionBarId, int SlotIndex, int IconId, int NameId, int Count, int CooldownMs, DateTimeOffset StartedAt, bool ForceDismount = true);
     private readonly ConcurrentDictionary<(int, int), PendingCooldown> _pendingCooldowns = new();
 
     public bool IsDead { get; set; }
@@ -337,9 +337,11 @@ public sealed class Player : ClientPcData, IEntity
         }
     }
 
-    public void StartActionBarCooldown(int actionBarId, int slotIndex, int iconId, int nameId, int count, int cooldownMs)
+    // forceDismount defaults true for ITEM slots (boombox/cake/transform, actionBar 2 — the proven case).
+    // Combat ability cooldowns (actionBar 1) pass false: those slots must not dismount the player every tick.
+    public void StartActionBarCooldown(int actionBarId, int slotIndex, int iconId, int nameId, int count, int cooldownMs, bool forceDismount = true)
     {
-        var cooldown = new PendingCooldown(actionBarId, slotIndex, iconId, nameId, count, cooldownMs, DateTimeOffset.UtcNow);
+        var cooldown = new PendingCooldown(actionBarId, slotIndex, iconId, nameId, count, cooldownMs, DateTimeOffset.UtcNow, forceDismount);
         _pendingCooldowns[(actionBarId, slotIndex)] = cooldown;
         SendTunneled(BuildCooldownSlotPacket(cooldown, 0, false));
     }
@@ -358,7 +360,7 @@ public sealed class Player : ClientPcData, IEntity
         packet.Slot.TotalRefreshTime = cooldown.CooldownMs;
         packet.Slot.Unknown12 = elapsed;
         packet.Slot.Quantity = cooldown.Count;
-        packet.Slot.ForceDismount = true;
+        packet.Slot.ForceDismount = cooldown.ForceDismount;
         packet.Slot.Unknown15 = elapsed;
         return packet;
     }

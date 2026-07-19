@@ -61,6 +61,10 @@ public static class AbilityPacketClientRequestStartAbilityHandler
     // Energy (from the 2014-04-01 capture): max 100, regen +4/s time-based (full refill 25s, in & out of combat,
     // no kill chunks). Special (slot 1) costs the whole bar (100); basic (slot 0) costs nothing. Reported on the
     // same op38/sub13 ClientUpdatePacketMana the real server used.
+    // The combat ability hotbar's action-bar id (item cooldowns use bar 2; combat abilities live on bar 1,
+    // per the live StartAbility logs: "ActionBar.Id=1 Slot=0"). The cooldown sweep is sent to this bar.
+    private const int CombatActionBarId = 1;
+
     private const int MaxEnergy = 100;
     private const int SpecialEnergyCost = NinjaWeaponAbilities.SpecialEnergyCost; // 100 — shared with the toolbar's slot ManaCost (client grey-out)
     // Live value = 4 (25s refill, 04-01 capture). Bump locally for faster energy while iterating.
@@ -896,6 +900,20 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             _energy[player.Guid] = remaining;
             SendEnergy(player, remaining);   // op38/sub13: bar drops by the cost
             StartEnergyRegen(player);        // begin the +4/sec refill
+
+            // RETAIL COOLDOWN SWEEP on the special slot. Uses the proven ActionBarSlot cooldown (same
+            // mechanism as item cooldowns) on the COMBAT bar (actionBar 1). Duration = the time for energy
+            // to refill enough to use it again (cost / regen), so the sweep finishes exactly when the
+            // ability is affordable again — the sweep and the energy gate agree and never fight over the
+            // slot. forceDismount:false so a combat cooldown never dismounts the player.
+            var cooldownMs = cost * 1000 / Math.Max(1, EnergyRegenPerSec);
+            var slotInfo = JobWeaponAbilities.SlotNameIcon(player, packet.Data.Slot);
+            if (slotInfo is { } si && cooldownMs > 0)
+            {
+                player.StartActionBarCooldown(
+                    CombatActionBarId, packet.Data.Slot, si.IconId, si.NameId, 0, cooldownMs,
+                    forceDismount: false);
+            }
         }
 
         // Lingering cast FX (CastEffectStopMs > 0: projectile trails / loops that never self-terminate): play as
