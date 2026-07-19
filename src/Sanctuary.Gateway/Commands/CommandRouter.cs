@@ -369,6 +369,28 @@ public static class CommandRouter
                         // what supplies the projectile visual.
                         launch.Flag1 = true;
 
+                        // "!abil 4 shoot [effId]" - THE MOVING PROJECTILE. Reverse-engineered end to end:
+                        //   * Unknown1 (=local_288) is the anim-vs-projectile SWITCH. !=0 routes op36/4 into
+                        //     the real projectile launcher FUN_00b84190 (verified live: b84190 fires only
+                        //     when Unknown1!=0). ==0 stays in the animation branch (958220/959bf0).
+                        //   * Inside b84190 the VISIBLE moving projectile is spawned by FUN_00969590, but only
+                        //     inside `if (iVar9 != 0)` where iVar9 = FUN_007c4710(param_6), and param_6 is fed
+                        //     from local_278 = Unknown4. So Unknown4 must be a projectile EFFECT id that
+                        //     007c4710 resolves; if it is 0, iVar9=0 and 969590 never runs (no projectile).
+                        // Therefore the moving projectile needs BOTH Unknown1!=0 AND a valid Unknown4 - which
+                        // the single-field probe could never set together. Default effId 16110 =
+                        // PRJ_archer_freezing-shot_trail (a projectile trail effect).
+                        if (parts.Length > 2 && parts[2] == "shoot")
+                        {
+                            launch.Unknown1 = 1;                 // local_288 != 0 -> projectile launcher branch
+                            launch.Unknown4 = ArgI(3, 16110);    // param_6/local_278 -> 969590 spawn (projectile fx)
+                            launch.Flag1 = true;
+                            conn.Player.SendTunneledToVisible(launch, sendToSelf: true);
+                            SendSystem(conn, $"!abil -> op36/4 SHOOT Unknown1=1 Unknown4={launch.Unknown4} " +
+                                             $"target={launch.Guid2} pos={launch.Position}");
+                            return true;
+                        }
+
                         // "!abil 4 traj" - CRASH-SAFE trajectory. The nested struct 8e8910 was mapped
                         // statically: after six header ints/floats (wire 0..23) come TWO guaranteed 16-byte
                         // Vector4 slots - Vector1 @ wire offset 24 (in_ECX+0x50) and Vector2 @ wire offset 40
