@@ -379,9 +379,13 @@ public static class CommandRouter
                         // the polymorphic fields. Start+end alone should define the projectile path.
                         if (parts.Length > 2 && parts[2] == "traj")
                         {
+                            // Live trace (nestedmap.js) confirmed the wire offsets: VEC1@24 (start),
+                            // VEC2@40 (end), VEC3@68 (velocity). The wall (blob@56 + two polymorphic
+                            // deserializers@60/64) consumes only 12 bytes WHEN LEFT ZERO (empty counts),
+                            // so writing VEC3 at 68 while keeping 56/60/64 = 0 is crash-safe.
                             var startX = p.X; var startY = p.Y + 1f; var startZ = p.Z;
                             var endP = launch.Position;   // = target pos if an enemy was found, else 20u ahead
-                            var nested = new byte[56];     // header(24) + Vector1(16) + Vector2(16); rest padded 0
+                            var nested = new byte[84];     // up to VEC3 (68..83); wall bytes 56..67 stay 0
                             void PutVec(int off, float x, float y, float zz, float w)
                             {
                                 System.BitConverter.GetBytes(x).CopyTo(nested, off);
@@ -389,12 +393,28 @@ public static class CommandRouter
                                 System.BitConverter.GetBytes(zz).CopyTo(nested, off + 8);
                                 System.BitConverter.GetBytes(w).CopyTo(nested, off + 12);
                             }
-                            PutVec(24, startX, startY, startZ, 1f);              // Vector1 = start (caster)
-                            PutVec(40, endP.X, endP.Y, endP.Z, 1f);             // Vector2 = end   (target)
+                            // Velocity = direction caster->target, scaled.
+                            //   "!abil 4 traj [speed] [effectId]"
+                            // Flag1's spawn (958220) is a PlayerAnimationEvent (an ANIM, not a projectile) -
+                            // that is why Flag1 only made the enemy "attack". The travelling projectile needs a
+                            // MODEL/EFFECT id + a real trajectory. The nested header int at wire 0 (dest +0x10)
+                            // is a flat, non-NaN int = the prime model/effect-id suspect; earlier "no travel"
+                            // tries on it had NO trajectory. Now it does. Pass effectId to seed it.
+                            var spd = ArgF(3, 30f);
+                            var effId = ArgI(4, 0);
+                            var vx = endP.X - startX; var vy = endP.Y - startY; var vz = endP.Z - startZ;
+                            var len = (float)System.Math.Sqrt(vx * vx + vy * vy + vz * vz);
+                            if (len > 0.0001f) { vx = vx / len * spd; vy = vy / len * spd; vz = vz / len * spd; }
+                            PutVec(24, startX, startY, startZ, 1f);              // VEC1 = start (caster)
+                            PutVec(40, endP.X, endP.Y, endP.Z, 1f);             // VEC2 = end   (target)
+                            PutVec(68, vx, vy, vz, 0f);                          // VEC3 = velocity (dir * speed)
+                            if (effId != 0)
+                                System.BitConverter.GetBytes(effId).CopyTo(nested, 0);   // nested +0x10 model/effect
                             launch.Nested = nested;
                             conn.Player.SendTunneledToVisible(launch, sendToSelf: true);
                             SendSystem(conn, $"!abil -> op36/4 TRAJ start=({startX:0.#},{startY:0.#},{startZ:0.#}) " +
-                                             $"end=({endP.X:0.#},{endP.Y:0.#},{endP.Z:0.#}) target={launch.Guid2}");
+                                             $"end=({endP.X:0.#},{endP.Y:0.#},{endP.Z:0.#}) vel=({vx:0.#},{vy:0.#},{vz:0.#}) " +
+                                             $"eff={effId} target={launch.Guid2}");
                             return true;
                         }
 
