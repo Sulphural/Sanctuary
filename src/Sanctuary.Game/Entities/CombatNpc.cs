@@ -353,8 +353,10 @@ public class CombatNpc : Npc
         }
     }
 
-    // Deal damage to this NPC from a player source.
-    public void TakeDamage(int amount, Player source)
+    // Deal damage to this NPC from a player source. broadcastHitNumber=false lets a caller that already
+    // sends its own per-hit feedback (the op32/7 basic-attack path) skip the 35/35 floating number here,
+    // so the damage isn't drawn twice.
+    public void TakeDamage(int amount, Player source, bool broadcastHitNumber = true)
     {
         if (IsDead)
             return;
@@ -364,18 +366,21 @@ public class CombatNpc : Npc
         // Broadcast HP modification (floating combat number). Field mapping per the IDA-confirmed
         // wire format: Guid = ATTACKER, Guid2 = VICTIM, Unknown2 = max HP, Unknown3 = current HP
         // after the hit, Unknown4 = delta (-damage = the floating number).
-        var hpMod = new PlayerUpdatePacketHitPointModification
+        if (broadcastHitNumber)
         {
-            Guid = source.Guid,
-            Guid2 = Guid,
-            Unknown = true,
-            Unknown2 = MaxHitpoints,
-            Unknown3 = CurrentHitpoints,
-            Unknown4 = -amount
-        };
+            var hpMod = new PlayerUpdatePacketHitPointModification
+            {
+                Guid = source.Guid,
+                Guid2 = Guid,
+                Unknown = true,
+                Unknown2 = MaxHitpoints,
+                Unknown3 = CurrentHitpoints,
+                Unknown4 = -amount
+            };
 
-        foreach (var player in VisiblePlayers.Values)
-            player.SendTunneled(hpMod);
+            foreach (var player in VisiblePlayers.Values)
+                player.SendTunneled(hpMod);
+        }
 
         // Broadcast updated HP bar
         BroadcastHpUpdate();

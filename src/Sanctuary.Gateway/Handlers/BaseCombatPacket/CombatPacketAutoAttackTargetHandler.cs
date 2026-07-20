@@ -31,22 +31,41 @@ public static class CombatPacketAutoAttackTargetHandler
             return false;
         }
 
+        return ExecuteBasicAttack(connection, packet.TargetGuid);
+    }
+
+    // op32/3 — same request shape as auto-attack but a single non-repeating swing. Server-side the
+    // resolution is identical (the client owns the repeat cadence for auto-attack), so both routes share
+    // ExecuteBasicAttack.
+    public static bool HandleSingleAttack(GatewayConnection connection, ReadOnlySpan<byte> data)
+    {
+        if (!CombatPacketSingleAttackTarget.TryDeserialize(data, out var packet))
+        {
+            _logger.LogError("Failed to deserialize CombatPacketSingleAttackTarget.");
+            return false;
+        }
+
+        return ExecuteBasicAttack(connection, packet.TargetGuid);
+    }
+
+    private static bool ExecuteBasicAttack(GatewayConnection connection, ulong targetGuid)
+    {
         var player = connection.Player;
 
         if (player.IsDead)
             return true;
 
         // Find the target NPC
-        if (!player.Zone.TryGetNpc(packet.TargetGuid, out var npc))
+        if (!player.Zone.TryGetNpc(targetGuid, out var npc))
         {
-            _logger.LogDebug("Auto-attack target {guid} not found.", packet.TargetGuid);
+            _logger.LogDebug("Attack target {guid} not found.", targetGuid);
             return true;
         }
 
         // Only attack CombatNpcs
         if (npc is not CombatNpc combatNpc)
         {
-            _logger.LogDebug("Auto-attack target {guid} is not a combat NPC.", packet.TargetGuid);
+            _logger.LogDebug("Attack target {guid} is not a combat NPC.", targetGuid);
             return true;
         }
 
@@ -72,14 +91,16 @@ public static class CombatPacketAutoAttackTargetHandler
         player.InCombat = true;
         player.LastCombatTime = DateTime.UtcNow;
         player.CombatTargetGuid = combatNpc.Guid;
+        player.EnterWorldCombat(); // opens the client's floating-damage-number gate (op41 sub132/133)
 
         // Calculate damage
         var damage = CalculateMeleeDamage(player);
 
-        // Deal damage to the NPC
-        combatNpc.TakeDamage(damage, player);
+        // Deal damage. The hit feedback rides op32/7 below, so suppress TakeDamage's own 35/35
+        // HitPointModification broadcast — sending both draws the floating number twice.
+        combatNpc.TakeDamage(damage, player, broadcastHitNumber: false);
 
-        // Send attack damage feedback to the player
+        // Damage-dealt confirmation to the attacking client (op32/4).
         var attackDamage = new CombatPacketAttackTargetDamage
         {
             AttackerGuid = player.Guid,
@@ -89,9 +110,19 @@ public static class CombatPacketAutoAttackTargetHandler
 
         player.SendTunneled(attackDamage);
 
-        // Send attack processed
-        var attackProcessed = new CombatPacketAttackProcessed();
-        player.SendTunneled(attackProcessed);
+        // Per-hit feedback (op32/7): attacker plays the contact event (and, for the local player, the
+        // action-bar melee cooldown reset — correct here, this IS the melee swing); target shows the
+        // floating -Damage number, health bar, recoil. Broadcast so bystanders see the exchange too.
+        var attackProcessed = new CombatPacketAttackProcessed
+        {
+            AttackerGuid = player.Guid,
+            TargetGuid = combatNpc.Guid,
+            Damage = damage,
+            MaxHealth = combatNpc.MaxHitpoints,
+            CurrentHealth = combatNpc.CurrentHitpoints,
+        };
+
+        player.SendTunneledToVisible(attackProcessed, sendToSelf: true);
 
         return true;
     }

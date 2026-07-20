@@ -31,6 +31,7 @@ public static class BaseCombatPacketHandler
         return opCode switch
         {
             CombatPacketAutoAttackTarget.OpCode => CombatPacketAutoAttackTargetHandler.HandlePacket(connection, reader.Span),
+            CombatPacketSingleAttackTarget.OpCode => CombatPacketAutoAttackTargetHandler.HandleSingleAttack(connection, reader.Span),
             _ => false
         };
     }
