@@ -32,6 +32,13 @@ public class ZoneManager : IZoneManager
     private TormentedSpiritsArenaZone? _spiritArena;
     private readonly object _spiritArenaLock = new();
 
+    private CombatTutorialZone? _combatTutorial;
+    private readonly object _combatTutorialLock = new();
+
+    // Debug world browser (!map): one cached instance per world name so repeated jumps reuse the zone.
+    private readonly Dictionary<string, DebugWorldZone> _debugWorlds = [];
+    private readonly object _debugWorldLock = new();
+
     // Data-driven combat dungeons (DungeonCatalog): one cached EncounterArenaZone instance per activity id.
     private readonly Dictionary<int, EncounterArenaZone> _encounterArenas = [];
     private readonly object _encounterArenaLock = new();
@@ -123,6 +130,47 @@ public class ZoneManager : IZoneManager
                     def.Comment, arena.Name, arena.Id, activityId);
             }
             return arena;
+        }
+    }
+
+    public DebugWorldZone GetOrCreateDebugWorld(string worldName, System.Numerics.Vector4 spawn)
+    {
+        lock (_debugWorldLock)
+        {
+            // Re-create when the spawn changes so callers can re-probe a world at different coords.
+            if (_debugWorlds.TryGetValue(worldName, out var existing))
+            {
+                if (existing.SpawnPosition == spawn)
+                    return existing;
+                _zones.TryRemove(existing.Id, out _);
+                _debugWorlds.Remove(worldName);
+            }
+
+            var zone = new DebugWorldZone(worldName, spawn, _serviceProvider) { Id = _uniqueId++ };
+            _debugWorlds[worldName] = zone;
+            _zones.TryAdd(zone.Id, zone);
+            _logger.LogInformation("Created debug world zone {name} ({id}) spawn {spawn}.", zone.Name, zone.Id, spawn);
+            return zone;
+        }
+    }
+
+    public CombatTutorialZone GetOrCreateCombatTutorial()
+    {
+        lock (_combatTutorialLock)
+        {
+            if (_combatTutorial is null)
+            {
+                _combatTutorial = new CombatTutorialZone(_serviceProvider)
+                {
+                    Id = _uniqueId++
+                };
+
+                _zones.TryAdd(_combatTutorial.Id, _combatTutorial);
+
+                _logger.LogInformation("Created combat tutorial zone {name} ({id}).", _combatTutorial.Name, _combatTutorial.Id);
+            }
+
+            return _combatTutorial;
         }
     }
 

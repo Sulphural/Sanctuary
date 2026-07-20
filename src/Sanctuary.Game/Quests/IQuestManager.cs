@@ -29,6 +29,10 @@ public interface IQuestManager
     // This is what makes a dungeon count as a quest objective.
     void OnEncounterComplete(Player player, int encounterId);
 
+    // Player position changed: complete the active ReachLocation goal of any in-progress quest
+    // whose ReachPosition is within ReachRadius (2D). Called from the position-update handler.
+    void OnPlayerMoved(Player player);
+
     // Player accepted a quest offer (QuestReply, Accepted = true).
     void AcceptQuest(Player player, int questId);
 

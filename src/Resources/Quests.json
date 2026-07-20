@@ -14,8 +14,8 @@
     "IconId": 43278,                    // The quest's icon (journal/tracker/end screen).
     "GiverGuid": 100000002045,          // NPC that OFFERS the quest (shows the "!" badge). Here: Samantha.
     "TargetGuid": 100000002049,         // NPC you TALK TO / TURN IN at. Here: Ricky Danger.
-    "RewardCoins": 999999999,                   // Coins granted on completion (shown in the offer/end-screen reward preview).
-    "RewardExperience": 999999999,             // Job XP (RewardBundleBase +0x48) granted to the active job on completion and shown as XP in the reward preview.
+    "RewardCoins": 30,                   // Coins granted on completion (shown in the offer/end-screen reward preview).
+    "RewardExperience": 60,             // Job XP (RewardBundleBase +0x48) granted to the active job on completion and shown as XP in the reward preview.
     "RewardItems": [1180, 75110],       // Item definition ids added to the bags + shown as icons in "Show Details". Here: a boombox (1180 Realms Roll) + a ninja sword (75110 Ninja's Shadow Blade of Dragonstrike). Add/remove any item ids.
     "PrerequisiteQuestId": 0,           // Quest that must be completed before this is offered (0 = none).
     "NextQuestId": 1801,                // Quest that becomes offerable once this completes (0 = none). Refreshes that giver's "!" badge.
@@ -33,8 +33,8 @@
     "IconId": 43278,
     "GiverGuid": 100000002049,
     "TargetGuid": 100000003018,
-    "RewardCoins": 999999999,
-    "RewardExperience": 999999999,
+    "RewardCoins": 30,
+    "RewardExperience": 70,
     "RewardItems": [8185, 3007, 2969],
     "PrerequisiteQuestId": 2563,
     "NextQuestId": 0,
@@ -66,8 +66,8 @@
     "IconId": 43278,
     "GiverGuid": 100000002912,
     "TargetGuid": 100000002889,
-    "RewardCoins": 999999999,
-    "RewardExperience": 999999999,
+    "RewardCoins": 30,
+    "RewardExperience": 60,
     "RewardItems": [56774, 4011, 4045],
     "PrerequisiteQuestId": 0,
     "NextQuestId": 0,
@@ -88,8 +88,8 @@
     "IconId": 43278,
     "GiverGuid": 100000002335,        // Nomi (Sanctuary)
     "TargetGuid": 100000002335,       // turn in back at Nomi
-    "RewardCoins": 999999999,
-    "RewardExperience": 999999999,
+    "RewardCoins": 20,
+    "RewardExperience": 50,
     "RewardItems": [],
     "PrerequisiteQuestId": 0,
     "NextQuestId": 3002,
@@ -124,8 +124,8 @@
     "IconId": 43278,
     "GiverGuid": 100000002335,        // Nomi (Sanctuary)
     "TargetGuid": 100000002335,       // turn in back at Nomi
-    "RewardCoins": 99999999,
-    "RewardExperience": 100000,
+    "RewardCoins": 40,
+    "RewardExperience": 100,
     "RewardItems": [69834],
     "PrerequisiteQuestId": 3001,      // after "Nomi's Little Brother"
     "NextQuestId": 0,
@@ -302,6 +302,546 @@
         "NameId": 104155,             // deliver to Tevin
         "DialogueId": 104156,
         "TargetGuid": 100000033083
+      }
+    ]
+  },
+  {
+    // === Looking for Lavender (Sanctuary) ===  retail quest, Feldman's journalist chain part 1.
+    // All ids mined from en_us_data.dat via Jenkins lookup2 (Global.Text.<id>); dialogue/goal text
+    // matches the FR Quest Documentation doc verbatim. Dani (100000040011) and Honey (100000040012)
+    // were absent from the retail NpcSpawns snapshot and are spawned by us - positions approximate.
+    "QuestId": 3010,
+    "TitleId": 390787,                // "Looking for Lavender"
+    "DescriptionId": 390788,          // "Some folks around Sanctuary claim to have seen Lavender herself! Interview them..."
+    "GiverDialogueId": 390786,        // Feldman: "I want to be a famous journalist, but first, I need a good story..."
+    "ObjectiveDescriptionId": 390797, // "Interview Dani, Honey, and Barin Battlerock and then return to Feldman"
+    "SubGoalId": 390798,              // "Interview Dani"
+    "TargetDialogueId": 390789,       // Feldman: "What did you find out? Anything juicy?..."
+    "IconId": 43278,
+    "GiverGuid": 100000002419,        // Feldman (Sanctuary)
+    "TargetGuid": 100000002419,       // turn in back at Feldman
+    "RewardCoins": 36,                // retail: 36 Gold
+    "RewardExperience": 100,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 3011,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 390798,             // "Interview Dani"
+        "DialogueId": 390817,         // Dani: "I saw that rotten princess use her druid magic to turn into a cat!..."
+        "TargetGuid": 100000040011    // Dani
+      },
+      {
+        "NameId": 390800,             // "Interview Honey"
+        "DialogueId": 390820,         // Honey: "I think I saw her run by last night..."
+        "TargetGuid": 100000040012    // Honey
+      },
+      {
+        "NameId": 390802,             // "Interview Barin Battlerock"
+        "DialogueId": 390822,         // Barin: "I saw a wolf roaming around recently..."
+        "TargetGuid": 100000002359    // Barin Battlerock
+      },
+      {
+        "NameId": 390804,             // "Return to Feldman"
+        "DialogueId": 390789,         // Feldman's "Anything juicy?" close
+        "TargetGuid": 100000002419    // Feldman
+      }
+    ]
+  },
+  {
+    // === A Reliable Source (Sanctuary/Shrouded Glade) ===  Feldman's chain part 2: talk to Lavender's
+    // old classmate Suni Sorrowsmile at the Druid Academy, then report back.
+    "QuestId": 3011,
+    "TitleId": 390845,                // "A Reliable Source"
+    "DescriptionId": 390846,          // "Feldman got a tip that Lavender's old classmate, Suni Sorrowsmile..."
+    "GiverDialogueId": 390844,        // Feldman: "Well, every journalist needs a reliable source..."
+    "ObjectiveDescriptionId": 390849, // "Talk to Suni Sorrowsmile in the Shrouded Glade. Return to Feldman..."
+    "SubGoalId": 390850,              // "Talk to Suni Sorrowsmile"
+    "TargetDialogueId": 390847,       // Feldman: "Attempts on her life? No no, I can't sell a story..."
+    "IconId": 43278,
+    "GiverGuid": 100000002419,        // Feldman
+    "TargetGuid": 100000002419,
+    "RewardCoins": 24,                // retail: 24 Gold
+    "RewardExperience": 80,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 3010,
+    "NextQuestId": 0,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 390850,             // "Talk to Suni Sorrowsmile"
+        "DialogueId": 390855,         // Suni: "Whatever you heard about Lavender is a bunch of nonsense..."
+        "TargetGuid": 100000001419    // Suni Sorrowsmile (Shrouded Glade)
+      },
+      {
+        "NameId": 390804,             // "Return to Feldman"
+        "DialogueId": 390847,         // Feldman's turn-in line
+        "TargetGuid": 100000002419
+      }
+    ]
+  },
+  {
+    // === Bixie Skirmish (Sanctuary) ===  retail combat quest - our first Kill-goal quest. All ids
+    // straight from the FR Quest Documentation (441669-441765 block + 440711 Bixie Soldier). Sergeant
+    // Larkspur (100000040001) + 9 Bixie Soldiers were absent from the retail NpcSpawns snapshot and are
+    // spawned by us in the fields east of Sanctuary town - positions approximate ("Queensfields").
+    "QuestId": 3012,
+    "TitleId": 441670,                // "Bixie Skirmish"
+    "DescriptionId": 441671,          // "Sergeant Larkspur, an injured royal guard... needs you to defend the city..."
+    "GiverDialogueId": 441669,        // Larkspur: "Your timing is perfect, [*player*]! Please fight off the remaining Bixie Soldiers..."
+    "ObjectiveDescriptionId": 441756, // "Defeat Bixie Soldiers in the Queensfields area"
+    "SubGoalId": 441759,              // "Defeat Bixie Soldiers - 0/9"
+    "TargetDialogueId": 441672,       // Larkspur: "Those cowardly bixies will surely think twice before attacking us again..."
+    "IconId": 43278,
+    "GiverGuid": 100000040001,        // Sergeant Larkspur
+    "TargetGuid": 100000040001,
+    "RewardCoins": 44,                // retail: 44 Coins
+    "RewardExperience": 150,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 0,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 441759,               // "Defeat Bixie Soldiers - 0/9"
+        "Type": 3,                      // QuestGoalType.Kill
+        "KillNpcNameId": 440711,        // Bixie Soldier (primary - also the area pin's label)
+        "KillNpcNameIds": [442610, 442609], // Bixie Guardian + Bixie Magus: the retail camp NPCs at the
+                                            // same spot count too - ANY bixie in the area credits the hunt
+        "RequiredCount": 9
+      },
+      {
+        "NameId": 441765,             // "Return to Sergeant Larkspur"
+        "DialogueId": 441672,         // Larkspur's turn-in line
+        "TargetGuid": 100000040001
+      }
+    ]
+  },
+  {
+    // === Welcome to Seaside ===  the retail Seaside chain opener (doc-COMPLETE entry: every id from
+    // the FR Quest Documentation). First use of the ReachLocation goal type - the gazebo overlook.
+    // The gazebo is world geometry ("to the west" of Spritzy per his dialogue), so the reach point is
+    // approximate with a generous radius; /pos-correct if it doesn't line up with the actual gazebo.
+    "QuestId": 3020,
+    // NOTE: the doc's 34xxx ids for this quest are from a DIFFERENT id-space and don't resolve in the
+    // client (blank title in the offer box); these are the REAL ids mined from en_us_data.dat.
+    "TitleId": 93283,                 // "Welcome to Seaside"
+    "DescriptionId": 93284,           // "Spritzy has asked you to check out the view in Seaside."
+    "GiverDialogueId": 93282,         // Spritzy: "Woah! Dude, it's rad that you decided to cruise to Seaside!..."
+    "ObjectiveDescriptionId": 93291,  // "Spritzy in Seaside suggested you check out the view from the nearby gazebo."
+    "SubGoalId": 93294,               // "Take a look at the view"
+    "TargetDialogueId": 93335,        // Cole: "Well, hello there mate! Glad to see you stop by..."
+    "IconId": 43278,
+    "GiverGuid": 100000001885,        // Spritzy
+    "TargetGuid": 100000001748,       // ends at Cole (Information Center)
+    "RewardCoins": 30,                // retail: 30 Gold
+    "RewardExperience": 80,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 3021,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 93294,              // "Take a look at the view"
+        "Type": 1,                    // QuestGoalType.ReachLocation
+        "ReachPosition": [-690.38, 2.3, -1060.25], // the gazebo (exact, from /pos)
+        "ReachRadius": 15
+      },
+      {
+        "NameId": 93310,              // "Return to Spritzy"
+        "DialogueId": 93316,          // Spritzy: "So, what did you think?"
+        "TargetGuid": 100000001885
+      },
+      {
+        "NameId": 101743,             // "Talk to Cole in Seaside"
+        "DialogueId": 93335,          // Cole's Information Center welcome
+        "TargetGuid": 100000001748
+      }
+    ]
+  },
+  {
+    // === The Oldest Building ===  Seaside chain part 2 (doc-COMPLETE entry): visit Seaspray's Inn.
+    "QuestId": 3021,
+    "TitleId": 93399,                 // "The Oldest Building" (doc's 34783 doesn't resolve — real id mined)
+    "DescriptionId": 140222,          // "Cole in Seaside wants you to visit Seaspray at his Inn."
+    "GiverDialogueId": 93398,         // Cole: "The Seaspray Inn was the first building ever built in Seaside..."
+    "ObjectiveDescriptionId": 93400,  // "Cole wants you to visit the Oldest Building in Seaside: The Seaspray Inn."
+    "SubGoalId": 93405,               // "Talk to Seaspray"
+    "TargetDialogueId": 93401,        // Cole: "I hope you enjoyed the inn. It's pretty peaceful there..."
+    "IconId": 43278,
+    "GiverGuid": 100000001748,        // Cole
+    "TargetGuid": 100000001748,
+    "RewardCoins": 30,                // retail: 30 Gold
+    "RewardExperience": 80,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 3020,
+    "NextQuestId": 0,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 93405,              // "Talk to Seaspray"
+        "DialogueId": 93409,          // Seaspray: "Yep, my inn is the oldest building around..."
+        "TargetGuid": 100000001756    // Seaspray
+      },
+      {
+        "NameId": 93407,              // "Return to Cole"
+        "DialogueId": 93401,          // Cole's closing line
+        "TargetGuid": 100000001748
+      }
+    ]
+  },
+  {
+    // === Fishy Business (Pixie Nursery) ===  COMBAT quest, verified against the FR Wikibase page.
+    // Blazing Star's friend Flax had his collared fish stolen; he blames a Robgoblin Adept. Defeat one
+    // near the Pixie Nursery, return to Blazing Star (who finds the adept didn't have the fish either
+    // -> continues to "Purr...fect Secret"). Robgoblin Adepts (NameId 41955, model 191) are spawned by
+    // us near the nursery (Npcs.json 40013-40015) as world enemies - none existed in the retail snapshot.
+    "QuestId": 3030,
+    "TitleId": 38043,                 // "Fishy Business"
+    "DescriptionId": 116708,          // "Defeat a Robgoblin Adept near the Pixie Nursery and return to Blazing Star."
+    "GiverDialogueId": 38045,         // Blazing Star: "Do you see Flax? ...I bet one of those sneaky Robgoblin Adepts stole them! Can you defeat a Robgoblin Adept...?"
+    "ObjectiveDescriptionId": 116708, // header summary (distinct from goal ids)
+    "SubGoalId": 71413,               // "Defeat a Robgoblin Adept."
+    "TargetDialogueId": 2145,         // Blazing Star turn-in: "What? The adept didn't have Flax's fish? Hmm... Who would've taken them?"
+    "IconId": 43278,
+    "GiverGuid": 100000003380,        // Blazing Star (Pixie Nursery)
+    "TargetGuid": 100000003380,       // return to Blazing Star
+    "RewardCoins": 7,                 // wiki: 7 coins
+    "RewardExperience": 90,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 3031,              // -> Purr...fect Secret
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 71413,              // "Defeat a Robgoblin Adept."
+        "Type": 3,                    // QuestGoalType.Kill
+        "KillNpcNameId": 41955,       // Robgoblin Adept
+        "RequiredCount": 1            // wiki: defeat ONE
+      },
+      {
+        "NameId": 38127,              // "Return to Blazing Star"
+        "DialogueId": 2145,           // Blazing Star's turn-in line
+        "TargetGuid": 100000003380
+      }
+    ]
+  },
+  {
+    // === Purr...fect Secret (Pixie Nursery) ===  SEARCH quest, part 2 of the series (verified against
+    // the FR Wikibase page). Check 4 cat bowls for Flax's stolen fish, then report to Blazing Star.
+    // The bowls are placed props (Npcs.json 40016-40019, model 349 bowl_basic, NameId 389719 "Cat
+    // Bowl"); each goal is a TalkToNpc targeting one bowl guid - interacting "checks" it and pops the
+    // bowl's message. Goals complete in story order (breadcrumb leads bowl-to-bowl); the 4th bowl has
+    // the fish collar. Continues to "Who Done It?".
+    "QuestId": 3031,
+    "TitleId": 389700,                // "Purr... fect Secret"
+    "DescriptionId": 116709,          // "Check all of the cats' bowls at the Pixie Nursery for Flax's fish. Return to Blazing Star."
+    "GiverDialogueId": 38042,         // Blazing Star: "I saw a bunch of cats lugging around fish... Can you check all of the cats' bowls...?"
+    "ObjectiveDescriptionId": 116709, // header summary (distinct from goal ids)
+    "SubGoalId": 389708,              // "Check the first cat's bowl"
+    "TargetDialogueId": 45612,        // Blazing Star turn-in: "Oh my, this is a sad day, but I know that cat. He is owned by one of the lab workers..."
+    "IconId": 43278,
+    "GiverGuid": 100000003380,        // Blazing Star (Pixie Nursery)
+    "TargetGuid": 100000003380,       // return to Blazing Star
+    "RewardCoins": 2,                 // wiki: 2 coins (+ Kitty Checkered Shoes cosmetic, item def id not confirmed - omitted)
+    "RewardExperience": 90,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 3030,      // after Fishy Business
+    "NextQuestId": 0,                 // retail continues to "Who Done It?"
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 389708,             // "Check the first cat's bowl"
+        "DialogueId": 389904,         // bowl 1: "Eww! Fish eyes! No sign of a fish collar though."
+        "TargetGuid": 100000040016    // Cat Bowl 1
+      },
+      {
+        "NameId": 389709,             // "Check the second cat's bowl"
+        "DialogueId": 389905,         // bowl 2: "This bowl is empty."
+        "TargetGuid": 100000040017    // Cat Bowl 2
+      },
+      {
+        "NameId": 389710,             // "Check the third cat's bowl"
+        "DialogueId": 389910,         // bowl 3: "The smell of fish here is overwhelming. Still no sign of a fish collar though."
+        "TargetGuid": 100000040018    // Cat Bowl 3
+      },
+      {
+        "NameId": 389712,             // "Check the fourth cat's bowl"
+        "DialogueId": 389911,         // bowl 4: "Oh no! This bowl has a fish collar inside of it. You better let Blazing Star know!"
+        "TargetGuid": 100000040019    // Cat Bowl 4
+      },
+      {
+        "NameId": 38127,              // "Return to Blazing Star"
+        "DialogueId": 45612,          // Blazing Star's turn-in line
+        "TargetGuid": 100000003380
+      }
+    ]
+  },
+  {
+    // === Who Done It? (Pixie Nursery) ===  SEARCH quest, part 3 (verified vs FR Wikibase). Blazing
+    // Star forgot which lab worker owns the fish-thieving cat; speak to all three (Zinnea + Funnel deny
+    // it and point onward, Oxalis confesses), then Oxalis explains and offers to make amends. All three
+    // are existing retail spawns. Ends at Oxalis (his amends line is the turn-in, teeing up Making
+    // Amends). Goals run in order Zinnea -> Funnel -> Oxalis (reveal) -> Oxalis (amends).
+    "QuestId": 3032,
+    "TitleId": 389951,                // "Who Done It?"
+    "DescriptionId": 389952,          // "Blazing Star wants you to speak to Zinnea, Oxalis and Funnel, the lab workers..."
+    "GiverDialogueId": 389950,        // Blazing Star: "That cat was owned by one of those lab workers. I forgot who though..."
+    "ObjectiveDescriptionId": 389952, // header (distinct from goal ids)
+    "SubGoalId": 38049,               // "Talk to Zinnea Magnolio"
+    "TargetDialogueId": 389953,       // Oxalis turn-in: "I didn't mean to make anyone upset... Perhaps there is a way I can make it up to Flax."
+    "IconId": 43278,
+    "GiverGuid": 100000003380,        // Blazing Star (offers)
+    "TargetGuid": 100000003386,       // ends at Oxalis Shamrock
+    "RewardCoins": 5,                 // wiki: 5 coins (+ Unmoving Orb x5 - item def id not confirmed, omitted)
+    "RewardExperience": 90,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 3031,      // after Purr...fect Secret
+    "NextQuestId": 3033,              // -> Making Amends
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 38049,              // "Talk to Zinnea Magnolio"
+        "DialogueId": 389967,         // Zinnea: "Oh, that's not my cat, but I think it might belong to one of the other lab workers."
+        "TargetGuid": 100000003389    // Zinnea Magnolio
+      },
+      {
+        "NameId": 38051,              // "Talk to Funnel Bindweed"
+        "DialogueId": 389970,         // Funnel: "I remember that cat. Nice cat, but it's not mine. You might want to ask Zinnea or Oxalis..."
+        "TargetGuid": 100000003388    // Funnel Bindweed
+      },
+      {
+        "NameId": 38053,              // "Talk to Oxalis Shamrock"
+        "DialogueId": 390019,         // Oxalis (reveal): "Oh no... My cat ate Flax's pet fish? This is horrible!"
+        "TargetGuid": 100000003386    // Oxalis Shamrock
+      },
+      {
+        "NameId": 390017,             // "Talk to Oxalis"
+        "DialogueId": 389953,         // Oxalis (amends): "I didn't mean to make anyone upset... make it up to Flax."
+        "TargetGuid": 100000003386    // Oxalis again (turn-in)
+      }
+    ]
+  },
+  {
+    // === Making Amends (Pixie Nursery) ===  SEARCH quest, part 4 (verified vs FR Wikibase). Oxalis'
+    // plan to make it up to Flax: get two fish from Bulb the pond fisher, deliver to Flax. Bulb (3370)
+    // and Flax (3379) are existing retail spawns. Ends at Flax. Last quest in the Pixie Nursery arc we
+    // have data for.
+    "QuestId": 3033,
+    "TitleId": 3787,                  // "Making Amends"
+    "DescriptionId": 38144,           // "Gather fish from Bulb and bring the fish, along with a fishbowl to Flax at the Pixie Nursery."
+    "GiverDialogueId": 38142,         // Oxalis: "Here's my idea. Bulb is always fishing down by the pond. Maybe if he can catch two pretty fish..."
+    "ObjectiveDescriptionId": 116723, // header: "Talk to Bulb at the Pixie Nursery and see if he can catch a couple of fish for Flax."
+    "SubGoalId": 38154,               // "Talk to Bulb"
+    "TargetDialogueId": 2134,         // Flax turn-in: "What's this? Aww... Oxalis asked you to give this to me? *Sniffle*..."
+    "IconId": 43278,
+    "GiverGuid": 100000003386,        // Oxalis Shamrock (offers)
+    "TargetGuid": 100000003379,       // ends at Flax
+    "RewardCoins": 2,                 // wiki: 2 coins (+ Wild T-Shirt - item def id not confirmed, omitted)
+    "RewardExperience": 80,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 3032,      // after Who Done It?
+    "NextQuestId": 0,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 38154,              // "Talk to Bulb"
+        "DialogueId": 38163,          // Bulb: "I think I know just the right fish. Ah, you see those two right there?..."
+        "TargetGuid": 100000003370    // Bulb (by the pond)
+      },
+      {
+        "NameId": 38156,              // "Talk to Flax"
+        "DialogueId": 2134,           // Flax's grateful turn-in line
+        "TargetGuid": 100000003379    // Flax
+      }
+    ]
+  },
+  {
+    // ============ FOREST TROLL VILLAGE SERIES (Vergosh's crew) — verified vs FR Wikibase ============
+    // === Lazy Trolls (3040) ===  SEARCH quest, part 1. Vergosh thinks the camp trolls are slacking;
+    // check on Voggun, Troggers, Grosh, Nog, then report back. All five trolls are existing spawns.
+    "QuestId": 3040,
+    "TitleId": 38385,                 // "Lazy Trolls"
+    "DescriptionId": 38386,           // "Vergosh wants you to check on the other trolls in nearby camps."
+    "GiverDialogueId": 38384,         // Vergosh: "Work work work... All deez trolls be lazy... Will you help me check up on the lazy trolls?"
+    "ObjectiveDescriptionId": 38386,  // header
+    "SubGoalId": 38393,               // "Talk to Voggun"
+    "TargetDialogueId": 9585,         // Vergosh turn-in: "All dem lazy trolls be workin' hard? They probably just see you comin'..."
+    "IconId": 43278,
+    "GiverGuid": 100000003145,        // Vergosh
+    "TargetGuid": 100000003145,       // return to Vergosh
+    "RewardCoins": 30,                // wiki: 30 coins
+    "RewardExperience": 90,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 3041,              // -> Question at the Quarry
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 38393,              // "Talk to Voggun"
+        "DialogueId": 38511,          // troll grumble: "Dat Vergosh always be thinkin' we trolls not workin'. You tell him we workin' OK?"
+        "TargetGuid": 100000003097    // Voggun
+      },
+      {
+        "NameId": 38400,              // "Talk to Troggers"
+        "DialogueId": 38402,          // Troggers: "What's that? Vergosh be thinkin' I'm not workin' again? ...tell him I'm on the job."
+        "TargetGuid": 100000003113    // Troggers
+      },
+      {
+        "NameId": 38442,              // "Talk to Grosh"
+        "DialogueId": 38511,          // generic troll grumble (shared w/ Voggun - the client has no Grosh-specific line)
+        "TargetGuid": 100000003095    // Grosh
+      },
+      {
+        "NameId": 38515,              // "Talk to Nog"
+        "DialogueId": 38530,          // Nog (self-named): "Bah! Vergosh never trust us trolls to keep workin'... You tell him Nog workin' hard!"
+        "TargetGuid": 100000003108    // Nog
+      },
+      {
+        "NameId": 38518,              // "Return to Vergosh"
+        "DialogueId": 9585,           // Vergosh's cynical turn-in line
+        "TargetGuid": 100000003145
+      }
+    ]
+  },
+  {
+    // === Question at the Quarry (3041) ===  SEARCH quest, part 2. Vergosh's quarry rocks never arrived;
+    // go ask Foreman Burgl (spawn "Burglz" 3120) at the quarry. Pure talk, ends at Burgl.
+    "QuestId": 3041,
+    "TitleId": 70107,                 // "Question at the Quarry"
+    "DescriptionId": 70106,           // "Vergosh requested some new rocks from the quarry weeks ago, yet they still haven't been delivered..."
+    "GiverDialogueId": 70102,         // Vergosh: "Bah.. I always hafta be checkin' up on deez lazy trolls... Talk to Burgl! He'll know what's goin' on."
+    "ObjectiveDescriptionId": 70109,  // header: "Travel to the rock quarry near the troll fort and speak to Burgl about Vergosh's rocks."
+    "SubGoalId": 70110,               // "Speak to Burgl"
+    "TargetDialogueId": 70105,        // Burgl: "I knew Vergosh would be checkin' up on me soon. I hoped he might have just forgotten about da rocks..."
+    "IconId": 43278,
+    "GiverGuid": 100000003145,        // Vergosh
+    "TargetGuid": 100000003120,       // ends at Burgl (Burglz)
+    "RewardCoins": 30,
+    "RewardExperience": 90,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 3040,
+    "NextQuestId": 3042,              // -> Tools for Smashing
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 70110,              // "Speak to Burgl"
+        "DialogueId": 70105,          // Burgl's line
+        "TargetGuid": 100000003120    // Burgl
+      }
+    ]
+  },
+  {
+    // === Tools for Smashing (3042) ===  COLLECT quest, part 3. Mungo scared off Burgl's delivery guy,
+    // who dropped the tools in the forest; gather 5 shovels + 5 picks, return to Burgl. Pickups are
+    // spawned collectibles (shovel model 197, pick model 196) scattered in the troll-village forest.
+    "QuestId": 3042,
+    "TitleId": 70218,                 // "Tools for Smashing"
+    "DescriptionId": 70219,           // "Collect Burgl's lost tools from around the forest and return to him at the quarry."
+    "GiverDialogueId": 70299,         // Burgl: "We need new tools for smashing! Mean old Mungo scared delivery guy... You go search the forest for tools..."
+    "ObjectiveDescriptionId": 70219,  // header
+    "SubGoalId": 70221,               // "Collect the lost shovels"
+    "TargetDialogueId": 70196,        // Burgl turn-in: "Ha ha! You found da tools! Now we can smash up dem rocks! Vergosh will be happy again."
+    "IconId": 43278,
+    "GiverGuid": 100000003120,        // Burgl
+    "TargetGuid": 100000003120,       // return to Burgl
+    "RewardCoins": 30,
+    "RewardExperience": 100,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 3041,
+    "NextQuestId": 3043,              // -> Box O' Rocks
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 70221,              // "Collect the lost shovels"
+        "Type": 2,                    // QuestGoalType.Collect
+        "RequiredCount": 5,
+        "CollectModelId": 197,        // sh_shovel_01
+        "CollectNameId": 2149,        // "Shovel"
+        // Placed a few meters from each troll (y copied from that NPC = guaranteed on-ground), so the
+        // shovels are scattered "around the forest" near the camps without floating/sinking.
+        "CollectSpawns": [
+          [-595.0, 1.0, 1225.0],
+          [-438.0, 4.0, 1186.0],
+          [-503.0, 1.0, 1078.0],
+          [-399.0, 5.0, 1092.0],
+          [-440.0, 1.0, 1310.0]
+        ]
+      },
+      {
+        "NameId": 70227,              // "Collect the lost picks"
+        "Type": 2,                    // QuestGoalType.Collect
+        "RequiredCount": 5,
+        "CollectModelId": 196,        // sh_pick_01
+        "CollectNameId": 3307,        // "Pick"
+        // Same approach as the shovels - offset the other side of each troll, y copied from that NPC.
+        "CollectSpawns": [
+          [-608.0, 1.0, 1213.0],
+          [-425.0, 4.0, 1174.0],
+          [-491.0, 1.0, 1066.0],
+          [-387.0, 5.0, 1080.0],
+          [-428.0, 1.0, 1323.0]
+        ]
+      },
+      {
+        "NameId": 70230,              // "Return to Burgl"
+        "DialogueId": 70196,          // Burgl's turn-in line
+        "TargetGuid": 100000003120
+      }
+    ]
+  },
+  {
+    // === Box O' Rocks (3043) ===  COLLECT quest, part 4 (final). Burgl's crew crated the rocks; collect
+    // 3 crates at the quarry, deliver to Vergosh. Crate pickups (model 84 sh_crate_01) at the quarry.
+    // NOTE: the client has no dedicated Vergosh delivery turn-in line, so the on-topic description line
+    // (70202) stands in on the end screen - swap if the real line surfaces.
+    "QuestId": 3043,
+    "TitleId": 70201,                 // "Box O' Rocks"
+    "DescriptionId": 70202,           // "Burgl's workers have been busy... managed to collect all the rocks Vergosh requested."
+    "GiverDialogueId": 70505,         // Burgl: "Hey there friend... It seem my boys were able to smash up dem rocks and stuff dem into crates..."
+    "ObjectiveDescriptionId": 70288,  // header: "Collect the crates full of rocks at the quarry, and then deliver them to Vergosh..."
+    "SubGoalId": 70289,               // "Collect the crates full of rocks"
+    "TargetDialogueId": 70202,        // fallback turn-in (no dedicated Vergosh line - see note)
+    "IconId": 43278,
+    "GiverGuid": 100000003120,        // Burgl
+    "TargetGuid": 100000003145,       // ends at Vergosh
+    "RewardCoins": 30,
+    "RewardExperience": 100,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 3042,
+    "NextQuestId": 0,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 70289,              // "Collect the crates full of rocks"
+        "Type": 2,                    // QuestGoalType.Collect
+        "RequiredCount": 3,
+        "CollectModelId": 84,         // sh_crate_01
+        "CollectNameId": 21364,       // "Crate"
+        "CollectSpawns": [
+          [-535.0, 0.5, 1350.0],
+          [-550.0, 0.5, 1365.0],
+          [-525.0, 0.5, 1355.0]
+        ]
+      },
+      {
+        "NameId": 70291,              // "Deliver the rocks to Vergosh"
+        "DialogueId": 70202,          // fallback (see note)
+        "TargetGuid": 100000003145    // Vergosh
       }
     ]
   }

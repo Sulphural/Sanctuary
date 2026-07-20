@@ -1443,6 +1443,8 @@ public static class DungeonCatalog
         4468, // chugawug_m_ninjawug_bixie_rider_general_01 (General Wugashima)
         4473, // bixie_f_mage_gloamed (Bixie Magus)
         4474, // bixie_m_elite_guard_gloamed (Bixie Guardian)
+        218,  // bixie_m_elite_guard (Bixie Soldier — the Bixie Skirmish hunt targets)
+        191,  // robgoblin_m_mage (Robgoblin Adept — Fishy Business hunt target, Pixie Nursery)
     };
 
     // Every distinct enemy ModelId that spawns as hostile in the overworld: the models used by

@@ -104,6 +104,10 @@ public static class CommandRouter
                 return HandleBring(conn, parts);
             case "goto":
                 return HandleGoto(conn, parts);
+            case "tut":
+                return HandleTutorialSpike(conn);
+            case "map":
+                return HandleMap(conn, parts);
             case "kick":
                 return HandleKick(conn, parts);
             case "warn":
@@ -2428,14 +2432,12 @@ public static class CommandRouter
 
     private static void SendMessageToPlayer(Player player, string message)
     {
-        var packet = new PacketChat
+        // Clean one-line message (no speaker prefix), same as SendSystem — see it for details.
+        player.SendTunneled(new ChatPacketDebugChat
         {
-            Channel = ChatChannel.System,
-            FromGuid = 0,
-            FromName = new NameData(),
-            Message = message
-        };
-        player.SendTunneled(packet);
+            PrintToChat = true,
+            Message = message,
+        });
     }
 
     private static bool TryResolveUsernamePattern(string pattern, out string resolvedUsername, out string error)
@@ -2638,17 +2640,77 @@ public static class CommandRouter
         return true;
     }
 
+    // SPIKE (combat-tutorial research): the go/no-go live test for whether the client's client-detected
+    // objective mechanism (look-at) is server-drivable. Stands up a MiniGameState (op41/114 launch,
+    // combat+tutorial - the gate op45 objectives need), announces one objective, then arms an
+    // ObjectiveLookAt (45/6) on the nearest NPC. Look at that NPC in-game and watch the server log for
+    // "INBOUND op45 sub=7" (BaseObjectivePacketHandler) - if it fires, the client detected the look and
+    // reported it, proving the whole tutorial is buildable.
+    // Starts the combat tutorial (Basic Combat Tutorial) for the player. Currently the first slice: the
+    // three look-at-globe steps. Spawns the globes in front of you and walks the steps as you look at them.
+    // DEBUG world browser: "/map <worldName> [x y z]" loads ANY client world by name at the given coords
+    // (default spawn is high above origin) so worlds can be identified in-game. Relog to return home.
+    private static bool HandleMap(GatewayConnection conn, string[] parts)
+    {
+        if (!RequireAdmin(conn))
+            return true;
+
+        if (parts.Length < 2)
+        {
+            SendSystem(conn, "Usage: /map <worldName> [x y z]   (world names: see Desktop\\loadable_worlds.txt; relog to go home)");
+            return true;
+        }
+
+        string worldName = parts[1];
+
+        float x = 0f, y = 60f, z = 0f;
+        if (parts.Length >= 5
+            && float.TryParse(parts[2], out var px)
+            && float.TryParse(parts[3], out var py)
+            && float.TryParse(parts[4], out var pz))
+        {
+            x = px; y = py; z = pz;
+        }
+
+        var spawn = new System.Numerics.Vector4(x, y, z, 1f);
+        var zone = _zoneManager.GetOrCreateDebugWorld(worldName, spawn);
+        if (conn.Player.EncounterReturnPosition is null)
+            conn.Player.EncounterReturnPosition = conn.Player.Position;
+        conn.Player.TeleportToZone(zone, spawn, zone.SpawnRotation, sky: null, geometryId: 0);
+        SendSystem(conn, $"/map: loading '{worldName}' at ({x}, {y}, {z}). Relog to return home.");
+        return true;
+    }
+
+    private static bool HandleTutorialSpike(GatewayConnection conn)
+    {
+        var player = conn.Player;
+
+        // The retail combat tutorial is a SUMMONED DUNGEON INSTANCE: Darkthorne teleports the player into
+        // Briarheart Palace (the CombatTutorialZone). The tutorial auto-starts once the client finishes
+        // loading the world (CombatTutorialZone.OnClientFinishedLoading), then teleports the player back out.
+        if (player.Zone is Sanctuary.Game.Zones.CombatTutorialZone)
+        {
+            SendSystem(conn, "!tut: you're already in the tutorial.");
+            return true;
+        }
+
+        var tutorial = _zoneManager.GetOrCreateCombatTutorial();
+        player.EncounterReturnPosition = player.Position; // return here when the tutorial ends
+        player.TeleportToZone(tutorial, tutorial.SpawnPosition, tutorial.SpawnRotation, sky: null, geometryId: 0);
+        SendSystem(conn, "!tut: entering the combat tutorial (Briarheart Palace)...");
+        return true;
+    }
+
+    // Prints a single clean line to the player's chat window via ChatPacketDebugChat (op15/3) — no
+    // "[System] PlayerName:" prefix, unlike PacketChat. The text supports the client's inline markup
+    // (<font color='#rrggbb' size='n'>…<br>…</font>), so command output reads as a plain message.
     private static void SendSystem(GatewayConnection conn, string text)
     {
-        var packet = new PacketChat
+        conn.Player.SendTunneled(new ChatPacketDebugChat
         {
-            Channel = ChatChannel.System,
-            FromGuid = conn.Player.Guid,
-            FromName = conn.Player.Name, // NameData, not string
-            Message = text
-        };
-
-        conn.Player.SendTunneled(packet);
+            PrintToChat = true,
+            Message = text,
+        });
     }
 
     // ================== PET COMMANDS ==================

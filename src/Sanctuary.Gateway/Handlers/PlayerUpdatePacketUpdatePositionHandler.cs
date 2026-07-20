@@ -13,11 +13,13 @@ namespace Sanctuary.Gateway.Handlers;
 public static class PlayerUpdatePacketUpdatePositionHandler
 {
     private static ILogger _logger = null!;
+    private static Sanctuary.Game.Quests.IQuestManager _questManager = null!;
 
     public static void ConfigureServices(IServiceProvider serviceProvider)
     {
         var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
         _logger = loggerFactory.CreateLogger(nameof(PlayerUpdatePacketUpdatePositionHandler));
+        _questManager = serviceProvider.GetRequiredService<Sanctuary.Game.Quests.IQuestManager>();
     }
 
     public static bool HandlePacket(GatewayConnection connection, Span<byte> data)
@@ -189,6 +191,10 @@ public static class PlayerUpdatePacketUpdatePositionHandler
         }
 
         connection.Player.UpdatePosition(packet.Position, packet.Rotation);
+
+        // ReachLocation quest goals complete by proximity — evaluate against the fresh position.
+        // Cheap: early-outs on players with no active reach goal.
+        _questManager.OnPlayerMoved(connection.Player);
 
         connection.Player.SendTunneledToVisible(packet);
 

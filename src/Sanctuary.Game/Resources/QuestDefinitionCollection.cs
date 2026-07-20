@@ -121,10 +121,11 @@ public class QuestDefinitionCollection
                 {
                     var goal = effective[gi];
 
-                    // Kill goals: remember the counted NPC NameId so the zone can spawn those NPCs
+                    // Kill goals: remember every counted NPC NameId so the zone can spawn those NPCs
                     // as attackable hostiles (red name, health bar).
-                    if (goal.Type == QuestGoalType.Kill && goal.KillNpcNameId != 0)
-                        KillTargetNameIds.Add(goal.KillNpcNameId);
+                    if (goal.Type == QuestGoalType.Kill)
+                        foreach (var killNameId in goal.AllKillNameIds())
+                            KillTargetNameIds.Add(killNameId);
 
                     if (goal.Type != QuestGoalType.Collect)
                         continue;

@@ -72,6 +72,7 @@ public static class PacketTunneledClientPacketHandler
             BaseNameChangePacket.OpCode => BaseNameChangePacketHandler.HandlePacket(connection, reader),
             BaseCombatPacket.OpCode => BaseCombatPacketHandler.HandlePacket(connection, reader),
             BaseQuestPacket.OpCode => BaseQuestPacketHandler.HandlePacket(connection, reader),
+            BaseObjectivePacketHandler.OpCode => BaseObjectivePacketHandler.HandlePacket(connection, reader), // SPIKE: observe client objective reports (45/7)
             BaseUiPacket.OpCode => BaseUiPacketHandler.HandlePacket(connection, reader),
             ClientPathBasePacket.OpCode => ClientPathBasePacketHandler.HandlePacket(connection, reader),
             BaseGroupPacket.OpCode => BaseGroupPacketHandler.HandlePacket(connection, reader),

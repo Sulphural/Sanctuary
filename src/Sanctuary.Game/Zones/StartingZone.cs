@@ -18,7 +18,7 @@ using Sanctuary.Packet.Common;
 
 namespace Sanctuary.Game.Zones;
 
-public sealed class StartingZone : BaseZone
+public sealed partial class StartingZone : BaseZone
 {
     private readonly IZoneManager _zoneManager;
     private readonly IResourceManager _resourceManager;
@@ -344,6 +344,15 @@ public sealed class StartingZone : BaseZone
         // FUN_00a99220 -> restore camera + DismissEndScreen). On a plain login there's nothing to dismiss,
         // so it's a harmless no-op.
         player.SendTunneled(new CommandPacketQuestDialogComplete());
+
+        // Re-send the Adventurer's Journal definitions here, AFTER the client has finished loading. The
+        // copy sent in OnClientIsReady arrives before the journal UI subsystem is initialized on first
+        // login, so it's stored but never drawn (the sticker pages stayed blank until a later refresh -
+        // observed: they only appeared after a teleport or a quest accept, both of which re-push the data
+        // once the UI is up). This send lands when the UI is ready, so the journal renders on login too.
+        // The per-player completed-quest map (op209/2, sent in OnClientIsReady's RestoreJournal) persists
+        // client-side across this re-send, so earned stickers keep their completed state.
+        SendAdventurersJournalInfo(player);
     }
 
     // COMBAT: fill the ability toolbar from the player's EQUIPPED WEAPON for any job with a
@@ -613,10 +622,15 @@ public sealed class StartingZone : BaseZone
     // Used both to spawn the world enemies and to keep Battle-Starter anchors AWAY from them.
     private bool IsWorldEnemyDefinition(NpcDefinition definition)
     {
+        // NOTE: quest KILL-TARGETS are deliberately NOT excluded here. A kill-target with a combat
+        // model spawns as a full world enemy — aggressive AI, fights back — and its death still
+        // credits the quest goal (OnNpcKilled matches by NameId regardless of spawn path). Excluding
+        // them (as this once did) downgraded the whole Bixie camp to passive punching bags the moment
+        // a quest counted them. Kill-targets with NON-combat models still fall through to the passive
+        // MakeQuestHostile path below.
         var guid = NpcGuidBase + (ulong)definition.Id;
         return !_resourceManager.NpcVendors.ContainsKey(guid)
             && !_questManager.IsQuestNpc(guid)
-            && !_resourceManager.Quests.KillTargetNameIds.Contains(definition.NameId)
             && Sanctuary.Game.Dungeons.DungeonCatalog.EnemyModelIds.Contains(definition.ModelId);
     }
 
@@ -1011,6 +1025,12 @@ public sealed class StartingZone : BaseZone
             if (worldEnemy.IsDead)
                 return;
             worldEnemy.IsDead = true;
+
+            // Credit the active Kill goal of any of the killer's in-progress quests (matched by
+            // NameId). World enemies are valid hunt targets too — without this, only the passive
+            // MakeQuestHostile spawns credited, which is why kill-targets used to be excluded from
+            // the world-enemy path (and the whole camp went passive when a quest counted them).
+            _questManager.OnNpcKilled(killer, npc);
 
             AwardSharedXp(killer, worldEnemy.XpReward, worldEnemy.Position);
 
@@ -2084,6 +2104,10 @@ public sealed class StartingZone : BaseZone
                 ImageSetId = 0,
                 Unknown = 0
             }
+            // NOTE: journal stickers are a CURATED retail set (only certain milestone/story quests earn
+            // one, each with dedicated sticker art) - NOT every quest. Our custom quests deliberately have
+            // no stickers here; they're still marked complete via the op209/2 QuestUpdate map, which earns
+            // the stickers that DO exist (e.g. Introduce Yourself 2563 / Call the Crew 2564 above).
         ];
 
         adventurersJournal.Stickers = stickers.ToDictionary(x => x.Id);

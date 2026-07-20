@@ -50516,5 +50516,24 @@
       -133.8725
     ],
     "SpawnHeading": 1.370251
-  }
+  },
+{"Id": 40001, "NameId": 441907, "Name": "Sergeant Larkspur", "ModelId": 345, "ModelFileName": "fairy_royalguard_m.adr", "SpawnPosition": [-928.0, 5.5, 247.0], "SpawnHeading": 1.6},
+{"Id": 40002, "NameId": 440711, "Name": "Bixie Soldier", "ModelId": 218, "ModelFileName": "bixie_m_elite_guard.adr", "SpawnPosition": [-640.0, 2.5, 258.0], "SpawnHeading": 0.3},
+{"Id": 40003, "NameId": 440711, "Name": "Bixie Soldier", "ModelId": 218, "ModelFileName": "bixie_m_elite_guard.adr", "SpawnPosition": [-652.0, 2.4, 262.0], "SpawnHeading": 2.2},
+{"Id": 40004, "NameId": 440711, "Name": "Bixie Soldier", "ModelId": 218, "ModelFileName": "bixie_m_elite_guard.adr", "SpawnPosition": [-668.0, 2.5, 296.0], "SpawnHeading": 4.0},
+{"Id": 40005, "NameId": 440711, "Name": "Bixie Soldier", "ModelId": 218, "ModelFileName": "bixie_m_elite_guard.adr", "SpawnPosition": [-700.0, 4.3, 285.0], "SpawnHeading": 3.1},
+{"Id": 40006, "NameId": 440711, "Name": "Bixie Soldier", "ModelId": 218, "ModelFileName": "bixie_m_elite_guard.adr", "SpawnPosition": [-712.0, 3.9, 280.0], "SpawnHeading": 0.8},
+{"Id": 40007, "NameId": 440711, "Name": "Bixie Soldier", "ModelId": 218, "ModelFileName": "bixie_m_elite_guard.adr", "SpawnPosition": [-655.0, 2.4, 250.0], "SpawnHeading": 5.0},
+{"Id": 40008, "NameId": 440711, "Name": "Bixie Soldier", "ModelId": 218, "ModelFileName": "bixie_m_elite_guard.adr", "SpawnPosition": [-680.0, 2.4, 245.0], "SpawnHeading": 2.6},
+{"Id": 40009, "NameId": 440711, "Name": "Bixie Soldier", "ModelId": 218, "ModelFileName": "bixie_m_elite_guard.adr", "SpawnPosition": [-649.0, 2.4, 225.0], "SpawnHeading": 1.3},
+{"Id": 40010, "NameId": 440711, "Name": "Bixie Soldier", "ModelId": 218, "ModelFileName": "bixie_m_elite_guard.adr", "SpawnPosition": [-690.0, 2.4, 218.0], "SpawnHeading": 0.6},
+{"Id": 40011, "NameId": 14701, "Name": "Dani", "ModelId": 384, "ModelFileName": "fairy_sanctuary_f.adr", "SpawnPosition": [-1277.28, -14.36, 298.18], "SpawnHeading": -0.733},
+{"Id": 40012, "NameId": 7666, "Name": "Honey", "ModelId": 384, "ModelFileName": "fairy_sanctuary_f.adr", "SpawnPosition": [-1164.01, 6.35, 315.15], "SpawnHeading": 2.251},
+{"Id": 40013, "NameId": 41955, "Name": "Robgoblin Adept", "ModelId": 191, "ModelFileName": "robgoblin_m_mage.adr", "SpawnPosition": [-430.0, -5.0, -720.0], "SpawnHeading": 0.8},
+{"Id": 40014, "NameId": 41955, "Name": "Robgoblin Adept", "ModelId": 191, "ModelFileName": "robgoblin_m_mage.adr", "SpawnPosition": [-448.0, -4.0, -700.0], "SpawnHeading": 2.3},
+{"Id": 40015, "NameId": 41955, "Name": "Robgoblin Adept", "ModelId": 191, "ModelFileName": "robgoblin_m_mage.adr", "SpawnPosition": [-415.0, -6.0, -735.0], "SpawnHeading": 4.1},
+{"Id": 40016, "NameId": 389719, "Name": "Cat Bowl", "ModelId": 349, "ModelFileName": "bowl_basic.adr", "SpawnPosition": [-360.0, -1.0, -705.0], "SpawnHeading": 0.0},
+{"Id": 40017, "NameId": 389719, "Name": "Cat Bowl", "ModelId": 349, "ModelFileName": "bowl_basic.adr", "SpawnPosition": [-345.0, -1.0, -792.0], "SpawnHeading": 0.0},
+{"Id": 40018, "NameId": 389719, "Name": "Cat Bowl", "ModelId": 349, "ModelFileName": "bowl_basic.adr", "SpawnPosition": [-365.0, -1.0, -800.0], "SpawnHeading": 0.0},
+{"Id": 40019, "NameId": 389719, "Name": "Cat Bowl", "ModelId": 349, "ModelFileName": "bowl_basic.adr", "SpawnPosition": [-385.0, -7.0, -745.0], "SpawnHeading": 0.0}
 ]

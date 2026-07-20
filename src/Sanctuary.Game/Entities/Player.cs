@@ -135,6 +135,22 @@ public sealed class Player : ClientPcData, IEntity
     // Cleared when the collect goal ticks off.
     public Dictionary<int, int> QuestCollectProgress { get; } = new();
 
+    // Guids of individual Collect pickups THIS player has already gathered (pickups are shared world
+    // objects, hidden client-side per-player on collect). Lets the objective marker point at the nearest
+    // pickup the player hasn't taken yet. Cleared when the pickups are re-spawned (relog / re-accept).
+    public HashSet<ulong> CollectedPickups { get; } = new();
+
+    // COMBAT TUTORIAL: the index of the tutorial step the player is currently on (-1 = not in the
+    // tutorial). Each step arms a client-detected objective (look-at / first-movement / kill / etc.);
+    // the client reports completion via op45/7 and the zone advances to the next step. Globe/barrier
+    // prop guids the tutorial spawned for this player are tracked so they can be cleaned up on finish.
+    public int TutorialStep { get; set; } = -1;
+    public List<ulong> TutorialPropGuids { get; } = new();
+    // Pre-computed world positions for the tutorial's look-at spheres (captured from the player's
+    // facing at start). Spheres spawn ONE AT A TIME from these - the next appears as the current
+    // one is looked at and despawns.
+    public List<System.Numerics.Vector4> TutorialGlobePositions { get; } = new();
+
     // The quest the player currently has selected/tracked in the quest helper (set on accept and when
     // they pick one in the journal). The tracker arrow and the "Take Me There" breadcrumb point at THIS
     // quest's objective, not just the first active quest. 0 = none selected.

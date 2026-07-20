@@ -22,6 +22,10 @@ public interface IZoneManager
     // same lazy shared-instance model as the Frostfang arena.
     TormentedSpiritsArenaZone GetOrCreateSpiritArena();
 
+    CombatTutorialZone GetOrCreateCombatTutorial();
+
+    DebugWorldZone GetOrCreateDebugWorld(string worldName, System.Numerics.Vector4 spawn);
+
     // INSTANCE (data-driven combat dungeons): the shared EncounterArenaZone for a DungeonCatalog
     // activity id — created on first use and reused (same lazy shared-instance model as the two above).
     EncounterArenaZone GetOrCreateEncounterArena(int activityId);

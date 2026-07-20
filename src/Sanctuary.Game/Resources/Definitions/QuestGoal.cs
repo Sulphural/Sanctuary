@@ -9,7 +9,8 @@ public enum QuestGoalType
     // Completes when the player interacts with TargetGuid.
     TalkToNpc = 0,
 
-    // Future trigger type (not yet wired):
+    // Completes when the player comes within ReachRadius of ReachPosition
+    // (2D X/Z check, evaluated on every client position update).
     ReachLocation = 1,
 
     // Completes when the player has gathered RequiredCount pickups.
@@ -68,6 +69,21 @@ public class QuestGoal
     // each kill credits the goal until RequiredCount is reached.
     public int KillNpcNameId { get; set; }
 
+    // For Kill: OPTIONAL additional NameIds that also credit this goal — for hunts where several
+    // NPC variants share a camp (Bixie Skirmish counts Soldiers, Guardians, and Magi alike). Combined
+    // with KillNpcNameId; every listed NameId is also made hostile/damageable at spawn.
+    public List<int> KillNpcNameIds { get; set; } = new();
+
+    // All NameIds this Kill goal credits (the single id + the list, whichever are set).
+    public IEnumerable<int> AllKillNameIds()
+    {
+        if (KillNpcNameId != 0)
+            yield return KillNpcNameId;
+        foreach (var id in KillNpcNameIds)
+            if (id != 0 && id != KillNpcNameId)
+                yield return id;
+    }
+
     // For EncounterComplete: the activity/encounter id (e.g. 174 =
     // Frostfang Growler arena) that completes this goal when the player wins it.
     public int EncounterId { get; set; }
@@ -76,4 +92,11 @@ public class QuestGoal
     // pickups spawn. Interacting with one credits the goal; at RequiredCount the goal ticks
     // off and the next goal (the "return" step) activates. Place at least RequiredCount.
     public List<float[]> CollectSpawns { get; set; } = new();
+
+    // For ReachLocation: the world position ([x, y, z]) the player must get near. The check is 2D
+    // (X/Z), so the Y only feeds the map pin.
+    public float[] ReachPosition { get; set; } = [];
+
+    // For ReachLocation: how close (world units) counts as "arrived". 0 -> default 12.
+    public float ReachRadius { get; set; }
 }
