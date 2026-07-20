@@ -946,8 +946,51 @@ public sealed class Player : ClientPcData, IEntity
         }, sendToSelf: true);
     }
 
+    // Rough world-space velocity (units/sec) estimated from consecutive client position updates. Used to
+    // lag-compensate projectile muzzle origins so a moving-and-shooting player's shots come out from where
+    // the client actually renders them, not from the ~1-RTT-stale last-known position. Zeroed while standing.
+    public Vector3 EstimatedVelocity { get; private set; }
+    private Vector4 _lastVelPosition;
+    private DateTime _lastVelTime = DateTime.MinValue;
+
+    // Best estimate of where the client is rendering the player RIGHT NOW: the last-known position plus the
+    // motion since that update arrived (staleness) plus a short downlink allowance for how long our reply
+    // takes to reach the client. Used to spawn projectiles at the player even while they're running.
+    public Vector4 PredictPosition(float downlinkSeconds)
+    {
+        var v = EstimatedVelocity;
+        if (v == Vector3.Zero)
+            return Position;
+
+        var stale = _lastVelTime == DateTime.MinValue ? 0f : (float)(DateTime.UtcNow - _lastVelTime).TotalSeconds;
+        if (stale < 0f || stale > 1f) stale = 0f; // ignore gaps (stood still / just spawned)
+        var t = stale + downlinkSeconds;
+        return new Vector4(Position.X + v.X * t, Position.Y + v.Y * t, Position.Z + v.Z * t, 1f);
+    }
+
     public void UpdatePosition(Vector4 position, Quaternion rotation, bool updateZoneArea = true)
     {
+        var now = DateTime.UtcNow;
+        if (_lastVelTime != DateTime.MinValue)
+        {
+            var dt = (float)(now - _lastVelTime).TotalSeconds;
+            if (dt > 0.001f && dt < 0.5f)
+            {
+                var v = new Vector3(
+                    (position.X - _lastVelPosition.X) / dt,
+                    (position.Y - _lastVelPosition.Y) / dt,
+                    (position.Z - _lastVelPosition.Z) / dt);
+                // Cap to plausible run speed so teleports/warps don't produce a huge spurious velocity.
+                EstimatedVelocity = v.Length() < 20f ? v : Vector3.Zero;
+            }
+            else
+            {
+                EstimatedVelocity = Vector3.Zero;
+            }
+        }
+        _lastVelPosition = position;
+        _lastVelTime = now;
+
         Position = position;
         Rotation = rotation;
 

@@ -917,9 +917,13 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         var firedProjectile = false;
         var isArcher = player.ActiveProfileId == ArcherWeaponAbilities.ArcherProfileId;
         var isWizard = player.ActiveProfileId == WizardWeaponAbilities.WizardProfileId;
-        // Single-target ranged shots fly a projectile. AoE specials (area bursts) keep their ground FX - a
-        // single travelling projectile doesn't fit "hits everything in a radius".
-        if ((isArcher || isWizard) && targetNpc is not null && ability.AoeRadius <= 0f && player.Zone is { } projectileZone)
+        // MULTISHOT victims (beyond the selected target) - filled by the projectile block, consumed by the
+        // damage-targets build below so the extra bolts actually hurt who they visually hit.
+        var multishotExtras = new System.Collections.Generic.List<Npc>();
+        // Single-target ranged shots fly a projectile - AT the target when there is one, or STRAIGHT AHEAD
+        // along the player's facing when shooting at nothing (retail free-fire). AoE specials (area bursts)
+        // keep their ground FX - a single travelling projectile doesn't fit "hits everything in a radius".
+        if ((isArcher || isWizard) && ability.AoeRadius <= 0f && player.Zone is { } projectileZone)
         {
             // The trail is the ability's OWN CastEffectId when it has one (the elemental signature specials);
             // otherwise a job-appropriate default arrow/bolt so every basic + plain special still fires one.
@@ -927,11 +931,84 @@ public static class AbilityPacketClientRequestStartAbilityHandler
                 ? ability.CastEffectId
                 : (isWizard ? DefaultWizardTrailFx : DefaultArcherTrailFx);
 
-            var muzzle = new System.Numerics.Vector4(player.Position.X, player.Position.Y + 1.2f, player.Position.Z, 1f);
-            var aim = new System.Numerics.Vector4(targetNpc.Position.X, targetNpc.Position.Y + 1.2f, targetNpc.Position.Z, 1f);
-            ProjectileNpc.Fire(projectileZone, player, muzzle, aim, targetNpc.Guid,
-                trailEffId: trailFx, impactEffId: 0,
-                lingerMs: ability.CastEffectStopMs > 0 ? ability.CastEffectStopMs : 1200);
+            // Lag-compensate the muzzle: the client renders the player ahead of the server's last-known
+            // position (stale update + downlink), so a moving shooter's projectile would otherwise spawn
+            // behind them. Predict the client-current X/Z; keep the launch at weapon height. Zero when standing.
+            // Downlink allowance is small on purpose - 0.3s overshot ~2.4m at run speed, visibly detaching
+            // the launch from the bow (screen-recorded: the projectile popped in beside/ahead of the player).
+            var predicted = player.PredictPosition(0.1f);
+            var muzzle = new System.Numerics.Vector4(predicted.X, player.Position.Y + 1.2f, predicted.Z, 1f);
+
+            System.Numerics.Vector4 aim;
+            ulong impactGuid;
+            if (targetNpc is not null)
+            {
+                // Aim at the target's body center (not +1.2 above its base - that made bolts land "on top" of
+                // shorter enemies instead of on them).
+                aim = new System.Numerics.Vector4(targetNpc.Position.X, targetNpc.Position.Y + 0.7f, targetNpc.Position.Z, 1f);
+                impactGuid = targetNpc.Guid;
+
+                // MULTISHOT: a targeted shot fans into up to 3 projectiles - the extra bolts pick the
+                // closest OTHER live hostiles within 10m of the primary target. They're also added to the
+                // damage list below, so every bolt that visually lands actually hits.
+                var tp = targetNpc.Position;
+                multishotExtras = zone.Npcs
+                    .Where(n => !ReferenceEquals(n, targetNpc) && n.IsHostile && n.IsDamageable && n.IsAlive)
+                    .Select(n =>
+                    {
+                        var dx = n.Position.X - tp.X;
+                        var dz = n.Position.Z - tp.Z;
+                        return (npc: n, d2: dx * dx + dz * dz);
+                    })
+                    .Where(t => t.d2 <= 10f * 10f)
+                    .OrderBy(t => t.d2)
+                    .Take(2)
+                    .Select(t => t.npc)
+                    .ToList();
+            }
+            else
+            {
+                // No target: fire straight ahead along the player's facing. The client's character "rotation"
+                // is NOT a quaternion - it's the facing DIRECTION VECTOR packed as (dirX, 0, dirZ, 0) (live-
+                // verified: rot.X/rot.Z track the movement-velocity direction to within ~2 deg). So forward is
+                // just (rot.X, rot.Z).
+                var rot = player.Rotation;
+                var fwdX = rot.X;
+                var fwdZ = rot.Z;
+                var len = System.MathF.Sqrt(fwdX * fwdX + fwdZ * fwdZ);
+                if (len > 0.0001f) { fwdX /= len; fwdZ /= len; }
+                const float FreeFireRange = 30f;
+                aim = new System.Numerics.Vector4(muzzle.X + fwdX * FreeFireRange, muzzle.Y, muzzle.Z + fwdZ * FreeFireRange, 1f);
+                impactGuid = 0; // nothing to hit
+            }
+
+            // Nudge the launch point ~1.6m out of the player's body along the aim line: the trail emitter
+            // starts laying particles the instant it attaches, and starting it INSIDE the character was the
+            // screen-recorded "starburst flash on me every shot" - retail bolts appear at the bow tip, not
+            // in the caster's chest.
+            var adx = aim.X - muzzle.X;
+            var adz = aim.Z - muzzle.Z;
+            var alen = System.MathF.Sqrt(adx * adx + adz * adz);
+            if (alen > 0.001f)
+                muzzle = new System.Numerics.Vector4(
+                    muzzle.X + adx / alen * 1.6f, muzzle.Y, muzzle.Z + adz / alen * 1.6f, 1f);
+
+            // INVISIBLE carrier (1056, has a bone so the attached trail renders) - the trail IS the visual,
+            // which is the retail look. Real prop models were tried and screen-recorded reading as junk: 1982
+            // renders as a big dark untextured ball, 793 as a chunky red arrow, both worse than the bare FX.
+            // Speed 90 ~= retail arrow zip; at the old 55 the looping emitter laid a dense lingering particle
+            // bridge across the whole flight path ("laser line" instead of a moving bolt).
+            var lingerMs = ability.CastEffectStopMs > 0 ? ability.CastEffectStopMs : 1200;
+            ProjectileNpc.Fire(projectileZone, player, muzzle, aim, impactGuid,
+                trailEffId: trailFx, impactEffId: 0, speed: 90f, lingerMs: lingerMs);
+
+            // The extra multishot bolts: same muzzle, fanning out to each extra victim.
+            foreach (var extra in multishotExtras)
+            {
+                var extraAim = new System.Numerics.Vector4(extra.Position.X, extra.Position.Y + 0.7f, extra.Position.Z, 1f);
+                ProjectileNpc.Fire(projectileZone, player, muzzle, extraAim, extra.Guid,
+                    trailEffId: trailFx, impactEffId: 0, speed: 90f, lingerMs: lingerMs);
+            }
             firedProjectile = true;
             startCastingFx = 0; // the projectile carries the trail — nothing pinned on the caster
         }
@@ -1030,6 +1107,8 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         else
         {
             targets = targetNpc is null ? [] : [targetNpc];
+            // Multishot victims take the hit too - every bolt that visually landed does damage.
+            targets.AddRange(multishotExtras);
         }
 
         if (targets.Count == 0)

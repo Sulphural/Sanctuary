@@ -39,11 +39,11 @@ public sealed class ProjectileNpc : Npc
 
     // One-call spawn+configure+launch of a projectile from caster to target, visible to the caster and
     // everyone who can see them. trailEffId rides the invisible carrier; impactEffId plays on the target.
-    public static void Fire(IZone zone, Player caster, Vector4 start, Vector4 target, ulong targetGuid,
+    public static ProjectileNpc? Fire(IZone zone, Player caster, Vector4 start, Vector4 target, ulong targetGuid,
         int trailEffId, int impactEffId, float speed = 55f, int modelId = 1056, float scale = 1f, int lingerMs = 1500)
     {
         if (!zone.TryCreateProjectileNpc(out var proj))
-            return;
+            return null;
 
         proj.ModelId = modelId;
         proj.Scale = scale;
@@ -57,6 +57,7 @@ public sealed class ProjectileNpc : Npc
 
         proj.AttachTrail();
         proj.GlideToTarget();
+        return proj;
     }
 
     public void Launch(Vector4 start, Vector4 target, float speed, int impactEffectId, int lingerMs = 1500)
@@ -71,9 +72,25 @@ public sealed class ProjectileNpc : Npc
         RiderGuid = 0xFFFFFFFFFFFFFFFF;      // "no rider" sentinel, else op125 is ignored
         Visible = true;
 
+        // A projectile is not a creature: never show a nameplate or health bar on the carrier (the client
+        // renders both by default for an NPC - that was the "projectile has a health bar" bug). MaxHealth=0
+        // marks it non-damageable, and ActiveProfile must be NON-default so the client's nameplate resolver
+        // actually runs (ActiveProfile 0 short-circuits it and keeps the ctor ally plate + bar) - matches the
+        // bar-less Frostfang "heart" prop (ActiveProfile 8, ShowHealthBar false, HideNamePlate true).
+        HideNamePlate = true;
+        ShowHealthBar = false;
+        MaxHealth = 0;
+        ActiveProfile = 8;
+        Disposition = 1;
+        NameId = 0;
+        IsInteractable = false;   // a targetable NPC draws the health bar - a projectile is not a target
+        InteractRange = 0;
+
         // Position/Rotation have private setters - set them through UpdatePosition. updateZoneArea:false
         // keeps a fast mover out of the tile relevance churn (we register visibility ourselves via ShowTo).
-        UpdatePosition(start, FacingRotation(target.X - start.X, target.Z - start.Z), false);
+        // Full 3D facing (yaw + pitch) so directional trail effects point AT the target including elevation,
+        // instead of always lying flat (yaw-only made elevated/dropping shots look mis-oriented).
+        UpdatePosition(start, FacingRotation(target.X - start.X, target.Y - start.Y, target.Z - start.Z), false);
 
         // Flight time = distance / speed. The client interpolates the WHOLE path in one glide (see
         // GlideToTarget), so we don't step per-tick; we just time the arrival to fire the impact.
@@ -116,12 +133,14 @@ public sealed class ProjectileNpc : Npc
         player.SendTunneled(new PlayerUpdatePacketExpectedSpeed { Guid = Guid, ExpectedSpeed = _speed });
     }
 
-    // The PRJ_ trail effect, ATTACHED to the flying carrier model (op35/41) so it rides the projectile,
-    // then removed on landing (op35/42). This is the retail design: a looping "_trail" emitter attached to
-    // the moving projectile and stopped when it lands. Two dead ends ruled this in: op35/16 world-anchored
-    // puffs NEVER auto-clean (they piled up permanently, for every effect tried), and an invisible carrier
-    // shows no attached effect - so the carrier is now a real projectile MODEL (fireball/arrow/etc.) that
-    // the trail hangs on. TagId is fixed (keyed per-actor; each carrier is its own NPC).
+    // The PRJ_ trail effect, ATTACHED to the flying carrier (op35/41) so it rides the projectile, then
+    // removed on landing (op35/42). This is the retail design: a looping "_trail" emitter attached to the
+    // moving projectile and stopped when it lands. op35/16 world-anchored puffs were a dead end (they NEVER
+    // auto-clean - piled up permanently for every effect tried). The carrier is model 1056
+    // invisible_cube_with_skeleton: invisible but HAS A BONE, so the attached effect renders (a boneless
+    // null model shows nothing). Real prop models (fireball 1982 / arrow 793) were tried and read as
+    // untextured junk on screen - the trail alone is the retail look. TagId is fixed (keyed per-actor;
+    // each carrier is its own NPC).
     private int _effectId;
     private const int TrailTagId = 90001;
 
@@ -220,9 +239,14 @@ public sealed class ProjectileNpc : Npc
         Dispose();
     }
 
-    private static Quaternion FacingRotation(float dx, float dz)
+    // The client's character "rotation" is NOT a quaternion - it's the facing DIRECTION packed as
+    // (dirX, 0, dirZ, 0) (live-verified from player rotation: x/z track the movement direction, y=w=0). Point
+    // the carrier's model along its flight path by packing the normalized horizontal direction the same way.
+    private static Quaternion FacingRotation(float dx, float dy, float dz)
     {
-        var angle = MathF.Atan2(dx, dz);
-        return new Quaternion(0f, MathF.Sin(angle / 2f), 0f, MathF.Cos(angle / 2f));
+        var len = MathF.Sqrt(dx * dx + dz * dz);
+        if (len < 0.0001f)
+            return new Quaternion(1f, 0f, 0f, 0f);
+        return new Quaternion(dx / len, 0f, dz / len, 0f);
     }
 }
