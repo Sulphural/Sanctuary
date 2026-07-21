@@ -1,11 +1,17 @@
 using System;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
+
+using Sanctuary.Database;
 
 #nullable disable
 
 namespace Sanctuary.Database.MySql.Migrations
 {
+    // Attributes declared here (rather than a .Designer.cs) so Database.Migrate() discovers this migration.
+    [DbContext(typeof(DatabaseContext))]
+    [Migration("20251207000000_AddHousing")]
     public partial class AddHousing : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

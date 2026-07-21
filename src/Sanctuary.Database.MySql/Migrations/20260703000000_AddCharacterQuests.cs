@@ -1,9 +1,16 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+
+using Sanctuary.Database;
 
 #nullable disable
 
 namespace Sanctuary.Database.MySql.Migrations
 {
+    // Attributes are declared here (rather than a .Designer.cs) so Database.Migrate() discovers and
+    // applies this migration; without them EF skips it and the CharacterQuests table is never created.
+    [DbContext(typeof(DatabaseContext))]
+    [Migration("20260703000000_AddCharacterQuests")]
     public partial class AddCharacterQuests : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

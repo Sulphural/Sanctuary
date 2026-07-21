@@ -1102,8 +1102,12 @@ public sealed class QuestManager : IQuestManager
         {
             var goals = quest.EffectiveGoals;
 
+            // Once every goal is done the index sits one past the end (the quest is waiting to be handed
+            // in), so only look at the goal itself while it's still in range.
+            var onGoal = goalIndex >= 0 && goalIndex < goals.Count;
+
             // Reach goal: walk to the destination itself.
-            if (goals[goalIndex].Type == QuestGoalType.ReachLocation
+            if (onGoal && goals[goalIndex].Type == QuestGoalType.ReachLocation
                 && goals[goalIndex].ReachPosition.Length >= 3)
             {
                 var rp = goals[goalIndex].ReachPosition;
@@ -1113,7 +1117,7 @@ public sealed class QuestManager : IQuestManager
 
             // Kill goal: walk to the CLOSEST living enemy (the area centroid can be empty air in the
             // middle of a camp).
-            if (goals[goalIndex].Type == QuestGoalType.Kill
+            if (onGoal && goals[goalIndex].Type == QuestGoalType.Kill
                 && NearestLivingKillTarget(player, goals[goalIndex]) is { } enemy)
             {
                 targetPosition = new Vector3(enemy.Position.X, enemy.Position.Y, enemy.Position.Z);
