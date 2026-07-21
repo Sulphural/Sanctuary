@@ -844,5 +844,42 @@
         "TargetGuid": 100000003145    // Vergosh
       }
     ]
+  },
+  {
+    // === Archer: Pondblaster Target Practice ===  real FR archer-job quest (Greenwood Forest).
+    // Giver + turn-in = Hilforn (the chugawug archer trainer, already spawned at (-1564,-32,-658)).
+    // Kill goal: defeat Robgoblin Pondblasters (NameId 95047) - the 12 hostiles added to Npcs.json
+    // (Ids 40020-40031) near the lake north of Hilforn. All text ids are the REAL Global.Text ids mined
+    // from en_us_data.dat; goal-row NameId 93145 is a LOW id so it renders in the tracker.
+    "QuestId": 3050,
+    "TitleId": 383045,                // "Archer: Pondblaster Target Practice"
+    "DescriptionId": 383046,          // "Training new recruits has been rough... help thin out their numbers."
+    "GiverDialogueId": 383044,        // Hilforn: "Robgoblin Pondblasters keep stealing our dynamite... we'll have to use them for target practice."
+    "ObjectiveDescriptionId": 383049, // "Defeat some Robgoblin Pondblasters as an archer, and then return to Hilforn."
+    "SubGoalId": 93145,               // "Defeat Robgoblin Pondblasters around the lake to the north of Hilforn"
+    "TargetDialogueId": 383047,       // Hilforn turn-in: "You made it back without getting singed. I'm impressed."
+    "IconId": 43278,
+    "GiverGuid": 100000002501,        // Hilforn
+    "TargetGuid": 100000002501,       // turn in back at Hilforn
+    "RewardCoins": 40,
+    "RewardExperience": 150,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 0,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 93145,              // "Defeat Robgoblin Pondblasters around the lake to the north of Hilforn"
+        "Type": 3,                    // QuestGoalType.Kill
+        "KillNpcNameId": 95047,       // Robgoblin Pondblaster (also the area-pin label)
+        "RequiredCount": 12
+      },
+      {
+        "NameId": 383054,             // "Return to Hilforn"
+        "DialogueId": 383047,         // Hilforn's turn-in line
+        "TargetGuid": 100000002501    // Hilforn
+      }
+    ]
   }
 ]

@@ -50535,5 +50535,17 @@
 {"Id": 40016, "NameId": 389719, "Name": "Cat Bowl", "ModelId": 349, "ModelFileName": "bowl_basic.adr", "SpawnPosition": [-360.0, -1.0, -705.0], "SpawnHeading": 0.0},
 {"Id": 40017, "NameId": 389719, "Name": "Cat Bowl", "ModelId": 349, "ModelFileName": "bowl_basic.adr", "SpawnPosition": [-345.0, -1.0, -792.0], "SpawnHeading": 0.0},
 {"Id": 40018, "NameId": 389719, "Name": "Cat Bowl", "ModelId": 349, "ModelFileName": "bowl_basic.adr", "SpawnPosition": [-365.0, -1.0, -800.0], "SpawnHeading": 0.0},
-{"Id": 40019, "NameId": 389719, "Name": "Cat Bowl", "ModelId": 349, "ModelFileName": "bowl_basic.adr", "SpawnPosition": [-385.0, -7.0, -745.0], "SpawnHeading": 0.0}
+{"Id": 40019, "NameId": 389719, "Name": "Cat Bowl", "ModelId": 349, "ModelFileName": "bowl_basic.adr", "SpawnPosition": [-385.0, -7.0, -745.0], "SpawnHeading": 0.0},
+{"Id": 40020, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1540.0, -40.7,-560.0], "SpawnHeading": 1.2},
+{"Id": 40021, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1500.0, -40.7,-580.0], "SpawnHeading": 3.4},
+{"Id": 40022, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1480.0, -40.7,-540.0], "SpawnHeading": 5.1},
+{"Id": 40023, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1520.0, -40.7,-520.0], "SpawnHeading": 0.6},
+{"Id": 40024, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1460.0, -40.7,-560.0], "SpawnHeading": 2.7},
+{"Id": 40025, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1500.0, -40.7,-540.0], "SpawnHeading": 4.3},
+{"Id": 40026, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1550.0, -40.7,-520.0], "SpawnHeading": 1.9},
+{"Id": 40027, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1470.0, -40.7,-500.0], "SpawnHeading": 3.9},
+{"Id": 40028, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1510.0, -40.7,-500.0], "SpawnHeading": 0.2},
+{"Id": 40029, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1550.0, -40.7,-540.0], "SpawnHeading": 5.6},
+{"Id": 40030, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1480.0, -40.7,-580.0], "SpawnHeading": 2.1},
+{"Id": 40031, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1520.0, -40.7,-560.0], "SpawnHeading": 4.8}
 ]
