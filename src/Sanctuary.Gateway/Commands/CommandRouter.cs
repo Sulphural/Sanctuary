@@ -88,6 +88,10 @@ public static class CommandRouter
                 return HandleDungeon(conn, parts);
             case "npc":
                 return HandleNpc(conn, parts);
+            case "luaspawn":
+                return HandleLuaSpawn(conn, parts);
+            case "luareload":
+                return HandleLuaReload(conn, parts);
             case "admin":
                 return HandleAdmin(conn, parts);
             case "enforcer":
@@ -104,6 +108,9 @@ public static class CommandRouter
                 return HandleBring(conn, parts);
             case "goto":
                 return HandleGoto(conn, parts);
+            case "noclip":
+            case "nc":
+                return HandleNoclip(conn, parts);
             case "tut":
                 return HandleTutorialSpike(conn);
             case "map":
@@ -963,6 +970,7 @@ public static class CommandRouter
             "/dodge [on|off] - Toggle always-dodge (test)\n" +
             "/xp [amount] - Grant your active job XP\n" +
             "/fly - Toggle fly mode\n" +
+            "/noclip (or /nc) <forward|back|left|right|up|down> [distance=10] - Step through walls via teleport\n" +
             "/createhouse [HouseDefId] - Create a new house\n" +
             "/listhouses - List your houses\n" +
             "/gohouse [HouseId] - Enter a house\n" +
@@ -979,7 +987,9 @@ public static class CommandRouter
             "/spawntest - Spawn a combat test dummy\n" +
             "/testicons - Icon probe\n" +
             "/testsubtext - Subtext probe\n" +
-            "/lua [code] - Run a client Lua snippet";
+            "/lua [code] - Run a client Lua snippet\n" +
+            "/luaspawn [NpcId] - Spawn an NPC on top of you via the server's zone-script spawn API (default: boombox)\n" +
+            "/luareload - Reload your zone's .lua script from disk and re-run it, no server restart needed";
 
         if (IsEnforcer(conn))
         {
@@ -1177,6 +1187,69 @@ public static class CommandRouter
         tile.Entities.TryAdd(npc.Guid, npc);
 
         SendSystem(conn, $"NPC spawned (Guid={npc.Guid}, NameId={nameId}, ModelId={modelId}).");
+        return true;
+    }
+
+    // /luaspawn [NpcId] - spawns an NPC on top of you through the SAME path a zone's Lua script uses
+    // (BaseZone.TrySpawnNpc, the API behind zone.spawnNpc in Scripts/Zone/*.lua) - a quick way to see
+    // the scripting engine's spawn call actually land without walking to a script's hardcoded coords.
+    // Defaults to npc 1186 (an unnamed boombox prop), the same test id FabledRealms.lua spawns on start.
+    private static bool HandleLuaSpawn(GatewayConnection conn, string[] parts)
+    {
+        if (!RequireAdmin(conn))
+            return true;
+
+        var npcId = 1186;
+        if (parts.Length >= 2 && !int.TryParse(parts[1], out npcId))
+        {
+            SendSystem(conn, "Usage: /luaspawn [NpcId]");
+            return true;
+        }
+
+        var zone = conn.Player.Zone;
+        if (zone == null)
+        {
+            SendSystem(conn, "You are not in a zone.");
+            return true;
+        }
+
+        var position = conn.Player.Position;
+        var rotation = conn.Player.Rotation;
+        var heading = MathF.Atan2(rotation.X, rotation.Z);
+
+        if (!zone.TrySpawnNpc(npcId, null, position.X, position.Y, position.Z, heading))
+        {
+            SendSystem(conn, $"TrySpawnNpc failed for NpcId {npcId} (no definition found for that id?).");
+            return true;
+        }
+
+        SendSystem(conn, $"Spawned NpcId {npcId} on top of you via TrySpawnNpc (the Lua spawn API).");
+        return true;
+    }
+
+    // /luareload - re-reads your current zone's .lua file from disk and re-runs its onStart, without
+    // restarting the server. Safe to spam for FabledRealms.lua (every spawn call there uses an explicit
+    // guid, so re-running just no-ops on NPCs that already exist) - NOT safe for a script that spawns
+    // with auto-assigned guids (zone.spawnNpc without a guid), which would duplicate on every reload.
+    private static bool HandleLuaReload(GatewayConnection conn, string[] parts)
+    {
+        if (!RequireAdmin(conn))
+            return true;
+
+        var zone = conn.Player.Zone;
+        if (zone == null)
+        {
+            SendSystem(conn, "You are not in a zone.");
+            return true;
+        }
+
+        if (!zone.ReloadScript())
+        {
+            SendSystem(conn, $"Reload failed for zone '{zone.Name}' - script missing or failed to load (check server logs). Previous script is still active.");
+            return true;
+        }
+
+        SendSystem(conn, $"Reloaded and re-ran the script for zone '{zone.Name}'.");
         return true;
     }
 
@@ -1720,6 +1793,69 @@ public static class CommandRouter
         conn.Player.TeleportToZone(zone, newPos, rot);
 
         SendSystem(conn, $"Teleported to ({x:0.0}, {y:0.0}, {z:0.0}) in zone {zone.Id}.");
+        return true;
+    }
+
+    // /noclip <dir> [distance] (alias /nc) - steps you a fixed distance through walls/floors/ceilings via
+    // a straight teleport (same TeleportToZone path as /goto — a hard position set, not physics-simulated
+    // movement, so it never triggers the client's own collision). There's no real "fly through walls"
+    // lever available: world collision is resolved entirely client-side and nothing in the known packet
+    // set toggles it off, so this is repeated stepping rather than smooth flight. dir is relative to where
+    // you're currently facing: forward/f, back/b, left/l, right/r — plus world-relative up/u, down/d.
+    private static bool HandleNoclip(GatewayConnection conn, string[] parts)
+    {
+        if (!RequireAdmin(conn))
+            return true;
+
+        if (parts.Length < 2)
+        {
+            SendSystem(conn, "Usage: /noclip <forward|back|left|right|up|down> [distance=10]");
+            return true;
+        }
+
+        var dir = parts[1].ToLowerInvariant();
+        var distance = 10f;
+        if (parts.Length >= 3 && !float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out distance))
+        {
+            SendSystem(conn, "Usage: /noclip <forward|back|left|right|up|down> [distance=10]");
+            return true;
+        }
+
+        var zone = conn.Player.Zone;
+        if (zone == null)
+        {
+            SendSystem(conn, "You are not in a zone.");
+            return true;
+        }
+
+        var rotation = conn.Player.Rotation;
+        var heading = MathF.Atan2(rotation.X, rotation.Z);
+        var forward = new System.Numerics.Vector3(MathF.Sin(heading), 0f, MathF.Cos(heading));
+        var right = new System.Numerics.Vector3(forward.Z, 0f, -forward.X);
+
+        var offset = dir switch
+        {
+            "forward" or "f" => forward * distance,
+            "back" or "b" => -forward * distance,
+            "right" or "r" => right * distance,
+            "left" or "l" => -right * distance,
+            "up" or "u" => new System.Numerics.Vector3(0f, distance, 0f),
+            "down" or "d" => new System.Numerics.Vector3(0f, -distance, 0f),
+            _ => (System.Numerics.Vector3?)null,
+        };
+
+        if (offset is not { } o)
+        {
+            SendSystem(conn, "Usage: /noclip <forward|back|left|right|up|down> [distance=10]");
+            return true;
+        }
+
+        var current = conn.Player.Position;
+        var newPos = new System.Numerics.Vector4(current.X + o.X, current.Y + o.Y, current.Z + o.Z, 1f);
+
+        conn.Player.TeleportToZone(zone, newPos, rotation);
+
+        SendSystem(conn, $"Noclip {dir} {distance:0.#} -> ({newPos.X:0.0}, {newPos.Y:0.0}, {newPos.Z:0.0}).");
         return true;
     }
 
@@ -3282,11 +3418,16 @@ public static class CommandRouter
                 new CharacterStat(CharacterStatId.GlideMinForwardSpeed, 0f),
                 new CharacterStat(CharacterStatId.GlideMaxForwardSpeed, 100f),
                 new CharacterStat(CharacterStatId.GlideAccel, 50f),
-                new CharacterStat(CharacterStatId.GlideFallSpeed, 0f),
+                // EXPERIMENT: negative fall speed instead of 0. There's no dedicated "climb" stat in the
+                // client's stat list, so this is a guess at whether GlideFallSpeed is signed (rise) or
+                // gets clamped to a magnitude (still just floats). If this doesn't visibly make you climb
+                // while gliding, it's a dead end — say so and we'll build noclip via teleport-stepping
+                // instead, which doesn't depend on undocumented client behavior.
+                new CharacterStat(CharacterStatId.GlideFallSpeed, -15f),
                 new CharacterStat(CharacterStatId.GlideFallTime, 999999f),
                 new CharacterStat(CharacterStatId.MaxMovementSpeed, 50f),
             ]);
-            SendSystem(conn, "Fly mode ON — jump to activate glide.");
+            SendSystem(conn, "Fly mode ON — jump to glide. Testing negative fall speed for climb; tell me if altitude actually changes.");
         }
         else
         {

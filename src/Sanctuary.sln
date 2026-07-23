@@ -66,6 +66,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sanctuary.Database.Entities
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sanctuary.WebAPI", "Sanctuary.WebAPI\Sanctuary.WebAPI.csproj", "{F6DFDD67-A43B-AD9D-47CE-D30F244A04AF}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sanctuary.Scripting", "Sanctuary.Scripting\Sanctuary.Scripting.csproj", "{E65B014E-8601-4078-A17D-AA11225338B7}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sanctuary.Scripting.Tests", "Sanctuary.Scripting.Tests\Sanctuary.Scripting.Tests.csproj", "{A8F0C4B3-F2CB-43ED-BAFF-E23691EECC06}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -124,6 +128,14 @@ Global
 		{F6DFDD67-A43B-AD9D-47CE-D30F244A04AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F6DFDD67-A43B-AD9D-47CE-D30F244A04AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F6DFDD67-A43B-AD9D-47CE-D30F244A04AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E65B014E-8601-4078-A17D-AA11225338B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E65B014E-8601-4078-A17D-AA11225338B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E65B014E-8601-4078-A17D-AA11225338B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E65B014E-8601-4078-A17D-AA11225338B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8F0C4B3-F2CB-43ED-BAFF-E23691EECC06}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8F0C4B3-F2CB-43ED-BAFF-E23691EECC06}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8F0C4B3-F2CB-43ED-BAFF-E23691EECC06}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8F0C4B3-F2CB-43ED-BAFF-E23691EECC06}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

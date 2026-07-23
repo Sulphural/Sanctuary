@@ -28,6 +28,9 @@ public sealed class EncounterArenaZone : CombatEncounterZone
 
     public DungeonDefinition Dungeon { get; }
     public int EncounterId => Dungeon.ActivityId;
+    // Offset well clear of any real activity id so the bonus goal (e.g. "Big Bandits! 0/5") can't
+    // collide with the main "defeat everyone" objective's id (=EncounterId) in the client's goal list.
+    private int BonusObjectiveId => 900000 + Dungeon.ActivityId;
     private const int EncounterInstanceId = 1;
 
     private const int CombatMiniGameType = 4; // client MINI_GAME_TYPE_COMBAT — the goals-pane gate
@@ -62,6 +65,7 @@ public sealed class EncounterArenaZone : CombatEncounterZone
     private readonly List<Npc> _mobs = [];
     private readonly Dictionary<ulong, MobState> _mobStates = [];
     private int _killed;
+    private int _bonusKilled;
     private bool _won;
     private int _encounterRun;
     private float _groundY;
@@ -209,6 +213,7 @@ public sealed class EncounterArenaZone : CombatEncounterZone
             ExitDoor?.Dispose();
             SetExitDoor(null);
             _killed = 0;
+            _bonusKilled = 0;
             _won = false;
             _groundY = Dungeon.GroundY;
             _encounterRun++;
@@ -251,6 +256,22 @@ public sealed class EncounterArenaZone : CombatEncounterZone
     // AggroRange, so distant clusters stay put until you reach them.
     private List<Vector4> BuildDungeonSpawns()
     {
+        // A zone script (Scripts/Zone/<world>.lua) can supply fixed spawn points via a getSpawnPoints(zone)
+        // function that calls zone.addSpawnPoint(x, y, z) once per enemy, in the same group order as
+        // Dungeon.Enemies. Only used if it reports EXACTLY the expected count — a mismatch (script written
+        // for a different enemy composition than what's currently in DungeonDefinition) falls back to the
+        // procedural layout below rather than silently spawning too few/many enemies.
+        var scripted = CollectScriptSpawnPoints("getSpawnPoints");
+        if (scripted.Count == Dungeon.TotalEnemies)
+            return scripted;
+
+        if (scripted.Count > 0)
+        {
+            _logger.LogWarning(
+                "{dungeon}: script reported {n} spawn points, expected {expected} — falling back to procedural placement.",
+                Dungeon.Comment, scripted.Count, Dungeon.TotalEnemies);
+        }
+
         var pts = new List<Vector4>(Math.Max(Dungeon.TotalEnemies, 1));
         var cx = Dungeon.CenterX;
         var cz = Dungeon.CenterZ;
@@ -316,15 +337,34 @@ public sealed class EncounterArenaZone : CombatEncounterZone
                     IconId = Dungeon.IconId,
                     MiniGameType = CombatMiniGameType,
                     Launch = true,
-                    Objectives =
-                    [
-                        new EncounterObjective
-                        {
-                            ObjectiveId = EncounterId, NameId = Dungeon.DescriptionId,
-                            DescriptionId = Dungeon.DescriptionId,
-                            Status = 1, Count = 0, Total = 1, Unknown8 = 0,
-                        },
-                    ],
+                    // Real retail goal for a dungeon with a BonusTargetCount (e.g. Bandit Hideout's
+                    // "Defeat all of the Big Bandits! 0/5") is a SECOND objective row alongside the main
+                    // "defeat everyone" one — NameId=0 renders blank until we source the real text id.
+                    Objectives = Dungeon.BonusTargetCount > 0
+                        ?
+                        [
+                            new EncounterObjective
+                            {
+                                ObjectiveId = EncounterId, NameId = Dungeon.DescriptionId,
+                                DescriptionId = Dungeon.DescriptionId,
+                                Status = 1, Count = 0, Total = 1, Unknown8 = 0,
+                            },
+                            new EncounterObjective
+                            {
+                                ObjectiveId = BonusObjectiveId, NameId = 0,
+                                DescriptionId = 0,
+                                Status = 1, Count = 0, Total = Dungeon.BonusTargetCount, Unknown8 = 0,
+                            },
+                        ]
+                        :
+                        [
+                            new EncounterObjective
+                            {
+                                ObjectiveId = EncounterId, NameId = Dungeon.DescriptionId,
+                                DescriptionId = Dungeon.DescriptionId,
+                                Status = 1, Count = 0, Total = 1, Unknown8 = 0,
+                            },
+                        ],
                     PreviewRewards = FrostfangArenaZone.GetPrizePreviewFor(player),
                     PreviewCoins = FrostfangArenaZone.PrizeCoins,
                     PreviewXp = FrostfangArenaZone.PrizeXp,
@@ -348,6 +388,11 @@ public sealed class EncounterArenaZone : CombatEncounterZone
                 player.SendTunneled(new MiniGameKnockOutPacket(0, KnockoutLimit));
                 player.SendTunneled(new ObjectiveActivatePacket { ObjectiveId = EncounterId, Total = 1 });
                 player.SendTunneled(GoalRow());
+                if (Dungeon.BonusTargetCount > 0)
+                {
+                    player.SendTunneled(new ObjectiveActivatePacket { ObjectiveId = BonusObjectiveId, Total = Dungeon.BonusTargetCount });
+                    player.SendTunneled(new UiObjectiveAddPacket { ObjectiveId = BonusObjectiveId, NameId = 0 });
+                }
                 player.SendTunneled(MakeLaunch());
                 player.SendTunneled(MakeEnter(0));
                 player.SendTunneled(new MiniGameKnockOutPacket(0, KnockoutLimit));
@@ -382,11 +427,38 @@ public sealed class EncounterArenaZone : CombatEncounterZone
         {
             try
             {
-                await Task.Delay(3000);
-                if (player.Zone != this || run != _encounterRun)
-                    return;
+                // Poll for the player's Y to STOP CHANGING (settled on real floor) instead of trusting a
+                // single fixed-delay sample. A big drop (GroundY is a rough estimate from the world's Bed
+                // sphere center, not a measured floor height — it can be well off for a room with real
+                // elevation change) can still be mid-fall at a fixed 3s mark, which would adopt a mid-air
+                // height for every enemy in the room instead of the real floor.
+                const float SettleEpsilon = 0.1f;
+                const int PollMs = 400;
+                const int MaxPolls = 20; // ~8s ceiling so a stuck/endlessly-falling player can't hang this
 
-                var measured = player.Position.Y;
+                var lastY = player.Position.Y;
+                var measured = lastY;
+                var settled = false;
+
+                for (var i = 0; i < MaxPolls; i++)
+                {
+                    await Task.Delay(PollMs);
+                    if (player.Zone != this || run != _encounterRun)
+                        return;
+
+                    var y = player.Position.Y;
+                    if (MathF.Abs(y - lastY) < SettleEpsilon)
+                    {
+                        measured = y;
+                        settled = true;
+                        break;
+                    }
+                    lastY = y;
+                }
+
+                if (!settled)
+                    measured = lastY; // best available sample if it never fully stopped moving
+
                 if (MathF.Abs(measured - Dungeon.GroundY) < 0.75f)
                     return;
 
@@ -592,12 +664,15 @@ public sealed class EncounterArenaZone : CombatEncounterZone
     public override void OnNpcKilled(Player killer, Npc npc)
     {
         bool allClear;
+        int? bonusCount = null;
         lock (_stateLock)
         {
             if (!_mobs.Remove(npc))
                 return;
             _mobStates.Remove(npc.Guid);
             _killed++;
+            if (Dungeon.BonusTargetCount > 0 && npc.ModelId == Dungeon.BonusTargetModelId && _bonusKilled < Dungeon.BonusTargetCount)
+                bonusCount = ++_bonusKilled;
             allClear = !_won && _mobs.Count == 0;
         }
 
@@ -606,6 +681,21 @@ public sealed class EncounterArenaZone : CombatEncounterZone
 
         npc.GracefulRemoval = (true, DeathHoldMs, 0, DeathPoofFxId, 1000);
         npc.Dispose();
+
+        // Bonus goal progress (e.g. Bandit Hideout's "Big Bandits! N/5") — a plain count tick until the
+        // target's hit, then the same complete banner + Goals-row removal the main objective gets at win.
+        if (bonusCount is { } count)
+        {
+            if (count >= Dungeon.BonusTargetCount)
+            {
+                Broadcast(new ObjectiveCompletePacket { ObjectiveId = BonusObjectiveId });
+                Broadcast(new UiObjectiveCompletePacket { ObjectiveId = BonusObjectiveId });
+            }
+            else
+            {
+                Broadcast(new ObjectiveUpdatePacket { ObjectiveId = BonusObjectiveId, Count = count });
+            }
+        }
 
         if (allClear)
             WinEncounter(killer, deathPos);

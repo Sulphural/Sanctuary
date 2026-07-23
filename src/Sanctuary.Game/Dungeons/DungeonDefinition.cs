@@ -52,6 +52,12 @@ public sealed class DungeonDefinition
     public required DungeonEnemy[] Enemies;
     public string Comment = "";
 
+    // Optional bonus goal: kill N of a specific enemy model, tracked + shown as a second objective
+    // alongside the main "defeat everyone" one (e.g. Bandit Hideout's "Big Bandits! 0/5"). 0 = none,
+    // the default for most dungeons — nobody has to opt into this to be unaffected by it.
+    public int BonusTargetModelId;
+    public int BonusTargetCount;
+
     public int TotalEnemies => Enemies.Sum(e => e.Count);
 }
 
@@ -827,10 +833,18 @@ public static class DungeonCatalog
         },
 
         // 900054  ATLAS DUNGEON (POI 54) Bandit Hideout -> sg_bandit_hideout
+        // Reverted 2026-07-23: a bonus objective + real DescriptionId (6995) were wired in for this
+        // dungeon but reported broken in-game ("wrong goal dialog") — reverted to the same generic
+        // single-objective setup every other dungeon here uses until it can be re-verified properly.
+        // CenterX/CenterZ/GroundY corrected 2026-07-23 from an in-game /pos reading (152.21, 20.04,
+        // 110.80) taken after noclipping to the real walkable floor — the old values came from the
+        // world's Areas.xml "Bed" sphere center, which turned out to be well off the actual floor for
+        // this room (an irregular cave, not a sphere). Radius is unchanged — it's the room's rough
+        // bounding size, not a position, and still comes from that same Bed sphere.
         [29] = new()
         {
             ActivityId = 29, PoiId = 54, Comment = "Bandit Hideout",
-            World = "sg_bandit_hideout", CenterX = 153f, CenterZ = 168f, GroundY = 34f, Radius = 200f,
+            World = "sg_bandit_hideout", CenterX = 152.21f, CenterZ = 110.80f, GroundY = 20.04f, Radius = 200f,
             TitleNameId = 5172, DescriptionId = 382845, Difficulty = 3, Xp = 38,
             Enemies =
             [

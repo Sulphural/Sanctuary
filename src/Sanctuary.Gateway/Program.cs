@@ -12,6 +12,7 @@ using Sanctuary.Core.Configuration;
 using Sanctuary.Database;
 using Sanctuary.Game;
 using Sanctuary.Gateway;
+using Sanctuary.Scripting;
 using Sanctuary.UdpLibrary.Configuration;
 using Sanctuary.UdpLibrary.Enumerations;
 
@@ -101,6 +102,7 @@ builder.ConfigureServices((hostBuilderContext, serviceCollection) =>
     // Managers
     serviceCollection.AddSingleton<IZoneManager, ZoneManager>();
     serviceCollection.AddSingleton<IResourceManager, ResourceManager>();
+    serviceCollection.AddSingleton<IScriptManager, ScriptManager>();
     serviceCollection.AddSingleton<IInteractionManager, InteractionManager>();
     serviceCollection.AddSingleton<Sanctuary.Game.Quests.IQuestManager, Sanctuary.Game.Quests.QuestManager>();
     serviceCollection.AddSingleton<Sanctuary.Game.Party.IPartyManager, Sanctuary.Game.Party.PartyManager>();

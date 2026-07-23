@@ -4,19 +4,24 @@ using System.Numerics;
 
 using Sanctuary.Game.Entities;
 using Sanctuary.Game.Resources.Definitions;
+using Sanctuary.Scripting;
 using Sanctuary.UdpLibrary;
 
 namespace Sanctuary.Game.Zones;
 
-public interface IZone
+public interface IZone : IScriptZone
 {
-    int Id { get; }
-    string Name { get; }
-
     Vector4 SpawnPosition { get; }
     Quaternion SpawnRotation { get; }
 
     #region Events
+
+    // Fired once, after the zone has finished constructing — runs the zone's Lua onStart(zone), if any.
+    void OnStart();
+
+    // Dev/live-reload: re-reads the zone's .lua file and re-runs its onStart. See BaseZone.ReloadScript
+    // for the idempotency caveat (explicit-guid spawns only) before wiring this up to anything automatic.
+    bool ReloadScript();
 
     void OnClientIsReady(Player entity);
     void OnClientFinishedLoading(Player entity);

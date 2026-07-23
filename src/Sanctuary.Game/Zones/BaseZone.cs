@@ -17,6 +17,7 @@ using Sanctuary.Game.Resources.Definitions;
 using Sanctuary.Game.Resources.Definitions.Zones;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
+using Sanctuary.Scripting;
 using Sanctuary.UdpLibrary;
 
 namespace Sanctuary.Game.Zones;
@@ -46,12 +47,16 @@ public abstract class BaseZone : IZone, IDisposable
 
     public int Id { get; init; }
     public string Name => _zoneDefinition.Name;
+    public ILogger Logger => _logger;
 
     public Vector4 SpawnPosition => _zoneDefinition.SpawnPosition;
     public Quaternion SpawnRotation => _zoneDefinition.SpawnRotation;
 
     public IEnumerable<Npc> Npcs => _npcs.Values;
     public IEnumerable<Player> Players => _players.Values;
+
+    private readonly IScriptManager _scriptManager;
+    private ScriptContext? _scriptContext;
 
     protected BaseZone(BaseZoneDefinition zoneDefinition, IServiceProvider serviceProvider)
     {
@@ -61,6 +66,10 @@ public abstract class BaseZone : IZone, IDisposable
         var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
 
         _logger = loggerFactory.CreateLogger($"Zone {Name} ({Id})");
+
+        _scriptManager = serviceProvider.GetRequiredService<IScriptManager>();
+
+        _scriptContext = _scriptManager.GetContextForZone(this);
 
         _tiles = GenerateTiles();
 
@@ -75,6 +84,36 @@ public abstract class BaseZone : IZone, IDisposable
     }
 
     #region Events
+
+    // BLOCKS until the script's onStart finishes (CallFunctionAsync never throws — script errors are
+    // logged and swallowed, not propagated). This must complete before the zone is usable: a zone's
+    // script is responsible for its NPC roster (see StartingZone.TrySpawnNpc), and callers like the
+    // quest system, vendor lookups, and the encounter-entry placer all assume those NPCs already exist.
+    public virtual void OnStart()
+    {
+        _scriptContext?.CallFunctionAsync("onStart", this).AsTask().GetAwaiter().GetResult();
+    }
+
+    // Dev/live-reload: re-reads the zone's .lua file from disk and re-runs ITS onStart function only —
+    // deliberately NOT the full OnStart() override chain, since zone subclasses can layer one-time-only
+    // setup (e.g. StartingZone.OnStart also places dungeon entrances/encounter entries with AUTO-assigned
+    // guids, which would duplicate on every re-run). A script's onStart is safe to call repeatedly ONLY
+    // if every spawn call in it uses an explicit guid (spawnNpcWithGuid) — those no-op on a guid that
+    // already exists. A script using auto-guid spawnNpc(...) calls WILL duplicate NPCs on reload.
+    // Returns false (keeping the previous script live) if the file is missing or fails to load.
+    public bool ReloadScript()
+    {
+        var newContext = _scriptManager.GetContextForZone(this);
+        if (newContext is null)
+        {
+            _logger.LogWarning("Script reload failed for zone '{Name}': keeping the previously loaded script.", Name);
+            return false;
+        }
+
+        _scriptContext = newContext;
+        _scriptContext.CallFunctionAsync("onStart", this).AsTask().GetAwaiter().GetResult();
+        return true;
+    }
 
     public virtual void OnClientIsReady(Player player)
     {
@@ -282,6 +321,80 @@ public abstract class BaseZone : IZone, IDisposable
 
         return _npcs.TryAdd(npc.Guid, npc) && _entities.TryAdd(npc.Guid, npc);
     }
+
+    #region Scripting
+
+    // Lua-facing spawn API (ScriptableZone.spawnNpc/spawnNpcWithGuid). Looks up the NPC's resource
+    // definition for its model/name/texture, but position/heading are supplied by the script, not the
+    // definition. This is the base (no-frills) implementation; zones with extra spawn rules (vendors,
+    // quests, world enemies — see StartingZone.TrySpawnNpc) override it.
+    public virtual bool TrySpawnNpc(int npcId, ulong? npcGuid, float x, float y, float z, float heading)
+    {
+        if (npcGuid.HasValue && _npcs.ContainsKey(npcGuid.Value))
+        {
+            _logger.LogWarning("Failed to spawn NPC {NpcId} with GUID {NpcGuid}: GUID already exists.", npcId, npcGuid.Value);
+            return false;
+        }
+
+        var definition = _resourceManager.Npcs.Values.FirstOrDefault(n => n.Id == npcId);
+        if (definition is null)
+        {
+            _logger.LogWarning("Failed to spawn NPC {NpcId}: No definition found.", npcId);
+            return false;
+        }
+
+        var created = npcGuid.HasValue
+            ? TryCreateNpc(npcGuid.Value, out Npc? npc)
+            : TryCreateNpc(out npc);
+
+        if (!created || npc is null)
+        {
+            _logger.LogWarning("Failed to spawn NPC {NpcId}: Could not create NPC instance.", npcId);
+            return false;
+        }
+
+        npc.ModelId = definition.ModelId;
+        npc.NameId = definition.NameId;
+        npc.Name = definition.Name;
+        npc.TextureAlias = definition.TextureAlias;
+        npc.Static = definition.Static;
+        npc.Scale = _resourceManager.Models.TryGetValue(definition.ModelId, out var model) && model.Scale != 0f
+            ? model.Scale
+            : 1f;
+        npc.Visible = true;
+
+        var position = new Vector4(x, y, z, 1f);
+        var rotation = new Quaternion(MathF.Sin(heading), 0f, MathF.Cos(heading), 0f);
+
+        npc.UpdatePosition(position, rotation);
+
+        return true;
+    }
+
+    // Scratch space for CollectScriptSpawnPoints below — a script reports points into here via
+    // zone.addSpawnPoint(x, y, z) while its collector function runs, instead of spawning anything itself.
+    private readonly List<Vector4> _scriptSpawnPoints = [];
+
+    public void AddSpawnPoint(float x, float y, float z)
+    {
+        _scriptSpawnPoints.Add(new Vector4(x, y, z, 1f));
+    }
+
+    // Calls a named script function (if the zone has a script AND that function exists) and returns
+    // whatever points it reported via zone.addSpawnPoint(...), in call order. Empty if there's no script,
+    // the function isn't defined, or it didn't report anything — callers must treat empty as "no scripted
+    // data" and fall back to their own placement (see EncounterArenaZone.BuildDungeonSpawns).
+    protected List<Vector4> CollectScriptSpawnPoints(string functionName)
+    {
+        if (_scriptContext is null)
+            return [];
+
+        _scriptSpawnPoints.Clear();
+        _scriptContext.CallFunctionAsync(functionName, this).AsTask().GetAwaiter().GetResult();
+        return [.. _scriptSpawnPoints];
+    }
+
+    #endregion
 
     public bool TryCreateMount(Player rider, MountDefinition definition, [MaybeNullWhen(false)] out Mount mount)
     {

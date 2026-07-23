@@ -36,8 +36,21 @@ public sealed partial class StartingZone : BaseZone
         _questManager = serviceProvider.GetRequiredService<Sanctuary.Game.Quests.IQuestManager>();
         _partyManager = serviceProvider.GetRequiredService<Sanctuary.Game.Party.IPartyManager>();
 
-        // Spawn all static NPCs in the zone
-        SpawnNpcs();
+        // The Npcs.json roster itself is spawned by the zone's Lua script (Scripts/Zone/FabledRealms.lua,
+        // generated 1:1 from Npcs.json) via TrySpawnNpc below — see OnStart, called by ZoneManager right
+        // after construction finishes. Collect-goal pickups aren't part of that roster (they come from
+        // Quests.json), so they still spawn directly here.
+        SpawnQuestCollectibles();
+    }
+
+    public override void OnStart()
+    {
+        // MUST run before the two calls below: this reserves the deterministic guid range
+        // (NpcGuidBase + id, used by Quests.json/NpcVendors.json lookups) and bumps the zone's shared
+        // auto-guid counter past it, so the auto-assigned guids SpawnDungeonEntrances/SpawnEncounterEntryNpcs
+        // hand out can't collide with it. (This used to be guaranteed by SpawnNpcs() running first,
+        // synchronously, in the constructor — same guarantee, now via the zone script instead.)
+        base.OnStart();
 
         // Place a clickable entrance at each atlas dungeon marker (notif=3 POI) — click -> start panel -> GO!.
         SpawnDungeonEntrances();
@@ -89,148 +102,153 @@ public sealed partial class StartingZone : BaseZone
         8123,  // "How are you?"
     ];
 
-    private void SpawnNpcs()
+    // Lua-facing spawn API (see BaseZone.TrySpawnNpc / Scripts/Zone/FabledRealms.lua, generated 1:1 from
+    // Npcs.json). Reimplements every spawn rule the old Npcs.json foreach loop had — vendor wiring, quest
+    // npc routing, world-enemy conversion, the single Tormented Spirits entrance, ambient dialogue —
+    // parameterized by the position the script supplies instead of reading NpcDefinition.Position
+    // directly, so placement now lives in the .lua file while every side effect below is unchanged.
+    public override bool TrySpawnNpc(int npcId, ulong? npcGuid, float x, float y, float z, float heading)
     {
-        int spawnedCount = 0;
-
-        foreach (var definition in _resourceManager.Npcs.Values)
+        var definition = _resourceManager.Npcs.Values.FirstOrDefault(d => d.Id == npcId);
+        if (definition is null)
         {
-            var guid = NpcGuidBase + (ulong)definition.Id;
-
-            // WORLD COMBAT: curated enemy creatures (model matches the dungeon enemy set) spawn as hostile
-            // CombatNpcs — they aggro on approach, chase, auto-attack the player, track HP, die, and respawn.
-            // Excluded when the same model is doubling as a vendor, quest giver/target, or a quest kill-target,
-            // which keep their existing interactive/quest paths (kill-targets get MakeQuestHostile below).
-            if (IsWorldEnemyDefinition(definition))
-            {
-                SpawnWorldEnemy(definition);
-                spawnedCount++;
-                continue;
-            }
-
-            // INSTANCE (Tormented Spirits!): exactly ONE wandering spirit is the dungeon entrance (click ->
-            // offer popup); every OTHER graveyard spirit spawns as a hostile world enemy you can fight.
-            if (definition.NameId == TormentedSpiritsArenaZone.EntryNpcNameId)
-            {
-                if (_spiritEntranceGuid != 0)
-                {
-                    SpawnWorldEnemy(definition);
-                    spawnedCount++;
-                    continue;
-                }
-
-                _spiritEntranceGuid = guid; // the first one becomes the single entrance (configured below)
-            }
-
-            if (!TryCreateNpc(guid, out var npc))
-                continue;
-
-            npc.ModelId = definition.ModelId;
-            npc.NameId = definition.NameId;
-            npc.TextureAlias = definition.TextureAlias;
-            npc.Name = definition.Name;
-            npc.Static = definition.Static;
-            // Scale from the model definition (Models.txt), matching the client; 0 -> default 1.
-            npc.Scale = _resourceManager.Models.TryGetValue(definition.ModelId, out var model) && model.Scale != 0f
-                ? model.Scale
-                : 1f;
-            npc.Visible = true;
-
-            if (_resourceManager.NpcVendors.TryGetValue(guid, out var vendorDef))
-            {
-                npc.VendorItems = vendorDef.Items;
-                npc.VendorCosts = vendorDef.ItemCosts;
-                npc.VendorBundles = vendorDef.Bundles;
-                npc.ResourceManager = _resourceManager;
-                npc.CursorId = 17;
-                npc.NameplateImageId = vendorDef.NameplateImageId;
-                npc.ImageSetId = vendorDef.ImageSetId;
-                npc.NotificationImageSetId = vendorDef.NotificationImageSetId;
-                if (vendorDef.ActiveProfile != 0)
-                    npc.ActiveProfile = vendorDef.ActiveProfile;
-                if (vendorDef.SubTextNameId != 0)
-                    npc.SubTextNameId = vendorDef.SubTextNameId;
-                var capturedNpc = npc;
-                npc.InteractAction = (interactingPlayer) =>
-                {
-                    var itemListPacket = new CoinStoreItemListPacket();
-                    foreach (var itemDefId in capturedNpc.VendorItems)
-                    {
-                        if (_resourceManager.CoinStoreItems.TryGetValue(itemDefId, out var meta))
-                            itemListPacket.StaticItems[itemDefId] = meta;
-                        else if (_resourceManager.ClientItemDefinitions.TryGetValue(itemDefId, out var def))
-                            itemListPacket.StaticItems[itemDefId] = new ItemDefinitionMetaData { Id = itemDefId, CategoryId = def.CategoryId };
-                    }
-                    interactingPlayer.SendTunneled(itemListPacket);
-
-                    var merchantPacket = new CoinStoreMerchantListPacket();
-                    merchantPacket.MerchantList.PlayerGuid = (long)interactingPlayer.Guid;
-                    merchantPacket.MerchantList.NpcGuid = capturedNpc.Guid;
-                    merchantPacket.MerchantList.NameId = capturedNpc.NameId;
-                    foreach (var itemDefId in capturedNpc.VendorItems)
-                    {
-                        if (!_resourceManager.ClientItemDefinitions.TryGetValue(itemDefId, out var def))
-                            continue;
-                        merchantPacket.MerchantList.Entries.Add(new MerchantList.Entry
-                        {
-                            ItemDefinitionId = itemDefId,
-                            IconId = def.Icon.Id,
-                            TintId = def.Icon.TintId,
-                            NameId = def.NameId,
-                            DescriptionId = def.DescriptionId,
-                            PurchasableQty = -1,
-                            MembersOnly = def.MembersOnly,
-                            CanBuy = true
-                        });
-                    }
-                    interactingPlayer.ActiveMerchantGuid = capturedNpc.Guid;
-                    interactingPlayer.SendTunneled(merchantPacket);
-                };
-            }
-
-            // Quest givers/targets (from Quests.json) route their interaction through the quest manager,
-            // which decides whether to offer a quest or advance/turn one in based on the player's state.
-            if (_questManager.IsQuestNpc(guid))
-            {
-                npc.CursorId = 17;
-                var questNpc = npc;
-                npc.InteractAction = interactingPlayer => _questManager.OnNpcInteract(interactingPlayer, questNpc);
-            }
-
-            // Kill-goal targets (Quests.json goals of Type=Kill, matched by NameId): spawn as attackable
-            // hostiles (red name + health bar + attack cursor) so combat abilities can target them.
-            if (_resourceManager.Quests.KillTargetNameIds.Contains(definition.NameId))
-                MakeQuestHostile(npc);
-
-            // INSTANCE (Tormented Spirits!): the wandering graveyard spirits are the encounter 146
-            // entries — clicking one opens the offer popup (routed by NameId in
-            // CommandPacketInteractRequestHandler). Swords cursor + a comfortable click range.
-            if (definition.NameId == TormentedSpiritsArenaZone.EntryNpcNameId)
-            {
-                npc.CursorId = 11;
-                npc.InteractRange = 15;
-            }
-
-            // Friendly, interactive NPCs (vendors + quest folk) greet passers-by. Enemies, props and
-            // kill-targets stay silent — CombatNpc never gets lines assigned. Characters with their own
-            // authored dialogue use it; the rest get the generic retail greetings.
-            if (npc is not CombatNpc &&
-                (_resourceManager.NpcVendors.ContainsKey(guid) || _questManager.IsQuestNpc(guid)))
-            {
-                npc.AmbientLineIds = NpcOwnLineIds.TryGetValue(guid, out var ownLines)
-                    ? ownLines
-                    : AmbientGreetingIds;
-            }
-
-            npc.UpdatePosition(definition.Position, definition.Rotation);
-
-            var tile = GetTileFromPosition(definition.Position);
-            tile.Entities.TryAdd(npc.Guid, npc);
-
-            spawnedCount++;
+            _logger.LogWarning("TrySpawnNpc: no Npcs.json definition found for NpcId {NpcId}.", npcId);
+            return false;
         }
 
-        SpawnQuestCollectibles();
+        var guid = npcGuid ?? NpcGuidBase + (ulong)definition.Id;
+        var position = new Vector4(x, y, z, 1f);
+        var rotation = new Quaternion(MathF.Sin(heading), 0f, MathF.Cos(heading), 0f);
+
+        // WORLD COMBAT: curated enemy creatures (model matches the dungeon enemy set) spawn as hostile
+        // CombatNpcs — they aggro on approach, chase, auto-attack the player, track HP, die, and respawn.
+        // Excluded when the same model is doubling as a vendor, quest giver/target, or a quest kill-target,
+        // which keep their existing interactive/quest paths (kill-targets get MakeQuestHostile below).
+        if (IsWorldEnemyDefinition(definition))
+        {
+            SpawnWorldEnemy(definition, position, rotation);
+            return true;
+        }
+
+        // INSTANCE (Tormented Spirits!): exactly ONE wandering spirit is the dungeon entrance (click ->
+        // offer popup); every OTHER graveyard spirit spawns as a hostile world enemy you can fight.
+        if (definition.NameId == TormentedSpiritsArenaZone.EntryNpcNameId)
+        {
+            if (_spiritEntranceGuid != 0)
+            {
+                SpawnWorldEnemy(definition, position, rotation);
+                return true;
+            }
+
+            _spiritEntranceGuid = guid; // the first one becomes the single entrance (configured below)
+        }
+
+        if (!TryCreateNpc(guid, out var npc))
+            return false;
+
+        npc.ModelId = definition.ModelId;
+        npc.NameId = definition.NameId;
+        npc.TextureAlias = definition.TextureAlias;
+        npc.Name = definition.Name;
+        npc.Static = definition.Static;
+        // Scale from the model definition (Models.txt), matching the client; 0 -> default 1.
+        npc.Scale = _resourceManager.Models.TryGetValue(definition.ModelId, out var model) && model.Scale != 0f
+            ? model.Scale
+            : 1f;
+        npc.Visible = true;
+
+        if (_resourceManager.NpcVendors.TryGetValue(guid, out var vendorDef))
+        {
+            npc.VendorItems = vendorDef.Items;
+            npc.VendorCosts = vendorDef.ItemCosts;
+            npc.VendorBundles = vendorDef.Bundles;
+            npc.ResourceManager = _resourceManager;
+            npc.CursorId = 17;
+            npc.NameplateImageId = vendorDef.NameplateImageId;
+            npc.ImageSetId = vendorDef.ImageSetId;
+            npc.NotificationImageSetId = vendorDef.NotificationImageSetId;
+            if (vendorDef.ActiveProfile != 0)
+                npc.ActiveProfile = vendorDef.ActiveProfile;
+            if (vendorDef.SubTextNameId != 0)
+                npc.SubTextNameId = vendorDef.SubTextNameId;
+            var capturedNpc = npc;
+            npc.InteractAction = (interactingPlayer) =>
+            {
+                var itemListPacket = new CoinStoreItemListPacket();
+                foreach (var itemDefId in capturedNpc.VendorItems)
+                {
+                    if (_resourceManager.CoinStoreItems.TryGetValue(itemDefId, out var meta))
+                        itemListPacket.StaticItems[itemDefId] = meta;
+                    else if (_resourceManager.ClientItemDefinitions.TryGetValue(itemDefId, out var def))
+                        itemListPacket.StaticItems[itemDefId] = new ItemDefinitionMetaData { Id = itemDefId, CategoryId = def.CategoryId };
+                }
+                interactingPlayer.SendTunneled(itemListPacket);
+
+                var merchantPacket = new CoinStoreMerchantListPacket();
+                merchantPacket.MerchantList.PlayerGuid = (long)interactingPlayer.Guid;
+                merchantPacket.MerchantList.NpcGuid = capturedNpc.Guid;
+                merchantPacket.MerchantList.NameId = capturedNpc.NameId;
+                foreach (var itemDefId in capturedNpc.VendorItems)
+                {
+                    if (!_resourceManager.ClientItemDefinitions.TryGetValue(itemDefId, out var def))
+                        continue;
+                    merchantPacket.MerchantList.Entries.Add(new MerchantList.Entry
+                    {
+                        ItemDefinitionId = itemDefId,
+                        IconId = def.Icon.Id,
+                        TintId = def.Icon.TintId,
+                        NameId = def.NameId,
+                        DescriptionId = def.DescriptionId,
+                        PurchasableQty = -1,
+                        MembersOnly = def.MembersOnly,
+                        CanBuy = true
+                    });
+                }
+                interactingPlayer.ActiveMerchantGuid = capturedNpc.Guid;
+                interactingPlayer.SendTunneled(merchantPacket);
+            };
+        }
+
+        // Quest givers/targets (from Quests.json) route their interaction through the quest manager,
+        // which decides whether to offer a quest or advance/turn one in based on the player's state.
+        if (_questManager.IsQuestNpc(guid))
+        {
+            npc.CursorId = 17;
+            var questNpc = npc;
+            npc.InteractAction = interactingPlayer => _questManager.OnNpcInteract(interactingPlayer, questNpc);
+        }
+
+        // Kill-goal targets (Quests.json goals of Type=Kill, matched by NameId): spawn as attackable
+        // hostiles (red name + health bar + attack cursor) so combat abilities can target them.
+        if (_resourceManager.Quests.KillTargetNameIds.Contains(definition.NameId))
+            MakeQuestHostile(npc);
+
+        // INSTANCE (Tormented Spirits!): the wandering graveyard spirits are the encounter 146
+        // entries — clicking one opens the offer popup (routed by NameId in
+        // CommandPacketInteractRequestHandler). Swords cursor + a comfortable click range.
+        if (definition.NameId == TormentedSpiritsArenaZone.EntryNpcNameId)
+        {
+            npc.CursorId = 11;
+            npc.InteractRange = 15;
+        }
+
+        // Friendly, interactive NPCs (vendors + quest folk) greet passers-by. Enemies, props and
+        // kill-targets stay silent — CombatNpc never gets lines assigned. Characters with their own
+        // authored dialogue use it; the rest get the generic retail greetings.
+        if (npc is not CombatNpc &&
+            (_resourceManager.NpcVendors.ContainsKey(guid) || _questManager.IsQuestNpc(guid)))
+        {
+            npc.AmbientLineIds = NpcOwnLineIds.TryGetValue(guid, out var ownLines)
+                ? ownLines
+                : AmbientGreetingIds;
+        }
+
+        npc.UpdatePosition(position, rotation);
+
+        var tile = GetTileFromPosition(position);
+        tile.Entities.TryAdd(npc.Guid, npc);
+
+        return true;
     }
 
     // Collect-goal pickups (Quests.json goals of Type=Collect): interactable world objects the player clicks
@@ -634,7 +652,7 @@ public sealed partial class StartingZone : BaseZone
             && Sanctuary.Game.Dungeons.DungeonCatalog.EnemyModelIds.Contains(definition.ModelId);
     }
 
-    private void SpawnWorldEnemy(NpcDefinition definition)
+    private void SpawnWorldEnemy(NpcDefinition definition, Vector4 position, Quaternion rotation)
     {
         if (!TryCreateCombatNpc(out var enemy))
             return;
@@ -664,12 +682,12 @@ public sealed partial class StartingZone : BaseZone
         enemy.MaxHealth = enemy.MaxHitpoints;
         enemy.Health = enemy.CurrentHitpoints;
 
-        enemy.SpawnPosition = definition.Position;
-        enemy.SpawnRotation = definition.Rotation;
-        enemy.LastSentPosition = definition.Position;
-        enemy.UpdatePosition(definition.Position, definition.Rotation);
+        enemy.SpawnPosition = position;
+        enemy.SpawnRotation = rotation;
+        enemy.LastSentPosition = position;
+        enemy.UpdatePosition(position, rotation);
 
-        var tile = GetTileFromPosition(definition.Position);
+        var tile = GetTileFromPosition(position);
         tile.Entities.TryAdd(enemy.Guid, enemy);
     }
 

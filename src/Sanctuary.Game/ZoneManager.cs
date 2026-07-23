@@ -109,6 +109,8 @@ public class ZoneManager : IZoneManager
 
                 _zones.TryAdd(_frostfangArena.Id, _frostfangArena);
 
+                _frostfangArena.OnStart();
+
                 _logger.LogInformation("Created Frostfang arena zone {name} ({id}).", _frostfangArena.Name, _frostfangArena.Id);
             }
 
@@ -126,6 +128,7 @@ public class ZoneManager : IZoneManager
                 arena = new EncounterArenaZone(def, _serviceProvider) { Id = _uniqueId++ };
                 _encounterArenas[activityId] = arena;
                 _zones.TryAdd(arena.Id, arena);
+                arena.OnStart();
                 _logger.LogInformation("Created encounter arena '{comment}' ({name}, id {id}) for activity {a}.",
                     def.Comment, arena.Name, arena.Id, activityId);
             }
@@ -149,6 +152,7 @@ public class ZoneManager : IZoneManager
             var zone = new DebugWorldZone(worldName, spawn, _serviceProvider) { Id = _uniqueId++ };
             _debugWorlds[worldName] = zone;
             _zones.TryAdd(zone.Id, zone);
+            zone.OnStart();
             _logger.LogInformation("Created debug world zone {name} ({id}) spawn {spawn}.", zone.Name, zone.Id, spawn);
             return zone;
         }
@@ -166,6 +170,8 @@ public class ZoneManager : IZoneManager
                 };
 
                 _zones.TryAdd(_combatTutorial.Id, _combatTutorial);
+
+                _combatTutorial.OnStart();
 
                 _logger.LogInformation("Created combat tutorial zone {name} ({id}).", _combatTutorial.Name, _combatTutorial.Id);
             }
@@ -186,6 +192,8 @@ public class ZoneManager : IZoneManager
                 };
 
                 _zones.TryAdd(_spiritArena.Id, _spiritArena);
+
+                _spiritArena.OnStart();
 
                 _logger.LogInformation("Created Tormented Spirits arena zone {name} ({id}).", _spiritArena.Name, _spiritArena.Id);
             }
@@ -209,7 +217,7 @@ public class ZoneManager : IZoneManager
             Id = _uniqueId++
         };
 
-        // zone.OnStart();
+        zone.OnStart();
 
         return _zones.TryAdd(zone.Id, zone);
     }
