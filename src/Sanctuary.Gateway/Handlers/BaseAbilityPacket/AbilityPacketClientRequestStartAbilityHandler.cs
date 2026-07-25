@@ -1159,6 +1159,26 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         // op36 traffic never included a MeleeRefresh at all, which is why only the grey ever showed for it.
         player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = meleeRefreshMs });
 
+        // op36/4 LaunchAndLand - a prior RE pass (2026-07-18/19, see reference_ability_packet_formats.md)
+        // proved this is what actually starts the ability slots' cooldown SWEEP client-side, but the wiring
+        // was reverted before the +0x18 crash bug got fixed and never reinstated. The list field (+0x18) is
+        // sent empty here, which that investigation confirmed is crash-safe. Sent for every cast (not just
+        // specials) so the basic slot sweeps the same way instead of relying on MeleeRefresh alone. Sweep
+        // length is a client-side ~1s constant regardless of any field sent (confirmed exhaustively back
+        // then) - the real per-ability duration lives in AbilityPacketAbilityDefinition, which we still send
+        // mostly zeroed, so don't expect a multi-second sweep from this alone yet.
+        // Live-confirmed 2026-07-25: the sweep only renders when Guid2/Guid3 resolve to a REAL enemy target -
+        // its internal target-resolution silently no-ops otherwise (targetGuid falls back to the caster's own
+        // guid when nothing is targeted, which the client doesn't accept). Matches retail use anyway (cooldown
+        // sweeps happen when you actually use an ability on something).
+        player.SendTunneled(new AbilityPacketLaunchAndLand
+        {
+            Guid = player.Guid,
+            Guid2 = targetGuid,
+            Guid3 = targetGuid,
+            Position = player.Position,
+        });
+
         // Weapon-empowering specials (Mysticism / Mystical Blade) bind their FX to the sword (item slot 7)
         // instead of the body. SlotCompositeEffectOverride op35/sub31: Guid + slot + composite effect.
         if (ability.SwordEffectId > 0)
