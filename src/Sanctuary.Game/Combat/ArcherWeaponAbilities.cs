@@ -39,17 +39,42 @@ namespace Sanctuary.Game.Combat;
 //     PRJ_archer_ricochet_trail_red/16214 + shrapnel_archer-ricochet/16215 (Ricochet),
 //     PFX_fire_orange_root_archer-firebomb-MIRV/16118 (Firebomb).
 //     Sonic Boom has NO dedicated archer FX in the client — 5710 (shockwave ground-pound) is the
-//     placeholder until a live probe finds the real one.
-//   * ANIMATIONS: the bow clips are the com_range_* slots (client AnimationTypes.xml):
-//     com_range_attack_01..05 = 1101-1105 (draw-and-fire), com_range_special_01..05 = 1106-1110.
-//     Basic uses 1102 (attack_02; 1101 carries hideSlotType=1). All specials start on 1106 —
-//     refine per-special with the "!anim <id>" live probe, the same workflow that tuned the
-//     ninja clips.
+//     placeholder (RE-CHECKED 2026-07-25: still nothing sonic/boom/shock-named fits better) until a live
+//     probe finds the real one. Basic-shot impacts (9 of the 10 pairs) now use PFX_Hit_Wood_vs_Flesh/5447
+//     (arrow-shaft-vs-target material hit, the same PFX_Hit_<mat>_vs_<mat> system the ninja file cites for
+//     melee, e.g. metal-vs-flesh=5414) instead of the generic PFX_Hit_Flash/7 — Multi-Shot's basic already
+//     had its own dedicated land FX (5307) and is unchanged.
+//   * ANIMATIONS (RE-DONE 2026-07-25): the bow clips are the com_range_* slots (client AnimationTypes.xml +
+//     AnimationGroups.xml — the same two files WizardWeaponAbilities.cs cites for com_cast_special_01..10 =
+//     1131-1140): com_range_attack_01..05 = 1101-1105 (draw-and-fire), com_range_special_01..10 = 1106-1110
+//     PLUS 1051111-1051115 (the client's own table jumps the 06-10 slots to far higher, non-contiguous ids —
+//     the same pattern every other job's *_special_09/10+ slots show, e.g. com_h2h_special_10=1001020,
+//     com_2hs_special_09/10=1021059/1021060). Basic uses 1102 (attack_02; 1101 carries hideSlotType=1). Each
+//     of the 10 named specials below now gets its OWN clip from this real family (assigned in the
+//     Volleys..Firebomb function order) instead of all ten sharing 1106. Which NAMED motion (quick-draw vs
+//     power-draw etc.) backs each numeric id past 1110 is still unconfirmed — refine with the "!anim <id>"
+//     live probe if a wrong one looks off, the same workflow that tuned the ninja clips.
 // Sniper + Rain are PARKED (not on the bar): the retail bar carries exactly 2 ability slots (the
 // 04-01 capture's set was 2 full + 6 empty even at max level; the UI's remaining slots are
 // battle-ITEM slots, wire Type 2). The research is done — Sniper Shot (icon 22575, dedicated FX
 // sniper-shot-land 15384, retail L15 ability) and Rain of Arrows (FX 1110/1111, caster AoE) —
 // so they're kept here ready if we ever surface them elsewhere (e.g. a real ability-def route).
+// SNIPER SHOT multiplier (RE-SOURCED 2026-07-25): the "Scoped Stalker Bow" FreeRealms wiki page (found via
+// search snippet — direct WebFetch 402'd on freerealms.fandom.com every attempt, so this is search-result
+// text, not a verified page read) lists Sniper Shot's OWN damage table: 889/1554/2716/4750/8302 at levels
+// 1/4/8/12/16. Lined up against our own wiki-anchored special-tier numbers (640 @L1, 2707 @L12, 4750 @L16),
+// that's ~1.39x / 1.755x / 1.748x the same-tier special — clearly not the old unsourced 1.15x guess. The two
+// higher (more-anchored) tiers agree closely, so updated to 1.75x. Still an approximation given the source
+// access limits above.
+// RAIN OF ARROWS (confirmed real 2026-07-25, user-verified): a distinct archer ability - a volley of arrows
+// falls from the sky and hits every enemy in range, not the same thing as Volley despite the earlier wiki-
+// search doubt below. The current shape (caster-centered AoE burst, CastEffectId 1110 launch-up + EffectId
+// 1111 land-dust per victim) already matches that mechanic correctly. The 0.75x damage multiplier and 10m
+// radius are still unsourced numbers, not the ability's existence/shape - refine those if a real source
+// surfaces, but the "might just be Volley" doubt from the wiki search below is resolved: it's real, distinct
+// content. (Original note, kept for context: repeated targeted wiki searches for "Rain of Arrows" turned up
+// nothing FR-specific under that exact name — every source found instead named the Scoped Stalker Bow's AoE
+// ability "Volley".)
 public sealed record ArcherWeapon(WeaponAbility Basic, WeaponAbility Special, WeaponAbility Sniper, WeaponAbility Rain);
 
 public static class ArcherWeaponAbilities
@@ -160,7 +185,11 @@ public static class ArcherWeaponAbilities
         ["Multi-Shot"]     = (421006, 421007),
         ["Splitting Arrow"]= (421008, 421009),
         ["Power Shot"]     = (421184, 421185),
-        ["Stunning Shot"]  = (426588, 421192), // name id not cheaply reversible -> generic "Special Attack"
+        // Name id not cheaply reversible -> generic "Special Attack" fallback. RE-CHECKED 2026-07-25: the ZAM
+        // mirror's "Archer's Composite Bow of Stunning" page confirms the pair is genuinely named "Power Shot"
+        // / "Stunning Shot" verbatim (no alternate in-game name found) — the id gap is a real reversal gap,
+        // not a misidentified ability name.
+        ["Stunning Shot"]  = (426588, 421192),
         ["Smoldering Shot"]= (421245, 0),
         ["Flaming Arrow"]  = (421244, 0),
         ["Electric Arrow"] = (421260, 0),
@@ -281,8 +310,29 @@ public static class ArcherWeaponAbilities
     }
 
     private const int BasicShotAnim = 1102;   // com_range_attack_02 (draw + fire)
-    private const int SpecialAnim = 1106;     // com_range_special_01 (refine per-special via !anim)
-    private const int BasicHitFx = 7;         // PFX_Hit_Flash — the proven generic impact flash
+    // SpecialAnim = shared fallback pose (com_range_special_01), still used by the two PARKED level-abilities
+    // (Sniper Shot / Rain of Arrows below) which aren't part of the named 10-special family.
+    private const int SpecialAnim = 1106;     // com_range_special_01
+
+    // The 10 named specials each get their OWN clip from the client's com_range_special_01..10 animation
+    // family (AnimationTypes.xml/AnimationGroups.xml — see the header ANIMATIONS note). Assigned in the same
+    // order the 10 per-family builder functions appear below (Volleys..Firebomb).
+    private const int SpecialAnim01 = 1106;     // com_range_special_01 -> Volleys    (Barrage/Volley)
+    private const int SpecialAnim02 = 1107;     // com_range_special_02 -> Blizzards  (Icy Arrow/Blizzard Blast)
+    private const int SpecialAnim03 = 1108;     // com_range_special_03 -> Explosions (Charged Shot/Explosive Shot)
+    private const int SpecialAnim04 = 1109;     // com_range_special_04 -> Splintering(Multi-Shot/Splitting Arrow)
+    private const int SpecialAnim05 = 1110;     // com_range_special_05 -> Stunning   (Power Shot/Stunning Shot)
+    private const int SpecialAnim06 = 1051111;  // com_range_special_06 -> Flame      (Smoldering Shot/Flaming Arrow)
+    private const int SpecialAnim07 = 1051112;  // com_range_special_07 -> Lightning  (Electric Arrow/Lightning Call)
+    private const int SpecialAnim08 = 1051113;  // com_range_special_08 -> Booming    (Sonic Arrow/Sonic Boom)
+    private const int SpecialAnim09 = 1051114;  // com_range_special_09 -> Ricochet   (Cover Fire/Ricochet)
+    private const int SpecialAnim10 = 1051115;  // com_range_special_10 -> Firebomb   (Ember Arrow/Firebomb)
+
+    private const int BasicHitFx = 5447;      // PFX_Hit_Wood_vs_Flesh (ActorCompositeEffectDefinitions.xml) —
+                                               // a real material-based impact (arrow shaft=wood, target=flesh),
+                                               // the same "PFX_Hit_<mat>_vs_<mat>" system NinjaWeaponAbilities.cs
+                                               // uses for melee (metal-vs-flesh=5414); replaces the generic
+                                               // PFX_Hit_Flash (7) placeholder.
 
     // Basic-slot icons: the bow FAMILY's own item image (Small IMAGE_ID of the item's image set) —
     // the archer mirror of the ninja melee slot showing the sword.
@@ -324,9 +374,10 @@ public static class ArcherWeaponAbilities
     private const int RainLandFx = 1111;      // PFX_arrows_rain_land_dust (on each victim)
     private const int LevelAbilityEnergyCost = 50; // half the bar each (specials keep the full 100)
 
-    // Sniper Shot: heavy single-target shot, ~1.15× the bow tier's special damage.
+    // Sniper Shot: heavy single-target shot, ~1.75× the bow tier's special damage (re-sourced 2026-07-25 from
+    // the Scoped Stalker Bow's own damage table — see the header SNIPER SHOT note for the derivation).
     private static WeaponAbility SniperShot(int specialDmg) =>
-        new("Sniper Shot", SniperIcon, (int)(specialDmg * 1.15f), SpecialAnim, SniperImpactFx,
+        new("Sniper Shot", SniperIcon, (int)(specialDmg * 1.75f), SpecialAnim, SniperImpactFx,
             EnergyCost: LevelAbilityEnergyCost);
 
     // Rain of Arrows: caster-centered arrow rain, ~0.75× the tier's special damage as AoE.
@@ -351,7 +402,7 @@ public static class ArcherWeaponAbilities
         // Volley rains arrows AROUND the archer (wiki: "rains arrows down around you striking nearby
         // opponents") — a caster-centered AoE like the ninja's 1000 Storms. Launch 1110 fires the
         // arrows up; the rain-loop 16204 lands at the caster's feet at the end; 1111 dusts each victim.
-        new("Volley", VolleyIcon, specialDmg, SpecialAnim, 1111, 1110, CasterEndEffectId: 16204, AoeRadius: 10f),
+        new("Volley", VolleyIcon, specialDmg, SpecialAnim01, 1111, 1110, CasterEndEffectId: 16204, AoeRadius: 10f),
         specialDmg);
 
     private static ArcherWeapon Blizzards(int icon, int basicDmg, int specialDmg) => Make(
@@ -359,52 +410,55 @@ public static class ArcherWeaponAbilities
         // projectile to die with (it's the "snow under the player" the user sighted). Tag-played
         // and stopped after the shot window.
         new("Icy Arrow", icon, basicDmg, BasicShotAnim, BasicHitFx, 16110, CastEffectStopMs: 1200),
-        new("Blizzard Blast", FreezingIcon, specialDmg, SpecialAnim, 16116, 16110, CastEffectStopMs: 1200),
+        new("Blizzard Blast", FreezingIcon, specialDmg, SpecialAnim02, 16116, 16110, CastEffectStopMs: 1200),
         specialDmg);
 
     private static ArcherWeapon Explosions(int icon, int basicDmg, int specialDmg) => Make(
         new("Charged Shot", icon, basicDmg, BasicShotAnim, BasicHitFx, 15479, CastEffectStopMs: 1200), // PRJ_flaming_orange_arrow
-        new("Explosive Shot", ExplosiveIcon, specialDmg, SpecialAnim, 15373, 15479, CastEffectStopMs: 1200),    // explosive-arrow-land; flaming trail
+        new("Explosive Shot", ExplosiveIcon, specialDmg, SpecialAnim03, 15373, 15479, CastEffectStopMs: 1200),    // explosive-arrow-land; flaming trail
         specialDmg);
 
     private static ArcherWeapon Splintering(int icon, int basicDmg, int specialDmg) => Make(
         // Both cast FX are PRJ trails (see the Blizzards note) — tag-played with a timed stop.
         new("Multi-Shot", icon, basicDmg, BasicShotAnim, 5307, 16056, CastEffectStopMs: 1200),
-        new("Splitting Arrow", SplittingIcon, specialDmg, SpecialAnim, 5246, 15488, CastEffectStopMs: 1200),
+        new("Splitting Arrow", SplittingIcon, specialDmg, SpecialAnim04, 5246, 15488, CastEffectStopMs: 1200),
         specialDmg);
 
     private static ArcherWeapon Stunning(int icon, int basicDmg, int specialDmg) => Make(
         new("Power Shot", icon, basicDmg, BasicShotAnim, BasicHitFx, 16050, CastEffectStopMs: 1200), // stunning-shot trail
         // 16050 is a PRJ trail (see the Blizzards note) — tag-played with a timed stop.
-        new("Stunning Shot", StunningIcon, specialDmg, SpecialAnim, 16054, 16050, CastEffectStopMs: 1200),
+        new("Stunning Shot", StunningIcon, specialDmg, SpecialAnim05, 16054, 16050, CastEffectStopMs: 1200),
         specialDmg);
 
     private static ArcherWeapon Flame(int icon, int basicDmg, int specialDmg) => Make(
         new("Smoldering Shot", icon, basicDmg, BasicShotAnim, BasicHitFx, 15479, CastEffectStopMs: 1200), // PRJ_flaming_orange_arrow
-        new("Flaming Arrow", FireArrowIcon, specialDmg, SpecialAnim, 16121, 15479, CastEffectStopMs: 1200),     // PFX_archer_fire-arrow on the victim; flaming trail
+        new("Flaming Arrow", FireArrowIcon, specialDmg, SpecialAnim06, 16121, 15479, CastEffectStopMs: 1200),     // PFX_archer_fire-arrow on the victim; flaming trail
         specialDmg);
 
     private static ArcherWeapon Lightning(int icon, int basicDmg, int specialDmg) => Make(
         new("Electric Arrow", icon, basicDmg, BasicShotAnim, BasicHitFx, 5492, CastEffectStopMs: 1200), // PRJ_lightning_ball_light-blue
-        new("Lightning Call", LightningIcon, specialDmg, SpecialAnim, 16117, 5492, CastEffectStopMs: 1200),    // rooted lightning strike on the victim; lightning trail
+        new("Lightning Call", LightningIcon, specialDmg, SpecialAnim07, 16117, 5492, CastEffectStopMs: 1200),    // rooted lightning strike on the victim; lightning trail
         specialDmg);
 
     private static ArcherWeapon Booming(int icon, int basicDmg, int specialDmg) => Make(
         new("Sonic Arrow", icon, basicDmg, BasicShotAnim, BasicHitFx, 15501, CastEffectStopMs: 1200), // PRJ_beam_gray_trail_arrow
-        // No dedicated sonic-boom archer FX in the client — 5710 shockwave ground-pound stands in
+        // RE-CHECKED 2026-07-25: grepped ActorCompositeEffectDefinitions.xml for sonic/boom/shock — still no
+        // dedicated archer sonic-boom FX. Near-misses considered and rejected: PFX_orb-explosion_orange_cog_
+        // shockwave-yellow/16575 (an explosion, not sonic-styled) and PFX_lightning_blue_aoe_medic-shockpaddles/
+        // 16154 (medic defibrillator zap). 5710 (chugawug ground-pound shockwave) remains the closest stand-in
         // (live-probe TODO, same iteration loop the ninja specials went through).
-        new("Sonic Boom", ConcussiveIcon, specialDmg, SpecialAnim, 5710, 15501, CastEffectStopMs: 1200), // beam trail
+        new("Sonic Boom", ConcussiveIcon, specialDmg, SpecialAnim08, 5710, 15501, CastEffectStopMs: 1200), // beam trail
         specialDmg);
 
     private static ArcherWeapon Ricochet(int icon, int basicDmg, int specialDmg) => Make(
         new("Cover Fire", icon, basicDmg, BasicShotAnim, BasicHitFx, 16214, CastEffectStopMs: 1200), // ricochet trail
         // 16214 is a PRJ trail (see the Blizzards note) — tag-played with a timed stop.
-        new("Ricochet", RicochetIcon, specialDmg, SpecialAnim, 16215, 16214, CastEffectStopMs: 1200),
+        new("Ricochet", RicochetIcon, specialDmg, SpecialAnim09, 16215, 16214, CastEffectStopMs: 1200),
         specialDmg);
 
     private static ArcherWeapon Firebomb(int icon, int basicDmg, int specialDmg) => Make(
         new("Ember Arrow", icon, basicDmg, BasicShotAnim, BasicHitFx, 15479, CastEffectStopMs: 1200), // PRJ_flaming_orange_arrow
-        new("Firebomb", FireBombIcon, specialDmg, SpecialAnim, 16118, 15479, CastEffectStopMs: 1200),           // firebomb MIRV burst on the victim; flaming trail
+        new("Firebomb", FireBombIcon, specialDmg, SpecialAnim10, 16118, 15479, CastEffectStopMs: 1200),           // firebomb MIRV burst on the victim; flaming trail
         specialDmg);
 
     // weapon def id -> abilities, every retail bow (75000-75029), damage by the bow's level tier.
@@ -451,13 +505,25 @@ public static class ArcherWeaponAbilities
         [75029] = Firebomb(RaptorBowIcon, 2372, 4750),
 
         // ── MOLTEN BOW (epic leveling bow; three item variants share the model/art) ──
-        // "A blazing volcanic bow dripping with fiery liquid hot magma" — no wiki/ZAM page names its
-        // abilities, so the FIRE pair is the element-true assignment (Smoldering Shot / Flaming
-        // Arrow) at Raptor-tier damage (PowerRating 5, the epic tier). Icon = its own item art
-        // (set 3107 Small). Retune if a retail source for its real pair surfaces.
-        [9033] = Flame(MoltenBowIcon, 2372, 4750),
+        // RE-SOURCED 2026-07-25 (freerealms.fandom.com search-result snippets — direct WebFetch 402'd on this
+        // domain every attempt, so this is via search text, not a verified page read): retail actually shipped
+        // THREE distinct Molten Bow SKUs with THREE different ability pairs, not one shared guess:
+        //   "Old School" (retired SC-shop item)     -> Barrage / Volley
+        //   "New School" (current SC-shop item)     -> Magma Shot / Volcanic Rain (not one of our 10 built
+        //                                               kits — no icon/FX sourced for this pair, so not added
+        //                                               here; would need its own kit if pursued later)
+        //   "Treasure Trader" (retired FB-app item) -> Smoldering Shot / Flaming Arrow
+        // Our own ClientItemDefinitions.json: item 9033 and 55362 share the EXACT same NameId/DescriptionId
+        // (386326/382762, differing only in MinProfileRank 16 vs 1), while 13655 has a distinct NameId/
+        // DescriptionId (31647/6749) — i.e. OUR data treats 9033/55362 as the same named item and 13655 as a
+        // different one. That internal grouping is the only evidence available for WHICH id is which SKU (the
+        // localized name text itself needs the Global.Text hash reversal, not done here), so: the duplicate-
+        // named pair (9033/55362) now gets Barrage/Volley (Old School — using the existing Volleys() kit, a
+        // real wiki-confirmed pair instead of a guess), and 13655 keeps Smoldering Shot/Flaming Arrow (Treasure
+        // Trader, also wiki-confirmed). Previously all three wrongly shared the Flame kit as an admitted guess.
+        [9033] = Volleys(MoltenBowIcon, 2372, 4750),
         [13655] = Flame(MoltenBowIcon, 2372, 4750),
-        [55362] = Flame(MoltenBowIcon, 2372, 4750),
+        [55362] = Volleys(MoltenBowIcon, 2372, 4750),
     };
 
     public static readonly int[] AllWeaponDefIds = ByWeaponDefId.Keys.ToArray();

@@ -56,10 +56,17 @@ public static class NinjaWeaponAbilities
                                               // Was 1099 (com_swing) which is NOT in human_m.adr -> client fell back to a
                                               // bare-hand swing. 1021-1024 = com_1hs_attack_01..04; group 1020=com_1hs_attack
                                               // picks one at random (authentic variety) if preferred.
-    private const int MeleeHitFx = 7;        // PFX_Hit_Flash — proven generic flash. (FR's real melee hit is
-                                             // material-based PFX_Hit_<weaponMat>_vs_<targetMat>; metal-vs-flesh
-                                             // = 5414, crit 5627, KO 5637 — a candidate to verify live with
-                                             // `!atk 500 50000 5414`, NOT yet visually confirmed.)
+    private const int MeleeHitFx = 5414;     // PFX_Hit_Metal_vs_Flesh — CONFIRMED by name in the client's own
+                                             // ActorCompositeEffectDefinitions.xml (id="5414"). Ninja weapons are
+                                             // all swords/scythes (metal), so this is the correct material-based
+                                             // basic-hit FX for every ninja melee swing (was the generic placeholder
+                                             // PFX_Hit_Flash, id 7). The same table also defines
+                                             // PFX_Hit-Critical_Metal_vs_Flesh (id 5627) and
+                                             // PFX_Hit-Knockout_Metal_vs_Flesh (id 5637), but WeaponAbility only
+                                             // carries a single EffectId per ability with no crit/KO branch in the
+                                             // damage-resolution code (AbilityPacketClientRequestStartAbilityHandler),
+                                             // so those two variants are NOT wired up here — that would need a
+                                             // separate crit-aware EffectId path, which is out of scope for this pass.
     // Melee slot shows the weapon's SWORD icon: the shadow-blade item set (3152) Small IMAGE_ID = 14407.
     // (abil_ninja_shadow_blade's 22599 renders as a leaf in our client; the item sword image is correct.)
     private const int MeleeIcon = 14407;
@@ -179,44 +186,71 @@ public static class NinjaWeaponAbilities
     // reads a touch off — a cosmetic live-polish item, not a functional one.)
 
     private static readonly NinjaWeapon ShurikenStormKit = new(
+        // Damage NOT changed: ZAM/wiki only turned up numbers for the lower-tier "Ninja's Jagged Scythe of
+        // Shuriken Storm" (level 12: Twisted Edge 1641, Shuriken Storm 4750), which is a different weapon tier
+        // than the Shadow Blade (top tier) values used here — not a like-for-like source, so left as-is per the
+        // "don't guess a better-sounding number" rule rather than porting a lower-tier number in.
         new("Twisted Edge",   MeleeIcon, 2870, MeleeAnimation, MeleeHitFx),
         new("Shuriken Storm",     22986, 8302, 1039, 4012, 0)); // LIVE-OBSERVED: anim com_1hs_special_09=inverted_flip_attack (frontflip + downward melee); FX 4012 PFX_Slashes_Three_Symbol ("3 scratch marks") on the ENEMY only (impact); no cast FX on caster
 
     private static readonly NinjaWeapon FlameWaveKit = new(
-        new("Cinder Slash",   MeleeIcon, 2609, MeleeAnimation, MeleeHitFx),
-        new("Flame Wave",         22974, 10674, 1032, 0, 16140)); // anim sweep; cast 16140 PFX_fire_orange_cog_ninja-flame-wave (ground AoE on caster, at feet); enemy impact REMOVED (user: FX only at my feet)
+        new("Cinder Slash",   MeleeIcon, 2609, MeleeAnimation, MeleeHitFx), // 2609 = ZAM/wiki "Ninja's Shadow Blade of Flame Wave": Cinder Slash deals 2609 damage (already matched, now cited)
+        new("Flame Wave",         22974, 10674, 1032, 0, 16140)); // Damage 10674 = ZAM/wiki "Ninja's Shadow Blade of Flame Wave": Flame Wave deals 10674 damage (already matched, now cited). anim sweep; cast 16140 PFX_fire_orange_cog_ninja-flame-wave (ground AoE on caster, at feet); enemy impact REMOVED (user: FX only at my feet)
 
     private static readonly NinjaWeapon DragonstrikeKit = new(
-        new("Flame Flash",    MeleeIcon, 2609, MeleeAnimation, MeleeHitFx),
-        new("Dragonstrike",       22965, 10674, 1035, 0, 0, 0, 0, 16186)); // anim flying_chop (confirmed); launch 16014 REMOVED; the LAND FX 16186 now plays ON THE CASTER (feet) at the END of the anim (CasterEndEffectId); nothing on the enemy (user round-2)
+        new("Flame Flash",    MeleeIcon, 2609, MeleeAnimation, MeleeHitFx), // 2609 matches the same-tier melee damage seen across every other Shadow Blade "of X" wiki page (Cinder Slash/Shadowslash/Hidden Strike/Fiery Slice all 2609) — consistent, not individually page-confirmed for "Flame Flash"
+        new("Dragonstrike",       22965, 10674, 1035, 0, 0, 0, 0, 16186)); // Damage 10674 corroborated by ZAM/wiki: "Molten Dragon Blade" and "Flying Dragon Sword" (other retail swords whose special is also Dragonstrike) both list 10674 damage; NOTE the specific coin-store "Dragon Blade" item (weapon def ids 13663/55337/70444/76470, aliased to this same kit below) is wiki-listed at 13876 instead — left unsplit since those ids are explicitly a thematic reuse ("themed to a fitting kit"), not a per-item stat table. anim flying_chop (confirmed); launch 16014 REMOVED; the LAND FX 16186 now plays ON THE CASTER (feet) at the END of the anim (CasterEndEffectId); nothing on the enemy (user round-2)
 
     private static readonly NinjaWeapon ThousandStormsKit = new(
+        // Damage/AoE NOT changed: WebSearch confirmed the weapon "Ninja's Training Sword of 1000 Storms" exists
+        // (Coin Shop item, abilities Lightning Strike + 1000 Storms) but no ZAM/wiki page turned up actual
+        // damage or radius numbers for either ability — genuinely searched, nothing found, so left as-is rather
+        // than guessing. AoeRadius=12f below is still the pre-existing 2026-07-03 house-rule, not retail data.
         new("Lightning Strike", MeleeIcon, 2372, MeleeAnimation, MeleeHitFx),
-        new("1000 Storms",          22992, 8302, 1033, 0, 16088, AoeRadius: 12f)); // anim 1033 air_throw (jump-up + air-slam motion; same clip as Deception — user-chosen); cast 16088 PFX_lightning_blue_root_ninja-special on caster; enemy impact REMOVED (user: stop casting on target; FX at my sword at end of anim — sword placement TODO). AOE (user request 2026-07-03): hits the whole pack within 12u of the caster
+        new("1000 Storms",          22992, 8302, 1033, 0, 16088, AoeRadius: 12f)); // anim 1033 air_throw (jump-up + air-slam motion; same clip as Deception — user-chosen); cast 16088 PFX_lightning_blue_root_ninja-special on caster; enemy impact REMOVED (user: stop casting on target; FX at my sword at end of anim — sword placement TODO). AOE (user request 2026-07-03, NOT retail-sourced): hits the whole pack within 12u of the caster
 
     private static readonly NinjaWeapon ShadowArmiesKit = new(
+        // Damage/SummonCount NOT changed: ZAM/wiki search confirmed the weapon "Ninja's Jagged Scythe of Shadow
+        // Army(ies)" exists (level 12 Ninja weapon) but no page content with the ability's damage or clone-count
+        // came back — genuinely searched, nothing found, so both values are left as pre-existing, unsourced.
         new("Dark Assault",   MeleeIcon, 2608, MeleeAnimation, MeleeHitFx),
-        new("Shadow Army",        22989, 3000, 1061143, 21, 16483, 3)); // anim warcry; CAST 16483 PFX_summon_purple_cast (ONE-SHOT — 5276 was a _loop that never ended); impact 21 black smoke; SUMMONS 3 shadow clones
+        new("Shadow Army",        22989, 3000, 1061143, 21, 16483, 3)); // anim warcry; CAST 16483 PFX_summon_purple_cast (ONE-SHOT — 5276 was a _loop that never ended); impact 21 black smoke; SUMMONS 3 shadow clones (count unsourced)
 
     private static readonly NinjaWeapon SolarFlareKit = new(
         new("Ashen Strike",     MeleeIcon, 2870, MeleeAnimation, MeleeHitFx),
-        new("Flaming Uppercut",     22977, 8302, 1017, 0, 16119)); // anim flaming_uppercut (DEDICATED); cast 16119 PFX_ninja_flaming-uppercut on caster; enemy impact REMOVED (user: player is the only one with the FX, not the NPC)
+        new("Flaming Uppercut",     22977, 8302, 1017, 0, 16119)); // Damage 8302 = ZAM/wiki "Ninja's Shadow Blade of Solar Flare": Flaming Uppercut deals 8302 damage (already matched, now cited). anim flaming_uppercut (DEDICATED); cast 16119 PFX_ninja_flaming-uppercut on caster; enemy impact REMOVED (user: player is the only one with the FX, not the NPC)
 
     private static readonly NinjaWeapon DragonBreathKit = new(
-        new("Fiery Slice",  MeleeIcon, 2609, MeleeAnimation, MeleeHitFx),
-        new("Flame Breath",     22971, 10674, 1037, 0, 16129)); // anim bum_rush (WRONG — user to ID correct clip); cast 16129 PFX_fire_orange_mouth_ninja-flame-breath on caster; enemy impact REMOVED (user: FX played by me only, not any enemy)
+        new("Fiery Slice",  MeleeIcon, 2609, MeleeAnimation, MeleeHitFx), // 2609 = ZAM/wiki "Ninja's Shadow Blade of Dragon Breath": Fiery Slice deals 2609 damage (already matched, now cited)
+        new("Flame Breath",     22971, 10674, 1037, 0, 16129)); // Damage 10674 = ZAM/wiki "Ninja's Shadow Blade of Dragon Breath": Flame Breath deals 10674 damage (already matched, now cited).
+                                                                 // ANIM STILL WRONG/UNRESOLVED: id 1037 is NOT "bum_rush" (that name is the BRAWLER's
+                                                                 // charge-punch clip, abil_brawler_bum_rush — mislabeled here previously). Per
+                                                                 // AnimationGroups.xml, 1037 is actually "com_1hs_special_07", one of a generic bank of
+                                                                 // unnamed 1-handed-sword special-attack clips (1031-1039, com_1hs_special_01..09) that
+                                                                 // this file's other kits already reuse for their own specials (e.g. 1033=avoid dup with
+                                                                 // ThousandStorms/Deception, 1035=Dragonstrike, 1039=ShurikenStorm). Searched both
+                                                                 // AnimationGroups.xml and AnimationTypes.xml for "flame"/"fire"/"breath"/"dragon" —
+                                                                 // ZERO matches. The client's own animation tables contain NO dragon-breath-style clip
+                                                                 // for the human_m rig, so there is no better-sourced replacement available; a real fix
+                                                                 // would need a dedicated cast_special/emote-quality clip that doesn't exist in this
+                                                                 // client build, or a from-scratch fitting choice among the generic com_1hs_special_NN
+                                                                 // bank (cosmetic guess, not a sourced fix) — left as 1037 pending that decision.
+                                                                 // cast 16129 PFX_fire_orange_mouth_ninja-flame-breath on caster; enemy impact REMOVED (user: FX played by me only, not any enemy)
 
     private static readonly NinjaWeapon MysticismKit = new(
+        // Damage NOT changed: found "Ninja's Jagged Scythe of Mysticism" listed as a real level-12 weapon on the
+        // wiki, confirming Mysticism/Mystical Blade is a genuine retail special, but no page content with an
+        // actual damage number came back from search — genuinely searched, nothing found.
         new("Mystic Rush",    MeleeIcon, 2608, MeleeAnimation, MeleeHitFx),
         new("Mystical Blade",     22980, 3000, 1061141, 0, 0, 0, 16169)); // anim weapon_power (DEDICATED); empowers the WEAPON: 16169 WFX_beam-trail_blue-purple_ninja-mystical-blade binds to the SWORD slot (SwordEffectId); NO body/enemy FX (user round-2: only on my sword, not on any bodies)
 
     private static readonly NinjaWeapon SoulPowerKit = new(
-        new("Shadowslash",    MeleeIcon, 2609, MeleeAnimation, MeleeHitFx),
-        new("Mystical Drain",     22983, 8302, 1034, 16180, 16180)); // anim flip_stab (confirmed); cast+impact 16180 PFX_beam_red_blue_circ_lg_AOE-drain
+        new("Shadowslash",    MeleeIcon, 2609, MeleeAnimation, MeleeHitFx), // 2609 = ZAM/wiki "Ninja's Shadow Blade of Soul Power": Shadowslash deals 2609 damage (already matched, now cited)
+        new("Mystical Drain",     22983, 8302, 1034, 16180, 16180)); // Damage 8302 = ZAM/wiki "Ninja's Shadow Blade of Soul Power": Mystical Drain deals 8302 damage (already matched, now cited). anim flip_stab (confirmed); cast+impact 16180 PFX_beam_red_blue_circ_lg_AOE-drain
 
     private static readonly NinjaWeapon DeceptionKit = new(
-        new("Hidden Strike", MeleeIcon, 2609, MeleeAnimation, MeleeHitFx),
-        new("Fan of Blades",     22968, 5977, 1033, 0, 16185)); // anim air_throw; cast 16185 PFX_sparkles_multi_cog_ninja-fan-of-blades on caster; enemy impact REMOVED (user: FX only on the animation, not the targets — sword bone placement still TODO)
+        new("Hidden Strike", MeleeIcon, 2609, MeleeAnimation, MeleeHitFx), // 2609 = ZAM/wiki "Ninja's Shadow Blade of Deception": Hidden Strike deals 2609 damage (already matched, now cited)
+        new("Fan of Blades",     22968, 5977, 1033, 0, 16185)); // Damage 5977 = ZAM/wiki "Ninja's Shadow Blade of Deception": Fan of Blades deals 5977 damage (already matched, now cited). anim air_throw; cast 16185 PFX_sparkles_multi_cog_ninja-fan-of-blades on caster; enemy impact REMOVED (user: FX only on the animation, not the targets — sword bone placement still TODO)
 
     // weapon def id -> kit. ALL 30 ninja weapons (5 model tiers) are wired now; each is named "Ninja's <weapon>
     // of X" and grants special X, so a lower tier just reuses the same tuned kit as the Shadow Blade (top tier).
