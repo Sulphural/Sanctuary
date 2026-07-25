@@ -955,6 +955,7 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         // and refills exactly as before (the UI grey-out feed, op38/13, doesn't change); the per-ability
         // cooldown is what actually stops Sniper Shot from blocking Rain of Arrows (or vice versa) the way a
         // single shared pool did.
+        var meleeRefreshMs = BasicSwingMs;
         if (!isBasicMelee)
         {
             if (TryGetAbilityCooldownRemainingMs(player, ability.Name, out var remainingMs))
@@ -981,6 +982,7 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             // Same effective duration the shared pool used to imply (cost/regen), just tracked per-ability now.
             var cooldownMs = (int)(cost / (float)EnergyRegenPerSec * 1000);
             StartAbilityCooldown(player, ability.Name, cooldownMs);
+            meleeRefreshMs = cooldownMs;
         }
 
         var startCastingFx = ability.CastEffectId;
@@ -1150,11 +1152,12 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         // see each other's moves/FX. Was caster-only, which is why teammates saw enemies die but not the moves.
         player.SendTunneledToVisible(startCasting, sendToSelf: true);
 
-        // Attack-cooldown sweep on the basic-attack button: tell the client the next swing is ready in the swing
-        // cadence (op36/11 MeleeRefresh sets cooldown-end = now + this). Basic attack only; specials are gated by
-        // energy, not this melee cooldown.
-        if (isBasicMelee)
-            player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = BasicSwingMs });
+        // Cooldown sweep on the ability button (grey + spinning radial together, matching retail - live-traced
+        // 2026-07-25: the client's AbilityProcessor only ever updates its cooldown-end/UI state off THIS packet;
+        // nothing else observed touches it). Previously sent for the basic swing only on the (wrong) assumption
+        // that specials were fully covered by the energy-bar grey-out; a live frida trace showed the special's
+        // op36 traffic never included a MeleeRefresh at all, which is why only the grey ever showed for it.
+        player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = meleeRefreshMs });
 
         // Weapon-empowering specials (Mysticism / Mystical Blade) bind their FX to the sword (item slot 7)
         // instead of the body. SlotCompositeEffectOverride op35/sub31: Guid + slot + composite effect.
