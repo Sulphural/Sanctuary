@@ -861,6 +861,42 @@ public sealed class Player : ClientPcData, IEntity
         if (Combat.NinjaWeaponAbilities.HasTrait(this, Combat.NinjaWeaponAbilities.NinjasGraceLevel))
             moveSpeed *= Combat.NinjaWeaponAbilities.NinjasGraceSpeedMultiplier;
 
+        // Crit chance/multiplier: mirrors the exact per-job trait logic in
+        // AbilityPacketClientRequestStartAbilityHandler's ApplyXTraitDamage functions (Sanctuary.Gateway) -
+        // kept in sync here (not just computed inline there) for two reasons: (a) so the client's own
+        // displayed stat reflects a trait unlock instead of staying at whatever ClientPcData set at login
+        // forever, and (b) CombatPacketAutoAttackTargetHandler's direct click-to-attack path reads THESE
+        // Stats values for its own crit roll (unlike the ability-bar path, which recomputes the chain fresh
+        // per hit) - before this, MeleeCriticalHitChance/Multiplier were only ever initialized to 0 at
+        // character load and never touched again, so a basic attack triggered by clicking an enemy directly
+        // could never crit at all, trait or no trait. Only one job is ever active, so only one branch fires.
+        var meleeCritChance = 0;
+        var meleeCritMultiplier = 1f;
+        if (Combat.ArcherWeaponAbilities.HasTrait(this, Combat.ArcherWeaponAbilities.PrecisionLevel))
+        {
+            meleeCritChance = Combat.ArcherWeaponAbilities.BaseCritChancePercent + Combat.ArcherWeaponAbilities.PrecisionCritChanceBonus;
+            meleeCritMultiplier = Combat.ArcherWeaponAbilities.BaseCritMultiplier;
+            if (Combat.ArcherWeaponAbilities.HasTrait(this, Combat.ArcherWeaponAbilities.MarksmanshipLevel))
+                meleeCritMultiplier += Combat.ArcherWeaponAbilities.MarksmanshipCritBonus;
+        }
+        else if (Combat.BrawlerWeaponAbilities.HasTrait(this, Combat.BrawlerWeaponAbilities.BruisingStrikesLevel))
+        {
+            meleeCritChance = Combat.BrawlerWeaponAbilities.BaseCritChancePercent + Combat.BrawlerWeaponAbilities.BruisingStrikesCritChanceBonus;
+            meleeCritMultiplier = Combat.BrawlerWeaponAbilities.BaseCritMultiplier;
+            if (Combat.BrawlerWeaponAbilities.HasTrait(this, Combat.BrawlerWeaponAbilities.SavvyLevel))
+                meleeCritMultiplier += Combat.BrawlerWeaponAbilities.SavvyCritBonus;
+        }
+        else if (Combat.WarriorWeaponAbilities.HasTrait(this, Combat.WarriorWeaponAbilities.PiercingStrikesLevel))
+        {
+            meleeCritChance = Combat.WarriorWeaponAbilities.BaseCritChancePercent + Combat.WarriorWeaponAbilities.PiercingStrikesCritChanceBonus;
+            meleeCritMultiplier = Combat.WarriorWeaponAbilities.BaseCritMultiplier;
+        }
+        else if (Combat.WizardWeaponAbilities.HasTrait(this, Combat.WizardWeaponAbilities.GeniusLevel))
+        {
+            meleeCritChance = Combat.WizardWeaponAbilities.BaseCritChancePercent + Combat.WizardWeaponAbilities.GeniusCritChanceBonus;
+            meleeCritMultiplier = Combat.WizardWeaponAbilities.BaseCritMultiplier;
+        }
+
         UpdateCharacterStats(
             new CharacterStat(CharacterStatId.MaxHealth, maxHealth),
             new CharacterStat(CharacterStatId.MaxMovementSpeed, moveSpeed),
@@ -873,9 +909,12 @@ public sealed class Player : ClientPcData, IEntity
             new CharacterStat(CharacterStatId.MeleeHandToHandDamage, 1),
             new CharacterStat(CharacterStatId.EquippedMeleeWeaponDamage, 1),
             new CharacterStat(CharacterStatId.MeleeAttackIntervalMs, 2000),
+            new CharacterStat(CharacterStatId.MeleeCriticalHitChance, meleeCritChance),
+            new CharacterStat(CharacterStatId.MeleeCriticalHitMultiplier, meleeCritMultiplier),
+            new CharacterStat(CharacterStatId.AbilityCriticalHitChance, meleeCritChance),
             new CharacterStat(CharacterStatId.DamageMultiplier, 1f),
             new CharacterStat(CharacterStatId.HealingMultiplier, 1f),
-            new CharacterStat(CharacterStatId.AbilityCriticalHitMultiplier, 1f),
+            new CharacterStat(CharacterStatId.AbilityCriticalHitMultiplier, meleeCritMultiplier),
             new CharacterStat(CharacterStatId.HeadInflationPercent, 100),
             new CharacterStat(CharacterStatId.RangeMultiplier, 1f),
             new CharacterStat(CharacterStatId.FactoryProductionModifier, 1f),

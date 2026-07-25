@@ -682,8 +682,8 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
                         var here = new Vector3(spirit.Position.X, spirit.Position.Y, spirit.Position.Z);
 
                         // Whole party down: disengage to the spawn post + idle (shared). Otherwise chase the
-                        // nearest player still standing.
-                        var tgt = NearestLivePlayer(here, players);
+                        // nearest player still standing (sticky - see NearestLivePlayerSticky).
+                        var tgt = NearestLivePlayerSticky(here, players, state);
                         if (tgt is null)
                         {
                             TickMobReturnHome(spirit, state, dt);

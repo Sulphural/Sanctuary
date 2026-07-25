@@ -50,7 +50,19 @@ public static class AbilityPacketClientRequestStartAbilityHandler
     // StartCasting ActionTime locks the action-bar slot for the whole swing/cast so you can't fire again mid-
     // animation; DamageDelay is when the number lands (as the swing connects / the special resolves).
     private const float SpecialActionTime = 0.4f;  // slot 1 named special — a real wind-up
-    private const float SpecialDamageDelay = 0.4f; // number pops at the end of the special's animation
+    private const float SpecialDamageDelay = 0.4f; // number pops at the end of the special's animation (melee/AoE only - ranged shots override this with the real projectile flight time, see ProjectileFlightSeconds below)
+
+    // Single source of truth for projectile speed - was hardcoded 90f at both Fire() call sites below, which
+    // is how it drifted out of sync with itself. Matches ProjectileNpc.Launch's own flightSec = dist/speed.
+    private const float ProjectileSpeed = 90f;
+
+    private static float ProjectileFlightSeconds(Vector4 from, Vector4 to)
+    {
+        var dx = to.X - from.X;
+        var dy = to.Y - from.Y;
+        var dz = to.Z - from.Z;
+        return MathF.Sqrt(dx * dx + dy * dy + dz * dz) / ProjectileSpeed;
+    }
 
     // Basic attack resolves ONE swing per ANIMATION, not per key-press (the client fires faster than the clip
     // plays). Pace it to the swing animation's length so the slot locks + the damage number land in sync and you
@@ -64,6 +76,23 @@ public static class AbilityPacketClientRequestStartAbilityHandler
     private static int SwingMsForAnimation(int anim) => SwingMsByAnim.GetValueOrDefault(anim, BasicSwingMs);
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, long> _nextBasicSwingTicks = new();
 
+    // Shared with CombatPacketAutoAttackTargetHandler so a basic swing paces + syncs identically no matter
+    // which client input triggers it (toolbar press = op36, direct click-to-attack = op32). Before this, op32
+    // applied damage instantly with no pace gate at all - a raw click-attack could out-swing and out-pace the
+    // exact same weapon fired from the toolbar, which is the kind of per-input-path inconsistency that makes
+    // combat feel desynced. Returns false (drop the swing, no damage) if the previous swing hasn't finished.
+    internal static bool TryGateBasicSwing(Player player, int animation, out float damageDelay)
+    {
+        var swingMs = SwingMsForAnimation(animation);
+        damageDelay = swingMs * 0.85f / 1000f;
+
+        var now = Environment.TickCount64;
+        if (_nextBasicSwingTicks.TryGetValue(player.Guid, out var next) && now < next)
+            return false; // still mid-swing — ignore this extra click (no damage, no re-pace)
+        _nextBasicSwingTicks[player.Guid] = now + swingMs;
+        return true;
+    }
+
     // Energy (from the 2014-04-01 capture): max 100, regen +4/s time-based (full refill 25s, in & out of combat,
     // no kill chunks). Special (slot 1) costs the whole bar (100); basic (slot 0) costs nothing. Reported on the
     // same op38/sub13 ClientUpdatePacketMana the real server used.
@@ -76,6 +105,37 @@ public static class AbilityPacketClientRequestStartAbilityHandler
     private const int EnergyRegenPerSec = 10;
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, int> _energy = new();
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, bool> _regenRunning = new();
+
+    // Real per-ability cooldowns, independent of the shared energy pool above. Before this, every non-basic
+    // ability on a job drained the SAME energy bar, so jobs with more than one special (Archer: Special +
+    // Sniper Shot + Rain of Arrows, all on separate toolbar slots) couldn't have two up at once even though
+    // they're meant to be independently-cooldown-gated abilities, not one shared resource - firing Sniper
+    // Shot blocked Rain of Arrows for the same ~5s it blocked Sniper Shot itself. Jobs with only one special
+    // (everyone but Archer today) don't visibly change - there was nothing else to compete with. Duration is
+    // derived from the SAME cost/regen numbers the energy pool already used (cost/EnergyRegenPerSec), so this
+    // doesn't change how fast anything comes back — it only makes each ability's timer its own, instead of
+    // all specials sharing one clock.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, System.Collections.Concurrent.ConcurrentDictionary<string, long>> _abilityCooldownEndTicks = new();
+
+    private static bool TryGetAbilityCooldownRemainingMs(Player player, string abilityName, out long remainingMs)
+    {
+        remainingMs = 0;
+        if (!_abilityCooldownEndTicks.TryGetValue(player.Guid, out var perAbility))
+            return false;
+        if (!perAbility.TryGetValue(abilityName, out var endTicks))
+            return false;
+        var now = Environment.TickCount64;
+        if (now >= endTicks)
+            return false;
+        remainingMs = endTicks - now;
+        return true;
+    }
+
+    private static void StartAbilityCooldown(Player player, string abilityName, int durationMs)
+    {
+        var perAbility = _abilityCooldownEndTicks.GetOrAdd(player.Guid, _ => new());
+        perAbility[abilityName] = Environment.TickCount64 + durationMs;
+    }
 
     private static int GetEnergy(Player player) => _energy.TryGetValue(player.Guid, out var e) ? e : MaxEnergy;
 
@@ -879,32 +939,48 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         var damageDelay = isBasicMelee ? swingMs * 0.85f / 1000f : SpecialDamageDelay;
 
         // Server-side pace backup: drop presses that arrive before the current swing finishes, so we get one
-        // swing + one damage number per animation, not one per key-press.
+        // swing + one damage number per animation, not one per key-press. Feedback via AbilityPacketFailed
+        // (op36/1) - the same packet the item-ability path (HandleItemAbility/SendFailure) already sends on
+        // its own denials; combat presses used to just go silent here with nothing telling the client why.
         if (isBasicMelee && swingMs > 0)
         {
             var now = Environment.TickCount64;
             if (_nextBasicSwingTicks.TryGetValue(player.Guid, out var next) && now < next)
-                return true; // still mid-swing — ignore this extra click (no cast, no number)
+                return SendFailure(connection); // still mid-swing — ignore this extra click (no cast, no number)
             _nextBasicSwingTicks[player.Guid] = now + swingMs;
         }
 
-        // Energy gate (non-basic slots): each ability drains its EnergyCost (weapon specials = full 100, archer
-        // level abilities = 50). Can't afford it => drop the press. Matches the server-gated special.
+        // Gate (non-basic slots): the pressed ability must have both energy available AND its OWN cooldown
+        // expired - two independent gates now, not one shared pool standing in for both. Energy still drains
+        // and refills exactly as before (the UI grey-out feed, op38/13, doesn't change); the per-ability
+        // cooldown is what actually stops Sniper Shot from blocking Rain of Arrows (or vice versa) the way a
+        // single shared pool did.
         if (!isBasicMelee)
         {
+            if (TryGetAbilityCooldownRemainingMs(player, ability.Name, out var remainingMs))
+            {
+                _logger.LogInformation("StartAbility: ability '{name}' blocked — {ms}ms left on its own cooldown.",
+                    ability.Name, remainingMs);
+                return SendFailure(connection);
+            }
+
             var cost = ability.EnergyCost;
             var energy = GetEnergy(player);
             if (energy < cost)
             {
                 _logger.LogInformation("StartAbility: ability blocked — energy {e}/{max} < {cost}.",
                     energy, MaxEnergy, cost);
-                return true;
+                return SendFailure(connection);
             }
 
             var remaining = energy - cost;
             _energy[player.Guid] = remaining;
             SendEnergy(player, remaining);   // op38/sub13: bar drops by the cost
             StartEnergyRegen(player);        // begin the +4/sec refill
+
+            // Same effective duration the shared pool used to imply (cost/regen), just tracked per-ability now.
+            var cooldownMs = (int)(cost / (float)EnergyRegenPerSec * 1000);
+            StartAbilityCooldown(player, ability.Name, cooldownMs);
         }
 
         var startCastingFx = ability.CastEffectId;
@@ -1000,17 +1076,27 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             // bridge across the whole flight path ("laser line" instead of a moving bolt).
             var lingerMs = ability.CastEffectStopMs > 0 ? ability.CastEffectStopMs : 1200;
             ProjectileNpc.Fire(projectileZone, player, muzzle, aim, impactGuid,
-                trailEffId: trailFx, impactEffId: 0, speed: 90f, lingerMs: lingerMs);
+                trailEffId: trailFx, impactEffId: 0, speed: ProjectileSpeed, lingerMs: lingerMs);
 
             // The extra multishot bolts: same muzzle, fanning out to each extra victim.
             foreach (var extra in multishotExtras)
             {
                 var extraAim = new System.Numerics.Vector4(extra.Position.X, extra.Position.Y + 0.7f, extra.Position.Z, 1f);
                 ProjectileNpc.Fire(projectileZone, player, muzzle, extraAim, extra.Guid,
-                    trailEffId: trailFx, impactEffId: 0, speed: 90f, lingerMs: lingerMs);
+                    trailEffId: trailFx, impactEffId: 0, speed: ProjectileSpeed, lingerMs: lingerMs);
             }
             firedProjectile = true;
             startCastingFx = 0; // the projectile carries the trail — nothing pinned on the caster
+
+            // Damage/hit-FX used to land on the flat SpecialDamageDelay (0.4s) regardless of how far the bolt
+            // actually had to fly - at close range the number popped ~350ms before the bolt visually arrived,
+            // and past ~36m (0.4s * 90u/s) it could land before the bolt was even halfway there. Tie it to the
+            // same dist/speed flight time ProjectileNpc itself uses, so the hit lands when the bolt does.
+            // (Multishot extras still share this one delay - they're all resolved in a single batch below - so
+            // this syncs the PRIMARY bolt exactly; extra bolts at a different distance from the primary target
+            // remain an approximation, same as before.)
+            if (impactGuid != 0)
+                damageDelay = ProjectileFlightSeconds(muzzle, aim);
         }
 
         // MELEE jobs: lingering cast FX (CastEffectStopMs > 0: trails/loops that never self-terminate) play as

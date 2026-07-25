@@ -604,8 +604,8 @@ public sealed class EncounterArenaZone : CombatEncounterZone
                         var here = new Vector3(mob.Position.X, mob.Position.Y, mob.Position.Z);
 
                         // Whole party down: disengage to the spawn post + idle (shared). Otherwise chase the
-                        // nearest player still standing.
-                        var tgt = NearestLivePlayer(here, players);
+                        // nearest player still standing (sticky - see NearestLivePlayerSticky).
+                        var tgt = NearestLivePlayerSticky(here, players, state);
                         if (tgt is null)
                         {
                             TickMobReturnHome(mob, state, dt);

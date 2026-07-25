@@ -832,8 +832,8 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
 
                         // Whole party down: DISENGAGE — amble back to the spawn post and idle there until someone
                         // revives (shared tick; resets Charging/Planted so the wolf re-engages cleanly). Otherwise
-                        // this wolf's target is the nearest player still standing.
-                        var tgt = NearestLivePlayer(here, players);
+                        // this wolf's target is the nearest player still standing (sticky - see NearestLivePlayerSticky).
+                        var tgt = NearestLivePlayerSticky(here, players, state);
                         if (tgt is null)
                         {
                             TickMobReturnHome(wolf, state, dt);

@@ -23,6 +23,7 @@ public class EncounterMobState
     public Vector4 Home;    // spawn post — mobs walk back here and idle while the player is knocked down
     public bool Idling;     // true once parked at Home (broadcast the idle stop only once)
     public bool Planted;    // true once stopped in attack range — stop re-broadcasting position (attack jitter)
+    public ulong TargetGuid; // who this mob is currently pursuing — see NearestLivePlayerSticky
 }
 
 // Shared base for the combat-encounter zones — the generic data-driven EncounterArenaZone
@@ -159,7 +160,12 @@ public abstract class CombatEncounterZone : BaseZone
     // while the player is knocked down. Subclasses run their own aggro/charge gating (and Frostfang its
     // roamer/waves), then call TickMobCombat for engaged mobs / TickMobReturnHome while the player is down.
 
-    protected const int TickMs = 300;
+    // Was 300ms (3.3Hz) - 3x coarser than the overworld CombatNpc's 10Hz tick (GatewayServer.cs), and unlike
+    // that path this loop broadcasts a position update every single tick unconditionally (no distance
+    // throttle), so mobs in dungeons moved in visibly larger ~1.5-1.8 unit jumps (MobChaseSpeed * old dt)
+    // instead of the smaller, more frequent steps the overworld uses - the main source of dungeon-specific
+    // rubber-banding/steppiness. Matching the overworld's cadence directly shrinks each step proportionally.
+    protected const int TickMs = 100;
     protected const float MobYSpeed = 12f;
     protected const float MobAttackRange = 2.6f;
     protected const float MobEngageRadius = 1.9f;
@@ -213,6 +219,52 @@ public abstract class CombatEncounterZone : BaseZone
             }
         }
         return best;
+    }
+
+    // Buffer (in units) a currently-pursued player must be beaten by before a mob switches target. Without
+    // this, re-picking the literal nearest player every tick made a mob's target - and therefore its pursued
+    // slot position - flip between two similarly-distant players in group combat, a visible jump each flip.
+    protected const float StickyTargetSwitchBuffer = 3f;
+
+    // Same as NearestLivePlayer, but sticks with the mob's current target (state.TargetGuid) unless it's
+    // dead/gone or a genuinely closer player has shown up (more than StickyTargetSwitchBuffer units nearer).
+    // Updates state.TargetGuid as a side effect. Use this for actual combat targeting; plain NearestLivePlayer
+    // is still fine for non-targeting lookups (e.g. TickFleeingAlpha just needs any live player to run from).
+    protected static Player? NearestLivePlayerSticky(Vector3 pos, IReadOnlyList<Player> players, EncounterMobState state)
+    {
+        Player? nearest = null;
+        var nearestD2 = float.MaxValue;
+        Player? current = null;
+        var currentD2 = float.MaxValue;
+
+        foreach (var p in players)
+        {
+            if (p.IsDead)
+                continue;
+            var dx = p.Position.X - pos.X;
+            var dz = p.Position.Z - pos.Z;
+            var d2 = dx * dx + dz * dz;
+            if (d2 < nearestD2)
+            {
+                nearestD2 = d2;
+                nearest = p;
+            }
+            if (p.Guid == state.TargetGuid)
+            {
+                current = p;
+                currentD2 = d2;
+            }
+        }
+
+        if (current is not null)
+        {
+            var buffered = MathF.Sqrt(nearestD2) + StickyTargetSwitchBuffer;
+            if (buffered * buffered >= currentD2)
+                return current; // nothing meaningfully closer - keep pursuing the current target
+        }
+
+        state.TargetGuid = nearest?.Guid ?? 0;
+        return nearest;
     }
 
     // Player is knocked down: disengage — amble back to the spawn post and idle there. Call this

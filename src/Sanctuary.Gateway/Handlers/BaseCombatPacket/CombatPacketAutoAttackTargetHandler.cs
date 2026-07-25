@@ -1,8 +1,10 @@
 using System;
+using System.Threading.Tasks;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Sanctuary.Game.Combat;
 using Sanctuary.Game.Entities;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
@@ -87,42 +89,64 @@ public static class CombatPacketAutoAttackTargetHandler
             return true;
         }
 
+        // Pace + sync this swing exactly like a basic attack fired from the toolbar (op36 slot 0) - same
+        // per-weapon swing length gate, same "damage lands as the swing connects" delay. Before this, a
+        // direct click-to-attack (this handler) landed damage INSTANTLY with no pace gate at all, while the
+        // toolbar path had a real wind-up - the same weapon felt like two different weapons depending on
+        // which input triggered the swing. TryGateBasicSwing shares its pace-tracking with the toolbar path,
+        // so alternating between click-attack and toolbar-attack can't be used to out-pace either one.
+        var basicAbility = JobWeaponAbilities.ResolveAbility(player, 0);
+        if (!AbilityPacketClientRequestStartAbilityHandler.TryGateBasicSwing(player, basicAbility.Animation, out var damageDelay))
+            return true; // still mid-swing — drop this extra click, no damage
+
         // Enter combat
         player.InCombat = true;
         player.LastCombatTime = DateTime.UtcNow;
         player.CombatTargetGuid = combatNpc.Guid;
         player.EnterWorldCombat(); // opens the client's floating-damage-number gate (op41 sub132/133)
 
-        // Calculate damage
+        // Calculate damage now (deterministic per swing), apply it once the delay elapses (as the swing
+        // connects), matching AbilityPacketClientRequestStartAbilityHandler.ResolveDamageAfterCast's pattern.
         var damage = CalculateMeleeDamage(player);
 
-        // Deal damage. The hit feedback rides op32/7 below, so suppress TakeDamage's own 35/35
-        // HitPointModification broadcast — sending both draws the floating number twice.
-        combatNpc.TakeDamage(damage, player, broadcastHitNumber: false);
-
-        // Damage-dealt confirmation to the attacking client (op32/4).
-        var attackDamage = new CombatPacketAttackTargetDamage
+        _ = Task.Run(async () =>
         {
-            AttackerGuid = player.Guid,
-            TargetGuid = combatNpc.Guid,
-            Damage = damage
-        };
+            try
+            {
+                await Task.Delay((int)(damageDelay * 1000));
 
-        player.SendTunneled(attackDamage);
+                if (!combatNpc.IsAlive || player.IsDead)
+                    return; // target died to an earlier hit, or the attacker went down mid-swing
 
-        // Per-hit feedback (op32/7): attacker plays the contact event (and, for the local player, the
-        // action-bar melee cooldown reset — correct here, this IS the melee swing); target shows the
-        // floating -Damage number, health bar, recoil. Broadcast so bystanders see the exchange too.
-        var attackProcessed = new CombatPacketAttackProcessed
-        {
-            AttackerGuid = player.Guid,
-            TargetGuid = combatNpc.Guid,
-            Damage = damage,
-            MaxHealth = combatNpc.MaxHitpoints,
-            CurrentHealth = combatNpc.CurrentHitpoints,
-        };
+                // Deal damage. The hit feedback rides op32/7 below, so suppress TakeDamage's own 35/35
+                // HitPointModification broadcast — sending both draws the floating number twice.
+                combatNpc.TakeDamage(damage, player, broadcastHitNumber: false);
 
-        player.SendTunneledToVisible(attackProcessed, sendToSelf: true);
+                // Damage-dealt confirmation to the attacking client (op32/4).
+                player.SendTunneled(new CombatPacketAttackTargetDamage
+                {
+                    AttackerGuid = player.Guid,
+                    TargetGuid = combatNpc.Guid,
+                    Damage = damage
+                });
+
+                // Per-hit feedback (op32/7): attacker plays the contact event (and, for the local player, the
+                // action-bar melee cooldown reset — correct here, this IS the melee swing); target shows the
+                // floating -Damage number, health bar, recoil. Broadcast so bystanders see the exchange too.
+                player.SendTunneledToVisible(new CombatPacketAttackProcessed
+                {
+                    AttackerGuid = player.Guid,
+                    TargetGuid = combatNpc.Guid,
+                    Damage = damage,
+                    MaxHealth = combatNpc.MaxHitpoints,
+                    CurrentHealth = combatNpc.CurrentHitpoints,
+                }, sendToSelf: true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Delayed basic-attack resolution failed.");
+            }
+        });
 
         return true;
     }
