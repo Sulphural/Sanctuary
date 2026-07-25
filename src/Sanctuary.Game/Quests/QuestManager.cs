@@ -716,10 +716,10 @@ public sealed class QuestManager : IQuestManager
     // goal's checkmark is already sent by CompleteGoal before this is called.
     private void TurnIn(Player player, QuestDefinition quest)
     {
-        // No QuestAdd re-send here: the end screen's bubble reads live QuestData column 10, which was set
-        // to TurnInDialogueId by SendActiveState at accept and is no longer changed mid-quest, so it's
-        // already correct. Re-sending QuestAdd would APPEND a duplicate journal row (the client never
-        // dedupes) that completion then can't fully clear - the bug that left finished quests in the journal.
+        // No QuestAdd re-send here: the end screen's bubble reads QuestEndPacket's own TitleId field
+        // below, not QuestData at all, so nothing needs refreshing. Re-sending QuestAdd would APPEND a
+        // duplicate journal row (the client never dedupes) that completion then can't fully clear -
+        // the bug that left finished quests in the journal.
         player.SendTunneled(new QuestEndPacket
         {
             // Camera focus = the LAST goal's NPC (where hand-in happens). For single-goal quests this is
@@ -742,12 +742,15 @@ public sealed class QuestManager : IQuestManager
         player.PendingQuestEndAction = () => CompleteQuest(player, quest.QuestId);
     }
 
-    // The journal/tracker entry. HelperTextId (client QuestData column 10) is read ONLY by the
-    // end screen's speech bubble - a patched ScriptsBase.bin points ShowEndScreen's SetNPCDialog at
-    // column 10 instead of DescriptionId, decoupling it from the journal. It's read LIVE each time
-    // an end screen shows, so re-sending this packet (the client updates an existing journal entry
-    // in place) swaps the bubble text: intermediate goal dialogs pass that goal's DialogueId,
-    // accept/turn-in pass TurnInDialogueId.
+    // The journal/tracker entry. HelperTextId (client QuestData column 10) is read by the end
+    // screen's speech bubble on a patched client (ScriptsBase.bin points ShowEndScreen's SetNPCDialog
+    // at column 10 instead of DescriptionId, decoupling it from the journal) - but on a STOCK/retail
+    // client, column 10 is also what the quest-helper TRACKER widget reads natively as its header
+    // while the quest is active (disassembly of the unmodified bytecode confirmed this). So this value
+    // must stay short while the quest is in progress: SendActiveState passes ObjectiveDescriptionId
+    // (retail-safe), not the long TurnInDialogueId. The actual turn-in bubble doesn't depend on this at
+    // all - the end screen reads QuestEndPacket's own TitleId field directly (see TurnIn()), on both
+    // patched and stock clients, so it stays correct regardless of what's sent here.
     private static void SendQuestAdd(Player player, QuestDefinition quest, int helperTextId, float completedPercentage = 0f)
     {
         player.SendTunneled(new QuestAddPacket
@@ -774,7 +777,7 @@ public sealed class QuestManager : IQuestManager
     private void SendActiveState(Player player, QuestDefinition quest)
     {
         int alreadyDone = player.QuestGoalProgress.TryGetValue(quest.QuestId, out var p) ? p : 0;
-        SendQuestAdd(player, quest, quest.TurnInDialogueId, (float)alreadyDone / quest.EffectiveGoals.Count);
+        SendQuestAdd(player, quest, quest.ObjectiveDescriptionId, (float)alreadyDone / quest.EffectiveGoals.Count);
 
         // PROGRESSIVE REVEAL: objective rows exist only for goals already completed plus the ACTIVE
         // one — the helper shows where you've been and what's next, never the quest's whole future
