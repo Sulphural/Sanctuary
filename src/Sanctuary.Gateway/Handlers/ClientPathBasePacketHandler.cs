@@ -44,6 +44,15 @@ public static class ClientPathBasePacketHandler
         };
     }
 
+    // "Arrived" radius for auto-walk session cancellation - close enough that the player would naturally
+    // interact with the target NPC, so keeps resending an auto-walk becomes pointless/annoying.
+    private const float ArrivalDistance = 8f;
+
+    // How far the resolved destination can drift between refreshes before we treat it as a genuinely
+    // DIFFERENT objective (a manual re-track) rather than the same tracked NPC/kill-goal wandering a
+    // little. A real goal switch shows up as one big jump on the very next refresh after it happens.
+    private const float DestinationChangeThreshold = 40f;
+
     private static bool HandlePathRequest(GatewayConnection connection, ReadOnlySpan<byte> data)
     {
         if (!ClientPathRequestPacket.TryDeserialize(data, out var request))
@@ -59,37 +68,68 @@ public static class ClientPathBasePacketHandler
         if (_questManager.TryGetActiveObjectiveTarget(player, out var targetPosition))
             destination = new Vector4(targetPosition, 1f);
 
-        var path = BuildPath(request.Start, destination);
+        var path = BuildPath(player, request.Start, destination);
 
         // The reply's ResultType routes it to a different client controller: 1 = the breadcrumb trail
         // (renders the green line), 2 = the character auto-move (pushes the path into the ProxiedCharacter's
         // movement so it actually walks).
-        //
-        // The trail always refreshes. The auto-walk must fire ONLY on a genuine "Take Me There" click
-        // (Mode 2). The client also sends passive refreshes (Mode 1) automatically on accept, on teleport,
-        // and as the player moves - replying to those with the auto-move made the character wander off to
-        // the objective on its own (the "auto Take Me There on accept/teleport" bug).
         var trail = new ClientPathReplyPacket { RequestId = request.RequestId, ResultType = 1 };
         trail.Path.AddRange(path);
         player.SendTunneled(trail);
 
         if (request.Mode == 2)
         {
+            // A genuine "Take Me There" click starts (or restarts) an active auto-walk session.
+            player.TakeMeThereActive = true;
+            player.TakeMeThereDestination = destination;
+        }
+        else if (player.TakeMeThereActive)
+        {
+            // Passive refresh mid-session (the client sends these automatically as the player moves).
+            // Only keep resending the walk while it's still the SAME objective and we haven't arrived -
+            // otherwise this is exactly the "wander off on its own" bug the Mode-2-only gate used to
+            // prevent, just re-triggered continuously instead of once.
+            var start3 = new Vector3(request.Start.X, request.Start.Y, request.Start.Z);
+            var dest3 = new Vector3(destination.X, destination.Y, destination.Z);
+            var lastDest3 = new Vector3(player.TakeMeThereDestination.X, player.TakeMeThereDestination.Y, player.TakeMeThereDestination.Z);
+
+            if (Vector3.Distance(start3, dest3) < ArrivalDistance || Vector3.Distance(lastDest3, dest3) > DestinationChangeThreshold)
+                player.TakeMeThereActive = false;
+            else
+                player.TakeMeThereDestination = destination;
+        }
+
+        if (player.TakeMeThereActive)
+        {
             var walk = new ClientPathReplyPacket { RequestId = request.RequestId, ResultType = 2 };
             walk.Path.AddRange(path);
             player.SendTunneled(walk);
         }
 
-        _logger.LogInformation("[Path] {kind} for {name}: {a} -> {b} ({n} nodes)",
-            request.Mode == 2 ? "Take-Me-There walk" : "trail refresh", player.Name, request.Start, destination, path.Count);
+        _logger.LogInformation("[Path] {kind} for {name}: {a} -> {b} ({n} nodes){active}",
+            request.Mode == 2 ? "Take-Me-There walk" : "trail refresh", player.Name, request.Start, destination, path.Count,
+            player.TakeMeThereActive ? " [session active]" : "");
         return true;
     }
 
-    // Builds the path the client walks. We have no server-side navmesh, so we send only the endpoints and
-    // let the client's character steering find its way around obstacles between them - packing in dense
-    // intermediate waypoints instead pins the character to the straight line and walks it into walls.
-    private static List<Vector4> BuildPath(Vector4 start, Vector4 destination)
+    // Builds the path the client walks. No true client-facing navmesh exists anywhere in the extracted
+    // assets (the client's Kynapse middleware builds its own at runtime from geometry the server never
+    // sees), so StartingZone seeds a waypoint graph from curated NPC spawn positions instead (see
+    // StartingZone.TryFindPath) and we route through that when available. NOTE each waypoint segment is
+    // sent as a straight line the client's auto-walk follows exactly (no local steering BETWEEN nodes -
+    // packing in a dense but unvalidated path pins the character to bad segments and walks it into walls),
+    // so graph edges are proximity-linked between real walkable points rather than arbitrary dense
+    // sampling. Falls back to the old 2-node straight line for zones without a graph, or if the graph
+    // can't connect start/destination (disconnected components).
+    private static List<Vector4> BuildPath(Sanctuary.Game.Entities.Player player, Vector4 start, Vector4 destination)
     {
+        if (player.Zone is Sanctuary.Game.Zones.StartingZone startingZone)
+        {
+            var graphPath = startingZone.TryFindPath(start, destination);
+            if (graphPath is not null)
+                return graphPath;
+        }
+
         return new List<Vector4> { start, destination };
     }
 }

@@ -58,6 +58,10 @@ public class DbCharacter
     public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? LastLogin { get; set; }
 
+    // "Spin For The Win!" (ClientActivityDefinitions Id=8) - null until the first spin; a spin is
+    // allowed once its UTC calendar day differs from LastDailyWheelSpinUtc's.
+    public DateTimeOffset? LastDailyWheelSpinUtc { get; set; }
+
     public ICollection<DbItem> Items { get; set; } = new HashSet<DbItem>();
     public ICollection<DbTitle> Titles { get; set; } = new HashSet<DbTitle>();
     public ICollection<DbMount> Mounts { get; set; } = new HashSet<DbMount>();

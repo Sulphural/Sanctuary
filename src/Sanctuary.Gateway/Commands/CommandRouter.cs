@@ -90,6 +90,10 @@ public static class CommandRouter
                 return HandleNpc(conn, parts);
             case "luaspawn":
                 return HandleLuaSpawn(conn, parts);
+            case "spinwheel":
+                return HandleSpinWheel(conn);
+            case "waypoints":
+                return HandleWaypoints(conn, parts);
             case "luareload":
                 return HandleLuaReload(conn, parts);
             case "admin":
@@ -989,7 +993,8 @@ public static class CommandRouter
             "/testsubtext - Subtext probe\n" +
             "/lua [code] - Run a client Lua snippet\n" +
             "/luaspawn [NpcId] - Spawn an NPC on top of you via the server's zone-script spawn API (default: boombox)\n" +
-            "/luareload - Reload your zone's .lua script from disk and re-run it, no server restart needed";
+            "/luareload - Reload your zone's .lua script from disk and re-run it, no server restart needed\n" +
+            "/spinwheel - Trigger the Spin For The Win offer panel directly, bypassing the minigames Browser";
 
         if (IsEnforcer(conn))
         {
@@ -1224,6 +1229,104 @@ public static class CommandRouter
         }
 
         SendSystem(conn, $"Spawned NpcId {npcId} on top of you via TrySpawnNpc (the Lua spawn API).");
+        return true;
+    }
+
+    // /spinwheel - triggers the "Spin For The Win!" daily roll directly (same as clicking the kiosk near
+    // spawn). No visual wheel widget - see StartingZone.SpinDailyWheel for why.
+    private static bool HandleSpinWheel(GatewayConnection conn)
+    {
+        if (!RequireAdmin(conn))
+            return true;
+
+        if (conn.Player.Zone is not Sanctuary.Game.Zones.StartingZone startingZone)
+        {
+            SendSystem(conn, "You must be in the starting zone to use /spinwheel.");
+            return true;
+        }
+
+        startingZone.SpinDailyWheel(conn.Player);
+
+        SendSystem(conn, "/spinwheel -> rolled the Spin For The Win daily reward directly.");
+        return true;
+    }
+
+    // Marker guids from the last /waypoints call, so /waypoints clear can despawn exactly those (and
+    // /waypoints re-running clears the previous batch automatically instead of piling up).
+    private static readonly List<ulong> _waypointMarkerGuids = [];
+    private const int WaypointMarkerModelId = 841; // loot_coins - small, visible, distinct from NPCs
+
+    // /waypoints [radius=60] - spawns a small visible marker at every "Take Me There" waypoint node
+    // within radius units, nameplated with its node id, so bad edges (routes cutting through geometry)
+    // can be spotted in-game and reported back by id. Also logs each node's neighbor ids to system chat.
+    // /waypoints clear - despawns the markers from the last call.
+    private static bool HandleWaypoints(GatewayConnection conn, string[] parts)
+    {
+        if (!RequireAdmin(conn))
+            return true;
+
+        if (parts.Length >= 2 && parts[1].Equals("clear", StringComparison.OrdinalIgnoreCase))
+        {
+            if (conn.Player.Zone is Sanctuary.Game.Zones.StartingZone clearZone)
+            {
+                foreach (var guid in _waypointMarkerGuids)
+                {
+                    if (clearZone.TryGetNpc(guid, out var marker))
+                        marker.Dispose();
+                }
+            }
+            SendSystem(conn, $"/waypoints clear -> removed {_waypointMarkerGuids.Count} markers.");
+            _waypointMarkerGuids.Clear();
+            return true;
+        }
+
+        if (conn.Player.Zone is not Sanctuary.Game.Zones.StartingZone startingZone)
+        {
+            SendSystem(conn, "You must be in the starting zone to use /waypoints.");
+            return true;
+        }
+
+        var radius = 60f;
+        if (parts.Length >= 2 && !float.TryParse(parts[1], out radius))
+        {
+            SendSystem(conn, "Usage: /waypoints [radius=60] | /waypoints clear");
+            return true;
+        }
+
+        foreach (var guid in _waypointMarkerGuids)
+        {
+            if (startingZone.TryGetNpc(guid, out var oldMarker))
+                oldMarker.Dispose();
+        }
+        _waypointMarkerGuids.Clear();
+
+        const int maxMarkers = 60;
+        var nodes = startingZone.GetNearbyWaypoints(conn.Player.Position, radius);
+        var truncated = nodes.Count > maxMarkers;
+        if (truncated)
+            nodes = nodes.GetRange(0, maxMarkers);
+
+        foreach (var (id, position, neighbors) in nodes)
+        {
+            if (!startingZone.TryCreateNpc(out var marker))
+                continue;
+
+            marker.ModelId = WaypointMarkerModelId;
+            marker.Name = $"wp {id}";
+            marker.NameId = 0;
+            marker.Static = true;
+            marker.Scale = 1f;
+            marker.Visible = true;
+            marker.IsInteractable = false;
+            marker.HideNamePlate = false;
+            marker.UpdatePosition(position, System.Numerics.Quaternion.Identity);
+
+            _waypointMarkerGuids.Add(marker.Guid);
+            _logger.LogInformation("wp {id} @ ({x:F1}, {y:F1}, {z:F1}) -> neighbors [{neighbors}]",
+                id, position.X, position.Y, position.Z, string.Join(",", neighbors));
+        }
+
+        SendSystem(conn, $"/waypoints -> spawned {nodes.Count} markers within {radius} units{(truncated ? " (capped, use a smaller radius for full coverage)" : "")}. Node ids + neighbor lists are in the server log. /waypoints clear to remove.");
         return true;
     }
 

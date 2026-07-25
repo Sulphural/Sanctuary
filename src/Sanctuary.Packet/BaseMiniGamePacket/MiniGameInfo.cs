@@ -1,5 +1,6 @@
-﻿using Sanctuary.Core.IO;
-using Sanctuary.Packet.Common;
+using System.Collections.Generic;
+
+using Sanctuary.Core.IO;
 
 namespace Sanctuary.Packet;
 
@@ -11,9 +12,13 @@ public class MiniGameInfo : ISerializableType
     public int Difficulty;
     public int ProfileType;
 
-    public RewardBundleBase RewardBundleBase = new();
-    public RewardBundleBase RewardBundleBase_Member = new();
-    public RewardBundleBase RewardBundleBase_Preview = new();
+    // The reward preview bundle - IDA/live-04-01-ground-truthed (see RewardBundle.cs): its coins/xp
+    // scalars (U2/U3) are what "the Lua end-screen wheel reads bundle-DS cols 2/3 as xp/coins" reads to
+    // know what to render. RewardBundleBase/RewardBundleBase_Member are unused (kept empty) - only
+    // RewardBundleBase_Preview is shown by any Wheel-type (Type=22) minigame.
+    public List<RewardEntry> PreviewRewards = [];
+    public int PreviewCoins;
+    public int PreviewXp;
 
     // public List<ObjectiveData> Objectives;
 
@@ -99,9 +104,11 @@ public class MiniGameInfo : ISerializableType
 
         writer.Write(MembersOnly);
 
-        RewardBundleBase.Serialize(writer);
-        RewardBundleBase_Member.Serialize(writer);
-        RewardBundleBase_Preview.Serialize(writer);
+        RewardBundle.Write(writer, []); // RewardBundleBase (unused)
+        RewardBundle.Write(writer, []); // RewardBundleBase_Member (unused)
+        RewardBundle.Write(writer, PreviewRewards, PreviewCoins, PreviewXp,
+            PreviewRewards.Count > 0 ? PreviewRewards[0].IconId : -1,
+            PreviewRewards.Count > 0 ? PreviewRewards[0].NameId : -1); // RewardBundleBase_Preview
 
         // TODO: Objectives
         writer.Write(0);

@@ -7,6 +7,7 @@ using Sanctuary.Core.Helpers;
 using Sanctuary.Core.IO;
 using Sanctuary.Game;
 using Sanctuary.Packet;
+using Sanctuary.Packet.Common;
 using Sanctuary.Packet.Common.Attributes;
 
 namespace Sanctuary.Gateway.Handlers;
@@ -188,6 +189,12 @@ public static class ActivityPacketJoinActivityRequestHandler
             };
 
             connection.SendTunneled(miniGameInfoPacket);
+        }
+        // "Spin For The Win!" daily reward roll (no visual wheel - see StartingZone.SpinDailyWheel for why).
+        else if (packet.ActivityId == 8)
+        {
+            if (connection.Player.Zone is Sanctuary.Game.Zones.StartingZone startingZone)
+                startingZone.SpinDailyWheel(connection.Player);
         }
         // ★ COMBAT DUNGEONS: pressing Play on a dungeon in the minigames menu's "Battles" section (and
         // clicking its marker on the atlas) sends JoinActivityRequest with its activity id. Don't drop the

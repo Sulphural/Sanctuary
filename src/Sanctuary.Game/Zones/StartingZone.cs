@@ -8,13 +8,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Sanctuary.Core.Extensions;
+using Sanctuary.Core.Helpers;
 using Sanctuary.Core.IO;
 using Sanctuary.Game.Combat;
 using Sanctuary.Game.Entities;
+using Sanctuary.Game.Pathfinding;
 using Sanctuary.Game.Resources.Definitions;
 using Sanctuary.Game.Resources.Definitions.Zones;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
+using Sanctuary.Packet.Common.Chat;
 
 namespace Sanctuary.Game.Zones;
 
@@ -25,6 +28,24 @@ public sealed partial class StartingZone : BaseZone
     private readonly StartingZoneDefinition _zoneDefinition;
     private readonly Sanctuary.Game.Quests.IQuestManager _questManager;
     private readonly Sanctuary.Game.Party.IPartyManager _partyManager;
+    private readonly Microsoft.EntityFrameworkCore.IDbContextFactory<Sanctuary.Database.DatabaseContext> _dbContextFactory;
+
+    // "Take Me There" real routing — see ClientPathBasePacketHandler.BuildPath. No client-facing navmesh
+    // exists anywhere in the extracted assets, so this is seeded from real walkable ground: every curated
+    // Npcs.json spawn position (the same data StartingZone.TrySpawnNpc places the overworld roster from)
+    // becomes a waypoint node, proximity-linked to its nearest neighbors. Built once at zone construction.
+    private readonly WaypointGraph _waypointGraph;
+    private const float WaypointMaxEdgeDistance = 30f;
+    private const int WaypointMaxNeighborsPerNode = 6;
+    // Rejects edges between points on a different floor/elevation despite being close in X/Z (a likely
+    // "outside vs. upstairs/inside a building" pair) - see WaypointGraph.BuildFromPoints.
+    private const float WaypointMaxYDelta = 10f;
+
+    // Optional real obstacle data (see GcnkParser/ObstacleMap) parsed from the client's per-tile ".gcnk"
+    // placement files - EXTERNAL to this repo (the game's own client assets, not something we ship or
+    // commit), so this is entirely best-effort: if the directory isn't present the zone just falls back
+    // to the pure NPC-proximity graph with no obstacle validation, same as before this existed.
+    private const string GcnkAssetsDirectory = @"C:\Users\nadim\Desktop\sharedVM\everythingFR\FRAssets\Assets";
 
     public StartingZone(StartingZoneDefinition zoneDefinition, IServiceProvider serviceProvider)
         : base(zoneDefinition, serviceProvider)
@@ -35,12 +56,67 @@ public sealed partial class StartingZone : BaseZone
         _resourceManager = serviceProvider.GetRequiredService<IResourceManager>();
         _questManager = serviceProvider.GetRequiredService<Sanctuary.Game.Quests.IQuestManager>();
         _partyManager = serviceProvider.GetRequiredService<Sanctuary.Game.Party.IPartyManager>();
+        _dbContextFactory = serviceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Sanctuary.Database.DatabaseContext>>();
+
+        var obstacleMap = BuildObstacleMap();
+
+        var waypointPoints = _resourceManager.Npcs.Values
+            .Where(d => d.SpawnPosition[0] != 0f || d.SpawnPosition[2] != 0f) // drop origin/placeholder entries
+            .Select(d => d.Position)
+            .ToList();
+        _waypointGraph = WaypointGraph.BuildFromPoints(waypointPoints, WaypointMaxEdgeDistance, WaypointMaxNeighborsPerNode, WaypointMaxYDelta, obstacleMap);
+        _logger.LogInformation("Built overworld waypoint graph: {n} nodes{obstacleNote}.", _waypointGraph.NodeCount,
+            obstacleMap is null ? " (no obstacle data - .gcnk directory not found)" : $" ({obstacleMap.ObstacleCount} real obstacles)");
 
         // The Npcs.json roster itself is spawned by the zone's Lua script (Scripts/Zone/FabledRealms.lua,
         // generated 1:1 from Npcs.json) via TrySpawnNpc below — see OnStart, called by ZoneManager right
         // after construction finishes. Collect-goal pickups aren't part of that roster (they come from
         // Quests.json), so they still spawn directly here.
         SpawnQuestCollectibles();
+    }
+
+    // Scans GcnkAssetsDirectory for every "FabledRealms_*.gcnk"/".gcnk.z" tile file, parses each with
+    // GcnkParser, and builds an ObstacleMap from the placements. Returns null (not empty) if the directory
+    // doesn't exist, so the caller can fall back to the pure NPC-proximity graph instead of "successfully"
+    // building an obstacle map with zero obstacles in it.
+    private ObstacleMap? BuildObstacleMap()
+    {
+        if (!System.IO.Directory.Exists(GcnkAssetsDirectory))
+            return null;
+
+        var placements = new List<GcnkParser.Placement>();
+        var tileFiles = System.IO.Directory.EnumerateFiles(GcnkAssetsDirectory, "FabledRealms_*.gcnk*", System.IO.SearchOption.AllDirectories);
+        var fileCount = 0;
+
+        foreach (var file in tileFiles)
+        {
+            fileCount++;
+            try
+            {
+                placements.AddRange(GcnkParser.ParseFile(file));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse {file} while building the obstacle map.", file);
+            }
+        }
+
+        _logger.LogInformation("Parsed {fileCount} .gcnk tile files -> {placementCount} object placements.", fileCount, placements.Count);
+        return ObstacleMap.Build(placements);
+    }
+
+    // Real A* routing for "Take Me There" (see ClientPathBasePacketHandler.BuildPath). Returns null if the
+    // graph can't connect start/destination (disconnected components) - caller falls back to a straight line.
+    public List<Vector4>? TryFindPath(Vector4 start, Vector4 destination)
+    {
+        return _waypointGraph.FindPath(start, destination);
+    }
+
+    // Debug aid for CommandRouter's /waypoints - nodes near a position, with their edges, so bad
+    // connections can be reported back by exact id.
+    public List<(int Id, Vector4 Position, IReadOnlyList<int> Neighbors)> GetNearbyWaypoints(Vector4 position, float radius)
+    {
+        return _waypointGraph.GetNodesNear(position, radius);
     }
 
     public override void OnStart()
@@ -57,6 +133,9 @@ public sealed partial class StartingZone : BaseZone
 
         // Place a wandering "Battle Starter" creature for each small combat encounter, among its own kind.
         SpawnEncounterEntryNpcs();
+
+        // Place a clickable "Spin For The Win!" kiosk near spawn — see SpawnDailyWheelKiosk for why.
+        SpawnDailyWheelKiosk();
     }
 
     // NPCs come from the community-contributed Npcs.json (fixed scale/rotation, static-marked). The guid
@@ -841,6 +920,199 @@ public sealed partial class StartingZone : BaseZone
                 State = 5,
             });
         });
+    }
+
+    // "Spin For The Win!" (ActivityId 8, Category 17) - a standalone daily reward roll, once per UTC
+    // calendar day per character.
+    //
+    // NO visual wheel widget: the original design (launch the same loot-wheel widget dungeons show at a
+    // win, via ActivityLaunchRequest -> MiniGameGroupInfo -> BeginLoad) was live-tested 2026-07-24 and
+    // found to SOFT-LOCK the client - ClientActivityLaunchRequests.log + FreeRealms.log showed the launch
+    // state machine progressing all the way to BeginLoad, then failing ("AssetDeliveryIndirect::
+    // GetAssetData failed, asset not in manifest: undefined" - a null MiniGameGroupInfo.BackgroundSwf)
+    // and leaving the client in a stuck loading state (no visible panel, input blocked) even after a
+    // BackgroundSwf placeholder fix got further into the sequence. Abandoned in favor of resolving the
+    // spin directly, with no client-side minigame launch involved at all - nothing left that can hang.
+    //
+    // Lives here (not in the Gateway handler) so it can be called both from
+    // ActivityPacketJoinActivityRequestHandler (a real client JoinActivityRequest, should the Browser's
+    // Play button for it ever work) AND from SpawnDailyWheelKiosk's InteractAction below (Sanctuary.Game
+    // can't reference Sanctuary.Gateway) - same split SendDungeonOffer already uses.
+    public void SpinDailyWheel(Player player)
+    {
+        using var dbContext = _dbContextFactory.CreateDbContext();
+
+        var dbCharacter = dbContext.Characters.SingleOrDefault(x => x.Id == GuidHelper.GetPlayerId(player.Guid));
+        if (dbCharacter is null)
+            return;
+
+        var now = DateTimeOffset.UtcNow;
+        if (dbCharacter.LastDailyWheelSpinUtc is { } last && last.UtcDateTime.Date == now.UtcDateTime.Date)
+        {
+            player.SendTunneled(new PacketChat
+            {
+                Channel = ChatChannel.System,
+                Message = "You've already spun the wheel today. Come back tomorrow!"
+            });
+            return;
+        }
+
+        // PLACEHOLDER reward: the real retail prize table for this wheel isn't known (the wheel graphic
+        // shows potion/pet/TCG-card slices, but we have no data on the actual odds or item ids behind
+        // them) - flat random coins for now.
+        var coins = Random.Shared.Next(SpinForTheWinMinCoins, SpinForTheWinMaxCoins + 1);
+
+        dbCharacter.LastDailyWheelSpinUtc = now;
+        dbCharacter.Coins += coins;
+        dbContext.SaveChanges();
+
+        player.Coins = dbCharacter.Coins;
+        player.SendTunneled(new ClientUpdatePacketCoinCount { Coins = player.Coins });
+        player.SendTunneled(new RewardBundlePacket { Coins = coins, Unknown15 = 957 });
+
+        player.SendTunneled(new PacketChat
+        {
+            Channel = ChatChannel.System,
+            Message = $"Spin For The Win! You won {coins} coins!"
+        });
+
+        _logger.LogInformation("Spin For The Win: {name} spun for {coins} coins.", player.Name, coins);
+    }
+
+    private const int SpinForTheWinMinCoins = 50;
+    private const int SpinForTheWinMaxCoins = 500;
+
+    // EXPERIMENTAL launch attempt, kept SEPARATE from SpinDailyWheel (which stays the guaranteed-working
+    // fallback - see /spinwheel in CommandRouter). game_wheel.lst.z (extracted asset manifest) resolves to
+    // srcfilename=C:\dev\FreeRealms\Live\Runtime\Client\UI\game_wheel.swf - a NATIVE Client\UI Scaleform/
+    // GFx widget (bundled with its own DDS textures), NOT an externally-hosted Flash game. That rules out
+    // the Type=3 "Client Flash" (Awesomium-hosted web browser) attempt this replaces - BeginLoad succeeded
+    // and OnGameStarted/ShowMiniGameHud fired, but the panel stayed blank because Client Flash content
+    // navigates an embedded web browser to a URL, which is the wrong pipeline entirely for a native gfx
+    // asset. Back to Type=22 ("Wheel", the type that originally soft-locked the client 2026-07-24) but
+    // this time with the CORRECT background asset name (game_wheel.gfx, not the dungeon-win
+    // LootWheelOfAwesomeness widget or the game_hidden.gfx blank placeholder). If this hangs the client
+    // again: Escape / "!home" / relog to recover.
+    public void LaunchSpinForTheWinGame(Player player, ClientActivityDefinition clientActivityDefinition)
+    {
+        const int ActivityId = 8;
+
+        var miniGameInfo = new MiniGameInfo()
+        {
+            NameId = clientActivityDefinition.DisplayNameId,
+            IconId = clientActivityDefinition.ImageSetId,
+            DescriptionId = clientActivityDefinition.DisplayDescriptionId,
+            Difficulty = clientActivityDefinition.Difficulty,
+            ProfileType = 0,
+            Type = 22, // Wheel - native Client\UI\game_wheel.swf widget, not a hosted Flash game
+            PreselectedGameId = ActivityId,
+            // Ground-truthed (RewardBundle.cs, real 04-01 capture): the wheel widget reads its
+            // slice/coin data from the preview bundle's coins/xp columns - an empty bundle gives it
+            // nothing to render, which is the likely reason the panel showed blank after BeginLoad
+            // succeeded cleanly. Placeholder amount (actual roll still happens in SpinDailyWheel).
+            PreviewCoins = (SpinForTheWinMinCoins + SpinForTheWinMaxCoins) / 2
+        };
+
+        var miniGameGroupInfo = new MiniGameGroupInfo()
+        {
+            Id = 69,
+            NameId = clientActivityDefinition.DisplayNameId,
+            DescriptionId = clientActivityDefinition.DisplayDescriptionId,
+            IconId = clientActivityDefinition.ImageSetId,
+            BackgroundSwf = "game_wheel.gfx"
+        };
+
+        using var writer = new PacketWriter();
+
+        miniGameInfo.Serialize(writer);
+
+        writer.Write(0); // Unused
+        writer.Write(0); // Unused
+
+        writer.Write(miniGameGroupInfo.Serialize());
+
+        var clientActivityLaunchPacketInviteDetails = new ClientActivityLaunchPacketInviteDetails(ActivityId, 0)
+        {
+            Guid = player.Guid,
+            Inviter = "Test",
+            Members =
+            {
+                new()
+                {
+                    Id = 1,
+                    Guid = player.Guid,
+                    InviteStatus = 2,
+                    IsFoundingMember = true
+                }
+            },
+            Request =
+            {
+                RequestorGuid = player.Guid,
+                SysHashkey = JenkinsHelper.OneAtATimeHash("Minigame"),
+                ReqId = 69420,
+                MinMembers = 1,
+                MaxMembers = 1,
+                ImageSetId = clientActivityDefinition.ImageSetId,
+                NameStringId = clientActivityDefinition.DisplayNameId,
+                DescStringId = clientActivityDefinition.DisplayDescriptionId,
+                SysSpecificData = writer.Buffer
+            }
+        };
+
+        player.SendTunneled(clientActivityLaunchPacketInviteDetails);
+
+        var clientActivityLaunchPacketActivityLaunched = new ClientActivityLaunchPacketActivityLaunched(ActivityId, 0);
+
+        clientActivityLaunchPacketActivityLaunched.Guids.Add(player.Guid);
+
+        player.SendTunneled(clientActivityLaunchPacketActivityLaunched);
+
+        var miniGameInfoPacket = new MiniGameInfoPacket(ActivityId, -1, -1)
+        {
+            Info = miniGameInfo
+        };
+
+        player.SendTunneled(miniGameInfoPacket);
+
+        _logger.LogInformation("Spin For The Win: launch attempt (Type=22, game_wheel.gfx) sent to {name}.", player.Name);
+    }
+
+    // World-clickable entry point for the daily wheel, mirroring the dungeon entrance widget below -
+    // ADDED 2026-07-24 because the minigames Browser's own Play button was observed staying permanently
+    // greyed out for this activity (selecting it never sent a JoinActivityRequest at all), so this gives
+    // it a second, proven-reliable entry point independent of that click chain.
+    private void SpawnDailyWheelKiosk()
+    {
+        if (!_resourceManager.ClientActivityDefinitions.TryGetValue(8, out var clientActivityDefinition))
+        {
+            _logger.LogWarning("SpawnDailyWheelKiosk: no ClientActivityDefinitions entry for ActivityId 8.");
+            return;
+        }
+
+        if (!TryCreateNpc(out var kiosk))
+            return;
+
+        kiosk.ModelId = AtlasEntranceModelId;
+        kiosk.NameId = clientActivityDefinition.DisplayNameId; // floating nameplate = "Spin For The Win!"
+        kiosk.Name = "Spin For The Win!";
+        kiosk.Static = true;
+        kiosk.Scale = 1f;
+        kiosk.Visible = true;
+        kiosk.HideNamePlate = false;
+        kiosk.CursorId = 11;
+        kiosk.InteractRange = 18;
+
+        // A few units off the world spawn point so it stands near the training dummy/Growler wolf.
+        var pos = new Vector4(SpawnPosition.X, SpawnPosition.Y, SpawnPosition.Z - 5f, SpawnPosition.W);
+
+        // Direct grant, no visual wheel widget - see SpinDailyWheel for why. LaunchSpinForTheWinGame
+        // (the game_wheel.gfx launch attempt) is kept for reference/future revisiting but is NOT wired up
+        // here: every attempt at it either rendered nothing or, in its two live-debugging attempts,
+        // crashed the client outright (2026-07-24) with zero useful diagnostic data either time.
+        kiosk.InteractAction = player => SpinDailyWheel(player);
+
+        kiosk.UpdatePosition(pos, SpawnRotation);
+        GetTileFromPosition(pos).Entities.TryAdd(kiosk.Guid, kiosk);
     }
 
     // ---- Wandering combat-encounter entries ("Battle Starters") ----

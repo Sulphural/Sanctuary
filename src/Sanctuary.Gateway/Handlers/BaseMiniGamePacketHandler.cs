@@ -263,17 +263,35 @@ public static class BaseMiniGamePacketHandler
         connection.SendTunneled(new ClientUpdatePacketCoinCount { Coins = connection.Player.Coins });
     }
 
+    // ClientActivityDefinitions Id=8, "Spin For The Win!" - PreselectedGameId comes back in the FIRST
+    // body int, not the third (live-confirmed 2026-07-24: every MiniGameStartGame logged today for this
+    // activity showed "8" in the field originally labeled StateId, with GroupId/GameId both -1 - the
+    // original [StateId][GroupId][GameId] field-order assumption from the `minigame` branch port was
+    // wrong for this activity).
+    private const int SpinForTheWinActivityId = 8;
+
     private static bool HandleStartGame(GatewayConnection connection, PacketReader reader)
     {
-        // body: [int StateId][int GroupId][int GameId]
-        if (!reader.TryRead(out int stateId) || !reader.TryRead(out int groupId) || !reader.TryRead(out int gameId))
+        // body: [int GameId][int GroupId][int StateId] (see field-order note above)
+        if (!reader.TryRead(out int gameId) || !reader.TryRead(out int groupId) || !reader.TryRead(out int stateId))
         {
             _logger.LogWarning("MiniGameStartGame: short body ( {hex} ) — acking anyway.", Convert.ToHexString(reader.Span));
-            stateId = 0; groupId = -1; gameId = -1;
+            gameId = -1; groupId = -1; stateId = 0;
         }
 
-        _logger.LogInformation("MiniGameStartGame (GO! pressed): StateId={state} GroupId={group} GameId={game}",
-            stateId, groupId, gameId);
+        _logger.LogInformation("MiniGameStartGame (GO! pressed): GameId={game} GroupId={group} StateId={state}",
+            gameId, groupId, stateId);
+
+        // GO! pressed on the daily wheel's launch panel - ack the start (same S2C GameStart every other
+        // minigame GO! gets) and let the client actually load/run the embedded game_wheel.swf content, so
+        // the player sees and plays the real wheel instead of the server short-circuiting straight to a
+        // reward. We don't yet know what the client reports back once the player finishes spinning inside
+        // it - that's the next thing to observe live (watch the server log after spinning in the panel).
+        if (gameId == SpinForTheWinActivityId)
+        {
+            connection.SendTunneled(new MiniGameGameStartPacket(0, -1, -1));
+            return true;
+        }
 
         // Same entry as the sub108 GO! path: proper server-side zone transfer into the arena
         // (also sends the GameStart ack).

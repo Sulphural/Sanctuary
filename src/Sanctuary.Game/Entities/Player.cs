@@ -65,6 +65,14 @@ public sealed class Player : ClientPcData, IEntity
     // the arena's ReturnHome). Null = fall back to the zone spawn.
     public System.Numerics.Vector4? EncounterReturnPosition { get; set; }
 
+    // "Take Me There" auto-walk session — see ClientPathBasePacketHandler. Set true on a real button
+    // click (Mode 2); while true, EVERY path refresh (including the passive ones the client sends
+    // automatically as the player moves) re-sends the auto-walk command too, so the character keeps
+    // re-committing to the current best path instead of drifting off the one segment it was told to
+    // walk once. Cleared on arrival or when the tracked objective's destination changes.
+    public bool TakeMeThereActive { get; set; }
+    public System.Numerics.Vector4 TakeMeThereDestination { get; set; }
+
     public IZone Zone { get; set; }
     public ZoneTile ZoneTile { get; private set; } = ZoneTile.Empty;
     public ConcurrentDictionary<ulong, Npc> VisibleNpcs { get; } = [];
