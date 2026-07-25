@@ -40,11 +40,24 @@
     </None>
   </ItemGroup>
 
+  <!--
+    $(SolutionDir) is only auto-defined by MSBuild when a .sln file is the build entry point
+    (e.g. Visual Studio). The Docker build invokes "dotnet build Sanctuary.Gateway.csproj" directly,
+    which leaves SolutionDir undefined and silently no-ops these copies. Use $(MSBuildThisFileDirectory)
+    (always this project's own directory) instead, so it works the same way everywhere.
+  -->
   <Target Name="CopyResources" AfterTargets="PostBuildEvent">
     <ItemGroup>
-      <ResourceFiles Include="$(SolutionDir)Resources\**\*.*" />
+      <ResourceFiles Include="$(MSBuildThisFileDirectory)..\Resources\**\*.*" />
     </ItemGroup>
     <Copy SourceFiles="@(ResourceFiles)" DestinationFolder="$(OutputPath)Resources\%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyScripts" AfterTargets="PostBuildEvent">
+    <ItemGroup>
+      <ScriptFiles Include="$(MSBuildThisFileDirectory)..\Scripts\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ScriptFiles)" DestinationFolder="$(OutputPath)Scripts\%(RecursiveDir)" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>
