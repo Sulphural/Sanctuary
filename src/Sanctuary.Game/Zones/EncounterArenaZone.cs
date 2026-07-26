@@ -206,7 +206,7 @@ public sealed class EncounterArenaZone : CombatEncounterZone
 
     private void StartEncounter(Player player)
     {
-        var spawns = BuildDungeonSpawns();
+        var spawns = BuildDungeonSpawns(out var spawnsAreReal);
 
         lock (_stateLock)
         {
@@ -246,7 +246,14 @@ public sealed class EncounterArenaZone : CombatEncounterZone
         _logger.LogInformation("{dungeon}: encounter start for {name} — {n} enemies pre-spawned in {world}.",
             Dungeon.Comment, player.Name, Dungeon.TotalEnemies, Dungeon.World);
 
-        StartGroundAdoption(player, _encounterRun);
+        // Ground adoption measures ONE player-settle height and applies it to EVERY idle mob - correct for
+        // the procedural layout (which only ever had one guessed GroundY to begin with), but WRONG for a
+        // scripted layout with real per-marker heights (a cave can have multiple real floor levels, e.g.
+        // this dungeon's sheet Y values range 30.34-41.37 across its packs) - it would flatten every mob
+        // onto whichever single height the player happens to settle at, sinking/floating them through the
+        // real terrain at every other elevation. Skip it entirely when the spawns are real.
+        if (!spawnsAreReal)
+            StartGroundAdoption(player, _encounterRun);
         StartAi(player, _encounterRun);
     }
 
@@ -258,7 +265,7 @@ public sealed class EncounterArenaZone : CombatEncounterZone
     // (south edge) to the far end (north), so the player walks through fighting cluster after cluster,
     // with the last group (usually the boss) waiting at the far end. Enemies only aggro within
     // AggroRange, so distant clusters stay put until you reach them.
-    private List<Vector4> BuildDungeonSpawns()
+    private List<Vector4> BuildDungeonSpawns(out bool spawnsAreReal)
     {
         // A zone script (Scripts/Zone/<world>.lua) can supply fixed spawn points via a getSpawnPoints(zone)
         // function that calls zone.addSpawnPoint(x, y, z) once per enemy, in the same group order as
@@ -267,8 +274,12 @@ public sealed class EncounterArenaZone : CombatEncounterZone
         // procedural layout below rather than silently spawning too few/many enemies.
         var scripted = CollectScriptSpawnPoints("getSpawnPoints");
         if (scripted.Count == Dungeon.TotalEnemies)
+        {
+            spawnsAreReal = true;
             return scripted;
+        }
 
+        spawnsAreReal = false;
         if (scripted.Count > 0)
         {
             _logger.LogWarning(
