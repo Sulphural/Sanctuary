@@ -30,6 +30,7 @@ internal sealed class ScriptableZone(IScriptZone zone) : ILuaUserData
                 "spawnNpc" => SpawnNpcFunction,
                 "spawnNpcWithGuid" => SpawnNpcWithGuidFunction,
                 "addSpawnPoint" => AddSpawnPointFunction,
+                "addSpawnArea" => AddSpawnAreaFunction,
                 _ => LuaValue.Nil
             };
 
@@ -73,6 +74,18 @@ internal sealed class ScriptableZone(IScriptZone zone) : ILuaUserData
         var z = context.GetArgument<float>(2);
 
         _zone.AddSpawnPoint(x, y, z);
+
+        return new ValueTask<int>(0);
+    });
+
+    private LuaFunction AddSpawnAreaFunction => new("addSpawnArea", (context, cancellationToken) =>
+    {
+        var x = context.GetArgument<float>(0);
+        var y = context.GetArgument<float>(1);
+        var z = context.GetArgument<float>(2);
+        var count = context.GetArgument<int>(3);
+
+        _zone.AddSpawnArea(x, y, z, count);
 
         return new ValueTask<int>(0);
     });

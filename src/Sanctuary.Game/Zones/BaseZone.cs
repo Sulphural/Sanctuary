@@ -380,6 +380,30 @@ public abstract class BaseZone : IZone, IDisposable
         _scriptSpawnPoints.Add(new Vector4(x, y, z, 1f));
     }
 
+    // A pack marker, not an individual: (x, y, z) is a real captured "there's a group here" point (e.g. a
+    // coordinate sheet's "Pack of 10 cray" row), and `count` scatters that many points in a ring around it
+    // instead of the script having to hand-plot every individual's own coordinate. Radius grows gently with
+    // count so bigger packs don't stack on top of each other. count<=1 just uses the marker itself.
+    public void AddSpawnArea(float x, float y, float z, int count)
+    {
+        if (count <= 1)
+        {
+            _scriptSpawnPoints.Add(new Vector4(x, y, z, 1f));
+            return;
+        }
+
+        var radius = MathF.Max(2f, 2f + count * 0.35f);
+        for (var i = 0; i < count; i++)
+        {
+            var angle = (float)(i * Math.Tau / count);
+            _scriptSpawnPoints.Add(new Vector4(
+                x + MathF.Sin(angle) * radius,
+                y,
+                z + MathF.Cos(angle) * radius,
+                1f));
+        }
+    }
+
     // Calls a named script function (if the zone has a script AND that function exists) and returns
     // whatever points it reported via zone.addSpawnPoint(...), in call order. Empty if there's no script,
     // the function isn't defined, or it didn't report anything — callers must treat empty as "no scripted

@@ -22,6 +22,12 @@ public class ScriptingTests
         public bool TrySpawnNpc(int npcId, ulong? npcGuid, float x, float y, float z, float heading) => true;
 
         public void AddSpawnPoint(float x, float y, float z) => SpawnPoints.Add((x, y, z));
+
+        public void AddSpawnArea(float x, float y, float z, int count)
+        {
+            for (var i = 0; i < count; i++)
+                SpawnPoints.Add((x, y, z));
+        }
     }
 
     private ServiceProvider _serviceProvider = null!;
