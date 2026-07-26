@@ -58,6 +58,12 @@ public sealed class DungeonDefinition
     public int BonusTargetModelId;
     public int BonusTargetCount;
 
+    // Optional real player-spawn / exit-door position (X, Y, Z), when it's known exactly (e.g. from a
+    // hand-captured coordinate sheet) instead of the generic center-based estimate EncounterArenaZone
+    // otherwise falls back to. Null = unchanged default behavior for every dungeon that doesn't set these.
+    public (float X, float Y, float Z)? SpawnOverride;
+    public (float X, float Y, float Z)? ExitOverride;
+
     public int TotalEnemies => Enemies.Sum(e => e.Count);
 }
 
@@ -1245,6 +1251,19 @@ public static class DungeonCatalog
         },
 
         // 900085  ATLAS DUNGEON (POI 85) Cracked Claw Caverns -> bs_cracked_claw_caverns
+        // Real layout from a hand-captured coordinate sheet (2026-07-25): 6 Swamp Cray packs (46 total)
+        // + 4 escort crays around the 2nd Elder + 2 Elder Swamp Cray + 13 roaming Venomous Frogs + the
+        // boss, all at their real positions via bs_cracked_claw_caverns.lua's getSpawnPoints (group order
+        // MUST match Enemies[] below: 50 Swamp Cray, 2 Elder Swamp Cray, 13 Venomous Frog, 1 boss = 66).
+        // NOT YET IMPLEMENTED from that same sheet (needs new spawner/objective mechanics the generic
+        // EncounterArenaZone doesn't have - placement-only, not dynamic spawns or interact objectives):
+        //   - 3 "Frog Log" spawners that produce Venomous Frogs over time (no live-spawner concept exists)
+        //   - Swamp Cray Brood hatching from 8 eggs in the boss room on engage (no hatch-on-trigger concept)
+        //   - Bonus goal "Release the trapped spirits... 0/6" (interact-based; the bonus system here only
+        //     supports "kill N of model X", and the sheet gives no coordinates for the 6 spirits anyway)
+        // Model ids: Swamp Cray = 471 cray_arctic_swamp.adr, Elder Swamp Cray = 677 cray_boss_swamp.adr
+        // (real "elder" variant), boss = 4446 cray_king_lowtide.adr (the existing "ancient/king" cray boss
+        // model reused elsewhere in this catalog - no distinct "Cracked Claw" model exists in Models.txt).
         [118] = new()
         {
             ActivityId = 118, PoiId = 85, Comment = "Cracked Claw Caverns",
@@ -1252,10 +1271,14 @@ public static class DungeonCatalog
             TitleNameId = 71771, DescriptionId = 382845, Difficulty = 3, Xp = 38,
             Enemies =
             [
-                new() { ModelId = 1667, Count = 10, Health = 700 },
-                new() { ModelId = 470, Count = 5, Health = 1000 },
-                new() { ModelId = 4446, Count = 1, Health = 2200, Scale = 1.5f, Boss = true },
+                new() { ModelId = 471, Count = 50, Health = 700 },              // 46 packed + 4 elder escorts
+                new() { ModelId = 677, Count = 2, Health = 3200, Scale = 1.3f }, // Elder Swamp Cray
+                new() { ModelId = 1688, Count = 13, Health = 900 },              // Venomous Frogs (roaming)
+                new() { ModelId = 4446, Count = 1, Health = 4500, Scale = 1.6f, Boss = true }, // Cracked Claw
             ],
+            // Real Spawn (233.34, 43.08, 204.34) / Exit (137.24, 40.07, 243.38) points from the sheet.
+            SpawnOverride = (233.34f, 43.08f, 204.34f),
+            ExitOverride = (137.24f, 40.07f, 243.38f),
         },
 
         // 900086  ATLAS DUNGEON (POI 86) Tanglewood Fort -> bw_tanglewood_fort

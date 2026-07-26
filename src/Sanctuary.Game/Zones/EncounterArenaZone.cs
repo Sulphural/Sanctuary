@@ -122,7 +122,11 @@ public sealed class EncounterArenaZone : CombatEncounterZone
             // actual cave geometry and the player falls through ("way below the map"). The center is the
             // one point guaranteed to be inside the room, so we spawn there and keep enemies within a
             // safe fraction of the radius. Per-dungeon spawns can be refined by measuring in-game.
-            SpawnPosition = new Vector4(d.CenterX, d.GroundY + 20f, d.CenterZ, 1f),
+            // SpawnOverride uses a REAL captured spawn point instead when one is known (still dropped
+            // ~20u for the same settle-onto-floor behavior).
+            SpawnPosition = d.SpawnOverride is { } so
+                ? new Vector4(so.X, so.Y + 20f, so.Z, 1f)
+                : new Vector4(d.CenterX, d.GroundY + 20f, d.CenterZ, 1f),
             SpawnRotation = Quaternion.Identity,
         };
     }
@@ -781,11 +785,19 @@ public sealed class EncounterArenaZone : CombatEncounterZone
         door.RiderGuid = ulong.MaxValue;
         // Arena: near center (by the spawn). Walk-through: at the FAR end, where the player finishes the
         // last cluster — a portal out at the end of the dungeon (the arena's 125u interact range wouldn't
-        // reach the far end of a big map from center).
-        var doorZ = Dungeon.Radius > WalkThroughRadius
-            ? Dungeon.CenterZ + Dungeon.Radius * SafeReach
-            : Dungeon.CenterZ - 12f;
-        door.UpdatePosition(new Vector4(Dungeon.CenterX, _groundY, doorZ, 1f), Quaternion.Identity);
+        // reach the far end of a big map from center). ExitOverride uses a REAL captured exit point instead
+        // when one is known.
+        if (Dungeon.ExitOverride is { } eo)
+        {
+            door.UpdatePosition(new Vector4(eo.X, eo.Y, eo.Z, 1f), Quaternion.Identity);
+        }
+        else
+        {
+            var doorZ = Dungeon.Radius > WalkThroughRadius
+                ? Dungeon.CenterZ + Dungeon.Radius * SafeReach
+                : Dungeon.CenterZ - 12f;
+            door.UpdatePosition(new Vector4(Dungeon.CenterX, _groundY, doorZ, 1f), Quaternion.Identity);
+        }
 
         var badge = new PlayerUpdatePacketAddNotifications();
         badge.Notifications.Add(new NotificationInfo
