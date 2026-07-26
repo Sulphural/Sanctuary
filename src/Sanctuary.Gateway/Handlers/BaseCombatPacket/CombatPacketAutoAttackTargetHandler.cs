@@ -132,7 +132,13 @@ public static class CombatPacketAutoAttackTargetHandler
 
                 // Per-hit feedback (op32/7): attacker plays the contact event (and, for the local player, the
                 // action-bar melee cooldown reset — correct here, this IS the melee swing); target shows the
-                // floating -Damage number, health bar, recoil. Broadcast so bystanders see the exchange too.
+                // floating -Damage number, health bar, recoil, and hit composite effect. Broadcast so
+                // bystanders see the exchange too.
+                // CompositeEffectId was never set here (always defaulted to 0 = no effect) - this is a
+                // DIFFERENT code path from the toolbar/ability-cast one (ResolveDamageAfterCast), which
+                // already plays hit FX via DetonateProjectile. Direct-click attacks went through this handler
+                // and never got any visual hit feedback at all. basicAbility.EffectId is the same real,
+                // per-job material-based effect (e.g. Ninja's PFX_Hit_Metal_vs_Flesh) already resolved above.
                 player.SendTunneledToVisible(new CombatPacketAttackProcessed
                 {
                     AttackerGuid = player.Guid,
@@ -140,6 +146,7 @@ public static class CombatPacketAutoAttackTargetHandler
                     Damage = damage,
                     MaxHealth = combatNpc.MaxHitpoints,
                     CurrentHealth = combatNpc.CurrentHitpoints,
+                    CompositeEffectId = basicAbility.EffectId,
                 }, sendToSelf: true);
             }
             catch (Exception ex)
