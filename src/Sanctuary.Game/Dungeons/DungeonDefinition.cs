@@ -1264,6 +1264,11 @@ public static class DungeonCatalog
         // Model ids: Swamp Cray = 471 cray_arctic_swamp.adr, Elder Swamp Cray = 677 cray_boss_swamp.adr
         // (real "elder" variant), boss = 4446 cray_king_lowtide.adr (the existing "ancient/king" cray boss
         // model reused elsewhere in this catalog - no distinct "Cracked Claw" model exists in Models.txt).
+        // Venomous Frog = 1648 toad_black.adr, a REAL toad model (Free Realms' asset names call this
+        // creature family "toad", not "frog" - a "frog" search misses it entirely). Was 1688
+        // dog_large_frogdog.agr ("dog in frog suit"), the placeholder convention reused from activity 220
+        // "Venomous Frogs!" - live-confirmed wrong (visibly a dog, not a frog); 220 likely has the same bug
+        // but wasn't reported, not touched here.
         [118] = new()
         {
             ActivityId = 118, PoiId = 85, Comment = "Cracked Claw Caverns",
@@ -1273,7 +1278,7 @@ public static class DungeonCatalog
             [
                 new() { ModelId = 471, Count = 50, Health = 700 },              // 46 packed + 4 elder escorts
                 new() { ModelId = 677, Count = 2, Health = 3200, Scale = 1.3f }, // Elder Swamp Cray
-                new() { ModelId = 1688, Count = 13, Health = 900 },              // Venomous Frogs (roaming)
+                new() { ModelId = 1648, Count = 13, Health = 900 },              // Venomous Frogs (toad_black)
                 new() { ModelId = 4446, Count = 1, Health = 4500, Scale = 1.6f, Boss = true }, // Cracked Claw
             ],
             // Real Spawn (233.34, 43.08, 204.34) / Exit (137.24, 40.07, 243.38) points from the sheet.
