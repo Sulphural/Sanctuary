@@ -88,6 +88,12 @@ public class Npc : IEntity
     // Render a nameplate health bar (maps to AddNpc.Unknown41).
     public bool ShowHealthBar { get; set; }
 
+    // Show the red crossed-swords combat-encounter badge (img-24, Type=3) above this NPC's head + a red
+    // minimap dot, whenever it becomes visible to a player - see BaseZone's reveal logic. Used for dungeon
+    // entrances / "Battle Starter" encounter NPCs (matches the Frostfang Growler's SendGrowlerBadge, the
+    // original one-off implementation of this same badge before it was made generic here).
+    public bool ShowCombatBadge { get; set; }
+
     public bool IsHostile => Disposition == 0;
     public bool IsDamageable => MaxHealth > 0 && !Invulnerable;
     public bool IsAlive => MaxHealth == 0 || Health > 0;
@@ -117,6 +123,12 @@ public class Npc : IEntity
         {
             if (!IsAlive)
                 return false;
+
+            // Sleep breaks on a hit (real wiki data, freerealms.fandom.com/wiki/Sleep_Orb: "hitting your
+            // target will wake them") - centralized here since every damage source (basic attacks,
+            // specials, combat orbs, power-up AoE bursts) already funnels through this one method.
+            if (amount > 0)
+                Sanctuary.Game.Combat.StatusEffects.Clear(this, Sanctuary.Game.Combat.StatusEffectKind.Sleep);
 
             Health -= amount;
 

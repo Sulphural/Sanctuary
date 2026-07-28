@@ -26,7 +26,7 @@ namespace Sanctuary.Game.Zones;
 public abstract class BaseZone : IZone, IDisposable
 {
     protected readonly ILogger _logger;
-    private readonly IResourceManager _resourceManager;
+    protected readonly IResourceManager _resourceManager;
     private readonly BaseZoneDefinition _zoneDefinition;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
 
@@ -381,9 +381,28 @@ public abstract class BaseZone : IZone, IDisposable
     }
 
     // A pack marker, not an individual: (x, y, z) is a real captured "there's a group here" point (e.g. a
-    // coordinate sheet's "Pack of 10 cray" row), and `count` scatters that many points in a ring around it
-    // instead of the script having to hand-plot every individual's own coordinate. Radius grows gently with
-    // count so bigger packs don't stack on top of each other. count<=1 just uses the marker itself.
+    // coordinate sheet's "Pack of 10 cray" row), and `count` scatters that many points around it instead of
+    // the script having to hand-plot every individual's own coordinate. count<=1 just uses the marker itself.
+    //
+    // CORRECTED (live feedback): evenly-spaced angles at a fixed radius put every individual on the exact
+    // same circle - it read as an artificial "circle formation" rather than a natural pack. Random angle +
+    // random radius (sqrt-scaled so density is uniform across the disc, not bunched near the center) gives
+    // an organic scatter instead, over a wider area so packs read as more spread out too.
+    //
+    // CORRECTED AGAIN (live feedback, 2026-07-26): the scatter offset was never checked against real wall/
+    // boundary data at all - same root-cause pattern as JitteredWalkablePos and the corner-hug nodes before
+    // it (see CombatEncounterZone.BuildMobPathfinding) - so a marker close to a cave wall or the dungeon's
+    // edge could scatter individuals straight through the wall or off the playable map. Retry each point
+    // against IsScriptSpawnPositionValid (a no-op here on the base zone; CombatEncounterZone overrides it
+    // with the real obstacle/boundary check), falling back to the raw candidate if every attempt is blocked
+    // rather than dropping the enemy.
+    //
+    // CORRECTED A THIRD TIME (live feedback, 2026-07-26): checking only the CANDIDATE point still wasn't
+    // enough - a large scatter jump (up to 9u for a pack of 10) can leap clean OVER a thin real wall strip
+    // in one step without either endpoint ever landing inside the wall's own margin, the same "teleport
+    // past a wall" gap CombatEncounterZone.ChaseStep already had to guard against for mob movement (that's
+    // exactly what ObstacleMap.IsLineWalkable's sampled-segment check is for). Pass the real marker point
+    // through as the "from" side so the validity check can walk the whole jump, not just its landing spot.
     public void AddSpawnArea(float x, float y, float z, int count)
     {
         if (count <= 1)
@@ -392,17 +411,72 @@ public abstract class BaseZone : IZone, IDisposable
             return;
         }
 
-        var radius = MathF.Max(2f, 2f + count * 0.35f);
+        var origin = new Vector4(x, y, z, 1f);
+        // CAPPED 2026-07-27, TIGHTENED AGAIN same day (live feedback: "still spawning underground" after
+        // the first 6u cap) - every scattered individual already reuses the marker's OWN real Y unchanged
+        // (only X/Z are randomized), so this was never about scatter drifting into a DIFFERENT floor tier -
+        // it's that real cave floors aren't flat even within one "tier", and with no floor-height data at
+        // all (only wall obstacles from .gzne), ANY X/Z offset from the marker risks landing on ground that
+        // sits higher than the marker's fixed Y, reading as the mob spawning "into" the terrain from below.
+        // Cut the cap hard (6u -> 3u) to keep every individual close enough to the marker's own real,
+        // known-good spot that local unevenness is unlikely to matter - trades some pack "spread out"
+        // variety for actually landing on real floor, which matters more.
+        var maxRadius = MathF.Min(3f, MathF.Max(2f, 2f + count * 0.2f));
+        // MIN-SEPARATION added (live feedback: "some enemies are on eachother or too close... give them a
+        // bit of space between eachother but keep them close") - the sqrt-scaled random disc placement never
+        // checked candidates against EACH OTHER, only against walls, so nothing stopped two individuals from
+        // landing almost on top of one another. Reject a candidate that's too close to an already-placed
+        // packmate (this SAME call's points only - doesn't touch other packs) and retry; if every attempt
+        // this individual gets stays too close, keep the least-crowded one tried rather than dropping the
+        // enemy. Small enough that it still fits inside the tight maxRadius above for a full pack.
+        const float minSeparation = 1.4f;
+        var minSeparationSq = minSeparation * minSeparation;
+        var placedThisCall = new List<Vector4>(count);
         for (var i = 0; i < count; i++)
         {
-            var angle = (float)(i * Math.Tau / count);
-            _scriptSpawnPoints.Add(new Vector4(
-                x + MathF.Sin(angle) * radius,
-                y,
-                z + MathF.Cos(angle) * radius,
-                1f));
+            Vector4 candidate = default;
+            var found = false;
+            var bestCandidate = origin;
+            var bestNearestSq = float.MinValue;
+            for (var attempt = 0; attempt < 12; attempt++)
+            {
+                var angle = (float)(Random.Shared.NextDouble() * Math.Tau);
+                var r = MathF.Sqrt((float)Random.Shared.NextDouble()) * maxRadius;
+                candidate = new Vector4(x + MathF.Sin(angle) * r, y, z + MathF.Cos(angle) * r, 1f);
+                if (!IsScriptSpawnPositionValid(origin, candidate))
+                    continue;
+
+                var nearestSq = float.MaxValue;
+                foreach (var placed in placedThisCall)
+                {
+                    var dx = candidate.X - placed.X;
+                    var dz = candidate.Z - placed.Z;
+                    var d2 = dx * dx + dz * dz;
+                    if (d2 < nearestSq)
+                        nearestSq = d2;
+                }
+                if (nearestSq > bestNearestSq)
+                {
+                    bestNearestSq = nearestSq;
+                    bestCandidate = candidate;
+                }
+                if (nearestSq >= minSeparationSq)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            var placed2 = found ? candidate : bestCandidate;
+            placedThisCall.Add(placed2);
+            _scriptSpawnPoints.Add(placed2);
         }
     }
+
+    // Hook for AddSpawnArea's scatter retry - default "anything goes" (no obstacle/pathfinding data on the
+    // base zone). CombatEncounterZone overrides this with a real wall/boundary check once it has built its
+    // dungeon's ObstacleMap. `from` is the real captured marker the scatter is jumping away from - the
+    // override validates the WHOLE hop, not just where it lands (see the header comment above).
+    protected virtual bool IsScriptSpawnPositionValid(Vector4 from, Vector4 pos) => true;
 
     // Calls a named script function (if the zone has a script AND that function exists) and returns
     // whatever points it reported via zone.addSpawnPoint(...), in call order. Empty if there's no script,
@@ -620,6 +694,8 @@ public abstract class BaseZone : IZone, IDisposable
                                     case Npc npc:
                                         {
                                             zoneTilePlayer.OnAddVisibleNpcs(npc);
+                                            if (npc.ShowCombatBadge)
+                                                SendCombatBadge(zoneTilePlayer, npc);
                                         }
                                         break;
 
@@ -636,6 +712,37 @@ public abstract class BaseZone : IZone, IDisposable
 
         entity.OnAddVisibleNpcs(npcsToAdd);
         entity.OnAddVisiblePlayers(playersToAdd);
+
+        if (entity is Player arrivingPlayer)
+        {
+            foreach (var npc in npcsToAdd)
+            {
+                if (npc.ShowCombatBadge)
+                    SendCombatBadge(arrivingPlayer, npc);
+            }
+        }
+    }
+
+    // The red crossed-swords combat-encounter badge (img-24) above an NPC's head + a red minimap dot -
+    // RE'd 2026-07-02 for the Frostfang Growler wolf (op35/sub10 AddNotifications, byte-exact vs a real
+    // 2014 capture): ImageId 24 in NotificationImages.txt = tint-circle + circle + crossed-swords icon
+    // 1345. Type = 3 (the "combat" category, confirmed against every red minimap-dot notification in both
+    // 2014 captures) drives the red tint - NOT the NPC's Disposition, so the name itself can stay neutral.
+    // Generalized from the Growler's own one-off SendGrowlerBadge into this shared helper so any NPC can
+    // opt in via Npc.ShowCombatBadge (dungeon entrances, "Battle Starter" encounter NPCs, etc.) instead of
+    // needing its own bespoke badge method.
+    private static void SendCombatBadge(Player player, Npc npc)
+    {
+        var badge = new PlayerUpdatePacketAddNotifications();
+        badge.Notifications.Add(new NotificationInfo
+        {
+            Guid = npc.Guid,
+            ImageId = 24,
+            Type = 3,
+            Unknown3 = 7,
+            Unknown10 = true,
+        });
+        player.SendTunneled(badge);
     }
 
     private void RemoveEntityFromZoneTiles(IEntity entity, IEnumerable<ZoneTile> zoneTiles)

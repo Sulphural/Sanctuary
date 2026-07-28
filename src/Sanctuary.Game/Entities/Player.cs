@@ -60,6 +60,12 @@ public sealed class Player : ClientPcData, IEntity
     public Sanctuary.Packet.RewardEntry? PendingWheelPrize { get; set; }
     public int PendingWheelCoins { get; set; }
 
+    // XP already granted (AwardXp runs immediately at win) but whose GRANT BANNER is held until the wheel
+    // stops, so it appears together with the coins/item banner instead of firing as a separate, easy-to-miss
+    // toast the instant you win (before the score/reward card is even on screen). See EncounterArenaZone.
+    // WinEncounter + BaseMiniGamePacketHandler.HandleLootWheelStopped.
+    public int PendingWheelXp { get; set; }
+
     // Where the exit door returns the player after a combat instance: the overworld spot
     // they stood on when GO! teleported them out (set by the entrance handler, consumed + cleared by
     // the arena's ReturnHome). Null = fall back to the zone spawn.
@@ -316,8 +322,14 @@ public sealed class Player : ClientPcData, IEntity
         // behavior raced incoming enemy damage and made the health bar visibly jitter up and down mid-fight.
         bool inCombat = DateTime.UtcNow - LastCombatDamageAt < TimeSpan.FromSeconds(OutOfCombatSeconds);
 
+        // DUNGEONS/ENCOUNTERS: no passive HP regen at all in here (live feedback 2026-07-27) - healing only
+        // comes from power-ups/potions inside a combat instance. CombatEncounterZone covers every dungeon/
+        // encounter (the data-driven EncounterArenaZone plus FrostfangArenaZone/TormentedSpiritsArenaZone);
+        // regular overworld zones are untouched and keep passive regen.
+        bool inCombatInstance = Zone is CombatEncounterZone;
+
         bool hpChanged = false;
-        if (!inCombat && CurrentHitpoints < maxHp)
+        if (!inCombat && !inCombatInstance && CurrentHitpoints < maxHp)
         {
             int regen = Stats.TryGetValue(CharacterStatId.HitPointRegen, out var hr) ? hr.Int : 25;
             CurrentHitpoints = Math.Min(maxHp, CurrentHitpoints + Math.Max(1, regen));
@@ -486,6 +498,70 @@ public sealed class Player : ClientPcData, IEntity
             EnterWorldCombat(); // taking a hit puts you in combat too (weapon drawn, HP bars, damage text)
     }
 
+    // Apply a real heal: raises CurrentHitpoints (clamped to max) and pushes the same hp-update packets
+    // TakeDamage/RegenTick use, so the health bar actually moves. Callers (potions, power-ups, heart
+    // pickups) also send their own cosmetic floating "+N" PlayerUpdatePacketHitPointModification alongside
+    // this — that packet alone never touched CurrentHitpoints, which is why the bar didn't move once
+    // passive regen was turned off inside dungeons/encounters. Returns the amount actually healed (may be
+    // less than requested near max) so callers can size the floating number to what really landed.
+    public int Heal(int amount)
+    {
+        if (IsDead || amount <= 0)
+            return 0;
+
+        if (!Stats.TryGetValue(CharacterStatId.MaxHealth, out var maxHpStat))
+            return 0;
+
+        int maxHp = maxHpStat.Int;
+        int healed = Math.Min(amount, maxHp - CurrentHitpoints);
+        if (healed <= 0)
+            return 0;
+
+        CurrentHitpoints += healed;
+
+        SendTunneled(new ClientUpdatePacketHitpoints { CurrentHitpoints = CurrentHitpoints, MaxHitpoints = maxHp });
+        SendTunneledToVisible(new PlayerUpdatePacketUpdateHitpoints
+        {
+            Guid = Guid,
+            Hitpoints = CurrentHitpoints,
+            MaxHitpoints = maxHp
+        }, sendToSelf: true);
+
+        return healed;
+    }
+
+    // Heal a FRACTION of max HP rather than a flat number (live feedback 2026-07-27: "make sure health
+    // potions and health powerups scale for all players, some players have more health than others" - a
+    // flat +400 is trivial for a high-level job's much larger HP pool and huge for a level 1's). Used by
+    // PotionAbilities/PowerupSystem's Health effects; the dungeons' real video-captured "+125" heart heal
+    // is left as a flat number since that one has actual retail provenance, unlike these estimated amounts.
+    public int HealPercent(float fraction)
+    {
+        if (IsDead || fraction <= 0)
+            return 0;
+
+        if (!Stats.TryGetValue(CharacterStatId.MaxHealth, out var maxHpStat))
+            return 0;
+
+        int maxHp = maxHpStat.Int;
+        int amount = Math.Max(1, (int)(maxHp * fraction));
+        int healed = Math.Min(amount, maxHp - CurrentHitpoints);
+        if (healed <= 0)
+            return 0;
+
+        CurrentHitpoints += healed;
+
+        SendTunneled(new ClientUpdatePacketHitpoints { CurrentHitpoints = CurrentHitpoints, MaxHitpoints = maxHp });
+        SendTunneledToVisible(new PlayerUpdatePacketUpdateHitpoints
+        {
+            Guid = Guid,
+            Hitpoints = CurrentHitpoints,
+            MaxHitpoints = maxHp
+        }, sendToSelf: true);
+
+        return healed;
+    }
+
     // --- DODGE (avoidance) ---------------------------------------------------------------------------
     // com_dodge — the sidestep clip (AnimationGroups.xml id 1406). Played on a successful dodge.
     public const int DodgeAnimId = 1406;
@@ -535,10 +611,18 @@ public sealed class Player : ClientPcData, IEntity
     // text in real combat, where its client-side gate may pass (a synthetic send shows nothing).
     public bool ForceDodgeDebug;
 
+    // Super Shield power-up (PowerupSystem.TryUse): "makes you invulnerable for a short time" - reuses
+    // this EXISTING dodge machinery (real op32/6 dodge-text + sidestep animation, "you evaded this hit")
+    // instead of building a separate no-damage packet path, since that's already the proven mechanism for
+    // "an incoming attack lands 0 damage" on a player.
+    public bool Invulnerable;
+
     public bool TryDodgeIncomingAttack(ulong attackerGuid)
     {
         if (IsDead)
             return false;
+        if (Invulnerable)
+            return true;
         if (!ForceDodgeDebug && Random.Shared.Next(100) >= DodgePercent())
             return false;
 

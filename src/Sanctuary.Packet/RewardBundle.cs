@@ -26,6 +26,12 @@ public sealed class RewardEntry
     // (sub_8E7930) pushes it into every entry, and RewardBundleEntryItem then reads a 4-byte ItemGuid
     // after the base. The live post-wheel grant display (RewardBundlePacket idx 38142) used this.
     public int? TailItemGuid;
+
+    // SERVER-SIDE ONLY (never put on the wire, never sent to the client — the client resolves NameId
+    // itself). The item's plain real name, for building the blue "You receive 1 X" toast text server-side
+    // (see BaseMiniGamePacketHandler.HandleLootWheelStopped / EncounterArenaZone.GrantBonusGoalReward) -
+    // ClientItemDefinition has no loaded name/comment field we could look this up from at runtime.
+    public string DisplayName = "";
 }
 
 // Shared RewardBundleBase serializer — wire format ground-truthed against the real 04-01 packets AND the

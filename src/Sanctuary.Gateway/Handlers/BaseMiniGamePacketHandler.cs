@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 using Microsoft.EntityFrameworkCore;
@@ -87,12 +88,22 @@ public static class BaseMiniGamePacketHandler
     private static bool HandleLootWheelStopped(GatewayConnection connection)
     {
         var player = connection.Player;
+
+        // If this is a combat-encounter win wheel, this is the REAL "the player has now seen their prize"
+        // signal - see EncounterArenaZone.NotifyRewardWheelStopped/ReturnHome. No-op for every other wheel
+        // context (the daily "Spin For The Win!" wheel, or if the player isn't in a combat encounter at
+        // all right now).
+        if (player.Zone is CombatEncounterZone encounter)
+            encounter.NotifyRewardWheelStopped(player);
+
         var prize = player.PendingWheelPrize;
         var coins = player.PendingWheelCoins;
+        var xp = player.PendingWheelXp;
         player.PendingWheelPrize = null;
         player.PendingWheelCoins = 0;
+        player.PendingWheelXp = 0;
 
-        if (prize is null && coins <= 0)
+        if (prize is null && coins <= 0 && xp <= 0)
         {
             _logger.LogInformation("LootWheelOnRotationStopped with no pending prize — ignoring.");
             return true;
@@ -100,10 +111,12 @@ public static class BaseMiniGamePacketHandler
 
         if (prize is null)
         {
-            // COINS slice.
-            GrantCoins(connection, coins);
-            connection.SendTunneled(new RewardBundlePacket { Coins = coins, Unknown15 = 957 });
-            _logger.LogInformation("Loot wheel payout: {coins} coins -> {name}.", coins, player.Name);
+            // COINS slice (+ whatever XP the encounter win already granted — same combined banner).
+            if (coins > 0)
+                GrantCoins(connection, coins);
+            connection.SendTunneled(new RewardBundlePacket { Coins = coins, Xp = xp, Unknown15 = 957 });
+            SendReceiveText(connection, coins, xp);
+            _logger.LogInformation("Loot wheel payout: {coins} coins, {xp} xp -> {name}.", coins, xp, player.Name);
             return true;
         }
 
@@ -111,19 +124,53 @@ public static class BaseMiniGamePacketHandler
         {
             OpenMysteryPack(connection);
             // The wheel-prize banner itself (pack icon/name — live sent it AFTER the contents banner).
-            connection.SendTunneled(new RewardBundlePacket { IconId = prize.IconId, NameId = prize.NameId, Unknown15 = 957 });
+            connection.SendTunneled(new RewardBundlePacket { IconId = prize.IconId, NameId = prize.NameId, Xp = xp, Unknown15 = 957 });
+            SendReceiveItemText(connection, prize.DisplayName);
             return true;
         }
 
         // Plain item prize.
         var granted = GrantItem(connection, prize.ItemDefId, prize.Quantity);
         if (granted is not null)
-            connection.SendTunneled(new RewardBundlePacket { IconId = prize.IconId, NameId = prize.NameId, Unknown15 = 957 });
+        {
+            connection.SendTunneled(new RewardBundlePacket { IconId = prize.IconId, NameId = prize.NameId, Xp = xp, Unknown15 = 957 });
+            SendReceiveItemText(connection, prize.DisplayName);
+        }
 
-        _logger.LogInformation("Loot wheel payout: item def {def} x{qty} -> {name} ({ok}).",
-            prize.ItemDefId, prize.Quantity, player.Name, granted is not null ? "granted" : "FAILED");
+        _logger.LogInformation("Loot wheel payout: item def {def} x{qty}, {xp} xp -> {name} ({ok}).",
+            prize.ItemDefId, prize.Quantity, xp, player.Name, granted is not null ? "granted" : "FAILED");
 
         return true;
+    }
+
+    // Blue "You receive..." toast for wheel payouts - own copy of EncounterArenaZone.SendReceiveItemText
+    // (Gateway can't reference that Game-layer class). Real client locale strings for this event (mined
+    // from en_us_data: id 2 "You receive #count([*item*])", id 3 "You receive #count([*experience*]) and
+    // #count([*coins*])") use a #count(...) placeholder whose wire substitution mechanism from
+    // ChatPacketFromStringId isn't confirmed - a wrong guess would print the literal broken placeholder on
+    // screen, so this pre-substitutes the real value into plain text on a packet (ChatPacketDebugChat)
+    // that's confirmed to support <font color> markup instead.
+    private static void SendReceiveItemText(GatewayConnection connection, string displayName, int quantity = 1) =>
+        connection.SendTunneled(new ChatPacketDebugChat
+        {
+            Message = $"<font color='#0000FF'>You receive {quantity} {(string.IsNullOrEmpty(displayName) ? "item" : displayName)}.</font>",
+            PrintToChat = true,
+        });
+
+    private static void SendReceiveText(GatewayConnection connection, int coins, int xp)
+    {
+        if (coins <= 0 && xp <= 0)
+            return;
+
+        var parts = new List<string>();
+        if (xp > 0) parts.Add($"{xp} experience");
+        if (coins > 0) parts.Add($"{coins} coins");
+
+        connection.SendTunneled(new ChatPacketDebugChat
+        {
+            Message = $"<font color='#0000FF'>You receive {string.Join(" and ", parts)}.</font>",
+            PrintToChat = true,
+        });
     }
 
     // Open one Battle Item Mystery Pack: roll a sphere from the reconstructed loot table,
@@ -151,6 +198,7 @@ public static class BaseMiniGamePacketHandler
                 ],
                 Unknown15 = MysteryPackTableId, // live banner carried the pack's loot-table id (Param1)
             });
+            SendReceiveItemText(connection, MysteryPackSphereNames.GetValueOrDefault(sphereDefId, "Sphere"), MysteryPackContentsCount);
         }
 
         // Sphere names for the log (defs don't carry the comment string):
@@ -158,6 +206,16 @@ public static class BaseMiniGamePacketHandler
         _logger.LogInformation("Mystery Pack -> {n}x sphere def {def} for {name} ({ok}).",
             MysteryPackContentsCount, sphereDefId, connection.Player.Name, contents is not null ? "granted" : "GRANT FAILED");
     }
+
+    private static readonly Dictionary<int, string> MysteryPackSphereNames = new()
+    {
+        [3011] = "Sleep Sphere",
+        [3013] = "Unmoving Sphere",
+        [3015] = "Flabbergast Sphere",
+        [3025] = "Frag Sphere",
+        [3074] = "Blast Sphere",
+        [3089] = "Confusion Sphere",
+    };
 
     private sealed record GrantedItem(int ItemGuid, ClientItemDefinition? Definition);
 

@@ -262,11 +262,11 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
     public const int CombatProfileType = 2;
     public static List<RewardEntry> NinjaPrizePreview() =>
     [
-        new() { Hidden = true,  IconId = 2483, TintId = 234, NameId = 133217, ItemDefId = 76209 }, // Kusa Ninja Tabi Boots
-        new() {                 IconId = 3717, TintId = 264, NameId = 131152, ItemDefId = 75408 }, // Ninja's Power Shard of Regeneration I
-        new() {                 IconId = 3229, TintId = 247, NameId = 131975, ItemDefId = 75091 }, // Ninja's Training Sword of 1000 Storms
-        new() {                 IconId = 1198, TintId = 0,   NameId = 131129, ItemDefId = 75385 }, // Ninja's Necklace of Vitality I
-        new() { Hidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   ItemDefId = 10482 }, // Battle Item Mystery Pack
+        new() { Hidden = true,  IconId = 2483, TintId = 234, NameId = 133217, ItemDefId = 76209, DisplayName = "Kusa Ninja Tabi Boots" },
+        new() {                 IconId = 3717, TintId = 264, NameId = 131152, ItemDefId = 75408, DisplayName = "Ninja's Power Shard of Regeneration I" },
+        new() {                 IconId = 3229, TintId = 247, NameId = 131975, ItemDefId = 75091, DisplayName = "Ninja's Training Sword of 1000 Storms" },
+        new() {                 IconId = 1198, TintId = 0,   NameId = 131129, ItemDefId = 75385, DisplayName = "Ninja's Necklace of Vitality I" },
+        new() { Hidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   ItemDefId = 10482, DisplayName = "Battle Item Mystery Pack" },
     ];
     // Real preview bundle values, IDA-verified 2026-07-04 (bundle U2 = Num Coins, U3 = Experience):
     // 10 coins, 0 XP. The encounter's XP was granted by the GOAL's own reward bundle on live — that's
@@ -287,23 +287,77 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
     public const int ArcherProfileId = 35; // Profiles.json "Archer" (Type 2 = combat category)
     public static List<RewardEntry> ArcherPrizePreview() =>
     [
-        new() { Hidden = true,  IconId = 4939, TintId = 247, NameId = 132741, ItemDefId = 75733 }, // Hen Feather Archer Boots (inferred tier-2)
-        new() {                 IconId = 3721, TintId = 230, NameId = 130968, ItemDefId = 75224 }, // Archer's Power Shard of Vitality I (video)
-        new() {                 IconId = 547,  TintId = 0,   NameId = 130924, ItemDefId = 75180 }, // Archer's Ring of Regeneration I (video)
-        new() {                 IconId = 3104, TintId = 228, NameId = 131884, ItemDefId = 75000 }, // Archer's Bow of Volleys (video)
-        new() { Hidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   ItemDefId = 10482 }, // Battle Item Mystery Pack (shared slot)
+        new() { Hidden = true,  IconId = 4939, TintId = 247, NameId = 132741, ItemDefId = 75733, DisplayName = "Hen Feather Archer Boots" },
+        new() {                 IconId = 3721, TintId = 230, NameId = 130968, ItemDefId = 75224, DisplayName = "Archer's Power Shard of Vitality I" },
+        new() {                 IconId = 547,  TintId = 0,   NameId = 130924, ItemDefId = 75180, DisplayName = "Archer's Ring of Regeneration I" },
+        new() {                 IconId = 3104, TintId = 228, NameId = 131884, ItemDefId = 75000, DisplayName = "Archer's Bow of Volleys" },
+        new() { Hidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   ItemDefId = 10482, DisplayName = "Battle Item Mystery Pack" },
+    ];
+
+    // WARRIOR/WIZARD/BRAWLER sets (2026-07-26) — filled in following the exact pattern documented above
+    // (tier-2 costume boots hidden slot + Power Shard of X I + tier-1 starter weapon + jewelry of Y I +
+    // shared Mystery Pack), sourced from ClientItemDefinitions.json's real per-job 75xxx item block, same
+    // as Ninja/Archer. No live capture exists for these 3 jobs (unlike Ninja/Archer), so two things are
+    // inferred rather than ground-truthed: (1) the tier-2 boots are picked by matching each job's own
+    // 11-tier costume family's TextureAlias "-L2" suffix, the same tier index Ninja's Kusa/Archer's Hen
+    // Feather use; (2) the shard/jewelry STAT pairing mirrors Ninja's (Regeneration shard + Vitality
+    // necklace) rather than Archer's opposite pairing, since Ninja is the majority pattern among the two
+    // known-real examples - genuinely a guess, flagged rather than silently presented as confirmed.
+    public const int WarriorProfileId = 32; // Profiles.json "Warrior" (Type 2 = combat category)
+    public static List<RewardEntry> WarriorPrizePreview() =>
+    [
+        new() { Hidden = true,  IconId = 5432, TintId = 228, NameId = 133327, ItemDefId = 76319, DisplayName = "Standard Action Warrior Hightops" },
+        new() {                 IconId = 3717, TintId = 232, NameId = 131217, ItemDefId = 75473, DisplayName = "Warrior's Power Shard of Regeneration I" },
+        new() {                 IconId = 3120, TintId = 228, NameId = 132004, ItemDefId = 75120, DisplayName = "Warrior's Cudgel of Spinning" },
+        new() {                 IconId = 1198, TintId = 0,   NameId = 131194, ItemDefId = 75450, DisplayName = "Warrior's Necklace of Vitality I" },
+        new() { Hidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   ItemDefId = 10482, DisplayName = "Battle Item Mystery Pack" },
+    ];
+
+    public const int WizardProfileId = 12; // Profiles.json "Wizard" (Type 2 = combat category)
+    public static List<RewardEntry> WizardPrizePreview() =>
+    [
+        // Tier-2 boots are gender-split for this job (unlike every other job here, a single unisex record) -
+        // this is the male variant (76387/icon 5080); female = 76388/icon 5014, same NameId 133395.
+        new() { Hidden = true,  IconId = 5080, TintId = 228, NameId = 133395, ItemDefId = 76387, DisplayName = "Novice Wizard Shoes" },
+        new() {                 IconId = 3717, TintId = 264, NameId = 131282, ItemDefId = 75538, DisplayName = "Wizard's Power Shard of Regeneration I" },
+        new() {                 IconId = 3158, TintId = 242, NameId = 132034, ItemDefId = 75150, DisplayName = "Wizard's Sparkle Twig of Shock" },
+        new() {                 IconId = 1198, TintId = 0,   NameId = 131259, ItemDefId = 75515, DisplayName = "Wizard's Necklace of Vitality I" },
+        new() { Hidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   ItemDefId = 10482, DisplayName = "Battle Item Mystery Pack" },
+    ];
+
+    public const int BrawlerProfileId = 43; // Profiles.json "Brawler" (Type 2 = combat category)
+    public static List<RewardEntry> BrawlerPrizePreview() =>
+    [
+        // CORRECTED 2026-07-26: the wiki's real "Bonus Rewards" table (freerealms.fandom.com, Cracked Claw
+        // Caverns) names Brawler's set "Saved by the Bell", not "Bum Rush" - the old entry here was an
+        // inferred guess (tier-2 by TextureAlias "-L2" match) that turned out wrong on both the set AND the
+        // tier (ClientItemDefinitions confirms "Saved by the Bell Brawler Boots" is TextureAlias "...-L1",
+        // Id 75854, NameId 132862, Icon 4974/228 - a real, verified entry, not a guess like before).
+        new() { Hidden = true,  IconId = 4974, TintId = 228, NameId = 132862, ItemDefId = 75854, DisplayName = "Saved by the Bell Brawler Boots" },
+        new() {                 IconId = 3717, TintId = 264, NameId = 131022, ItemDefId = 75278, DisplayName = "Brawler's Power Shard of Regeneration I" },
+        new() {                 IconId = 3131, TintId = 242, NameId = 131914, ItemDefId = 75030, DisplayName = "Brawler's Mallet of Sweeps" },
+        new() {                 IconId = 1198, TintId = 0,   NameId = 130999, ItemDefId = 75255, DisplayName = "Brawler's Necklace of Vitality I" },
+        new() { Hidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   ItemDefId = 10482, DisplayName = "Battle Item Mystery Pack" },
     ];
 
     // The reward set for the player's ACTIVE JOB — live behavior: the interact/launch packets
     // carry no profile, the SERVER picks the set for the player's active job and stamps only the job
     // CATEGORY (ProfileType=2, combat). Ninja = 04-01 capture ground truth; Archer = reference-video
-    // ground truth (3 visible) + tier-2 boot inference. Other combat jobs fall back to ninja until
-    // authored — the pattern per job: tier-2 costume boots (hidden) + Power Shard of X I + training
-    // weapon + jewelry of Y I + Mystery Pack, all in the job's 75xxx item block.
+    // ground truth (3 visible) + tier-2 boot inference; Warrior/Wizard/Brawler = the sets above.
+    // CORRECTED 2026-07-26: this used to be a 2-way ternary (Archer vs. "everything else falls back to
+    // Ninja") - meaning Warrior/Wizard/Brawler players were shown Ninja's reward set the whole time, not
+    // their own job's gear, despite the comment above already documenting the intended per-job pattern.
     // The SAME set must be used at offer, launch, AND the win-time wheel packet — the client resolves
     // the wheel's landing slice by matching NameId against the launch packet's stored preview rows.
     public static List<RewardEntry> GetPrizePreviewFor(Player player) =>
-        player.ActiveProfileId == ArcherProfileId ? ArcherPrizePreview() : NinjaPrizePreview();
+        player.ActiveProfileId switch
+        {
+            ArcherProfileId => ArcherPrizePreview(),
+            WarriorProfileId => WarriorPrizePreview(),
+            WizardProfileId => WizardPrizePreview(),
+            BrawlerProfileId => BrawlerPrizePreview(),
+            _ => NinjaPrizePreview(),
+        };
 
     // The goal, defined inline in the launch details packet. GROUND TRUTH: live 12642 ships
     // Status=1, Count=0, Total=1, Unknown8=0.
@@ -317,6 +371,7 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
     ];
 
     private readonly Sanctuary.Game.Quests.IQuestManager _questManager;
+    private readonly Microsoft.EntityFrameworkCore.IDbContextFactory<Sanctuary.Database.DatabaseContext> _dbContextFactory;
 
     public FrostfangArenaZone(IServiceProvider serviceProvider)
         : base(CreateDefinition(), serviceProvider)
@@ -324,6 +379,7 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
         _zoneManager = serviceProvider.GetRequiredService<IZoneManager>();
         _resourceManager = serviceProvider.GetRequiredService<IResourceManager>();
         _questManager = serviceProvider.GetRequiredService<Sanctuary.Game.Quests.IQuestManager>();
+        _dbContextFactory = serviceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Sanctuary.Database.DatabaseContext>>();
     }
 
     private static BaseZoneDefinition CreateDefinition() => new FrostfangArenaDefinition
@@ -497,11 +553,14 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
                     Difficulty = 1,
                     IconId = 1345,
                     MiniGameType = CombatMiniGameType,   // 4 = COMBAT — the goals-pane gate
+                    MembersOnly = true, // gates the win screen's "Members Only Bonus" Coins box
                     Launch = true,
                     Objectives = [.. EncounterObjectives],
                     PreviewRewards = GetPrizePreviewFor(player),
                     PreviewCoins = PrizeCoins,
                     PreviewXp = PrizeXp,
+                    RewardXp = EncounterXp,
+                    MemberCoins = PrizeCoins,
                     ProfileType = CombatProfileType,
                     ActivityId = EncounterId,
                 };
@@ -836,7 +895,7 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
                         var tgt = NearestLivePlayerSticky(here, players, state);
                         if (tgt is null)
                         {
-                            TickMobReturnHome(wolf, state, dt);
+                            TickMobReturnHome(wolf, state, dt, now);
                             continue;
                         }
 
@@ -1122,15 +1181,19 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
 
         foreach (var h in collected)
         {
-            // Green "+125" heal number over the player.
+            // Green "+125" heal number over the player, backed by a REAL heal (2026-07-27 fix - this used
+            // to be purely cosmetic, "cosmetic until HP is tracked" per the old comment below; that's the
+            // same bug class reported for potions/power-ups once passive regen was turned off in dungeons).
+            var healedAmount = player.Heal(HeartHeal);
+            var maxHpStat = player.Stats.TryGetValue(CharacterStatId.MaxHealth, out var mh) ? mh.Int : 0;
             player.SendTunneled(new PlayerUpdatePacketHitPointModification
             {
                 Guid = player.Guid,   // heal is self-sourced
                 Guid2 = player.Guid,  // ...on the player
                 Unknown = true,
-                Unknown2 = 2500,      // player max HP (real pool is a TODO)
-                Unknown3 = 2500,      // current after (cosmetic until HP is tracked)
-                Unknown4 = HeartHeal, // +125 delta -> the green heal number
+                Unknown2 = maxHpStat,
+                Unknown3 = player.CurrentHitpoints,
+                Unknown4 = healedAmount,
             });
 
             // ★ THE HEALING STATUS EFFECT (live-faithful): attach the LOOPING heal shower (15921) over
@@ -1214,9 +1277,11 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
             var deathPos = npc.Position;
             npc.Dispose();
 
-            // Random mid-fight heart drop (video: the +125 pickup mid-fight).
-            if (_rng.Next(100) < HeartDropPercent)
-                SpawnHeart(killer, deathPos);
+            // Random mid-fight power-up drop (video: the +125 heart pickup mid-fight is one of the 5 real
+            // kinds - see CombatEncounterZone.TryDropPowerup/PowerupSystem - folded into the same roll
+            // instead of a heart-only one, so Frostfang gets Energy/Flame Wave/Earth Shard/Super Shield
+            // drops too, not just hearts).
+            TryDropPowerup(deathPos);
 
             if (scheduleWave)
                 ScheduleNextWave(killer, _encounterRun);
@@ -1242,7 +1307,37 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
         }
         Broadcast(new PlayerUpdatePacketExpectedSpeed { Guid = npc.Guid, ExpectedSpeed = FleeSpeed });
 
+        // Boss coin drop (ported from EncounterArenaZone.GrantKillCoins, 2026-07-26) - the Alpha is this
+        // encounter's only boss, and defeating him doubles as the win trigger, so this fires right
+        // alongside the main win rewards below rather than at a separate mid-fight moment.
+        GrantKillCoins(killer);
+
         WinEncounter(killer, alphaPos);
+    }
+
+    private const int BossCoinsMin = 3;
+    private const int BossCoinsMax = 12;
+
+    private void GrantKillCoins(Player killer)
+    {
+        var coins = _rng.Next(BossCoinsMin, BossCoinsMax + 1);
+
+        using var dbContext = _dbContextFactory.CreateDbContext();
+        var dbCharacter = dbContext.Characters.SingleOrDefault(x => x.Id == Sanctuary.Core.Helpers.GuidHelper.GetPlayerId(killer.Guid));
+        if (dbCharacter is null)
+            return;
+
+        dbCharacter.Coins += coins;
+        dbContext.SaveChanges();
+        killer.Coins = dbCharacter.Coins;
+
+        killer.SendTunneled(new ClientUpdatePacketCoinCount { Coins = killer.Coins });
+        killer.SendTunneled(new RewardBundlePacket { Coins = coins, Unknown15 = 957 });
+        killer.SendTunneled(new ChatPacketDebugChat
+        {
+            Message = $"<font color='#0000FF'>You receive {coins} coins.</font>",
+            PrintToChat = true,
+        });
     }
 
     private void ScheduleNextWave(Player player, int run)
@@ -1314,9 +1409,11 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
             member.SendTunneled(new ObjectiveCompletePacket { ObjectiveId = GoalScareWolves });
             member.SendTunneled(new UiObjectiveCompletePacket { ObjectiveId = GoalScareWolves });
 
-            // Goal reward XP (drives the member's active-job level bar) + the fly-in banner.
+            // Goal reward XP (drives the member's active-job level bar). The grant banner is held until
+            // the wheel stops (see BaseMiniGamePacketHandler.HandleLootWheelStopped) so it lands in ONE
+            // combined "here's everything you got" popup with the coins/item, not its own early toast.
             member.AwardXp(EncounterXp);
-            member.SendTunneled(new RewardBundlePacket { Xp = EncounterXp });
+            member.PendingWheelXp = EncounterXp;
 
             // Credit any quest whose active goal is "win THIS encounter" (EncounterComplete id 174).
             _questManager.OnEncounterComplete(member, EncounterId);
@@ -1477,7 +1574,7 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
     // restore the default combat ruleset (op62) + clear the transient fighting state. Without this
     // the client stays InCombat forever (can't change jobs after leaving — LIVE TEST 11 bug).
 
-    protected override void ReturnHome(Player player)
+    protected override void ReturnHome(Player player, bool immediate)
     {
         if (player.Zone != this)
             return; // already left
@@ -1498,6 +1595,7 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
     protected override int FailEncounterId => EncounterId;
     protected override int FailInstanceId => EncounterInstanceId;
     protected override string EncounterLogName => "Frostfang arena";
+    protected override IResourceManager ResourceManagerForPowerups => _resourceManager;
 
     // MoveToward is the shared CombatEncounterZone helper now.
 

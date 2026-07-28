@@ -54,7 +54,9 @@ public static class AbilityPacketClientRequestStartAbilityHandler
 
     // Single source of truth for projectile speed - was hardcoded 90f at both Fire() call sites below, which
     // is how it drifted out of sync with itself. Matches ProjectileNpc.Launch's own flightSec = dist/speed.
-    private const float ProjectileSpeed = 90f;
+    // Slowed from 90 -> 70 (live feedback, 2026-07-27) - not retail-sourced (no real arrow-speed data
+    // exists), just a play-feel tune.
+    private const float ProjectileSpeed = 70f;
 
     private static float ProjectileFlightSeconds(Vector4 from, Vector4 to)
     {
@@ -318,6 +320,14 @@ public static class AbilityPacketClientRequestStartAbilityHandler
 
         _resourceManager = serviceProvider.GetRequiredService<IResourceManager>();
         _dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<DatabaseContext>>();
+
+        // Cross-layer bridge for the Energy power-up (PowerupSystem, Game layer) - the real energy pool is
+        // private to this handler (Gateway layer), so it can't reach in directly.
+        PowerupSystem.RequestEnergyRefill = player =>
+        {
+            _energy[player.Guid] = MaxEnergy;
+            SendEnergy(player, MaxEnergy);
+        };
     }
 
     public static bool HandlePacket(GatewayConnection connection, ReadOnlySpan<byte> data)
@@ -334,6 +344,13 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         // DEATH: no acting while knocked out (can't swing/shoot/use items until you respawn).
         if (connection.Player.IsDead)
             return true;
+
+        // Full action lock (Stun/Sleep/Fear/Freeze - see StatusEffects.BlocksAbilities): can't swing,
+        // cast, or use an item while under one of these. No current ability applies these to a player
+        // yet (this is the enforcement half of the CC system; the apply half is StatusEffects.Apply,
+        // for zones/abilities to call), but the gate needs to exist before anything can safely use it.
+        if (StatusEffects.BlocksAbilities(connection.Player.Guid))
+            return SendFailure(connection);
 
         // Item bar (id 2) = consumables (boombox / cake / transform food); any other bar = combat ability.
         if (packet.Data.Id == 2)
@@ -367,6 +384,18 @@ public static class AbilityPacketClientRequestStartAbilityHandler
 
         if (_resourceManager.Consumables.Cakes.TryGetValue(itemDefinition.Id, out var cakeDefinition))
             return HandleCake(connection, packet.Data.Slot, clientItem, itemDefinition, cakeDefinition);
+
+        // Combat orbs/spheres/grenades (CategoryId 14 - see CombatOrbAbilities) - the wiki's "potion belt"
+        // battle items: thrown at a target to apply a real status effect or plain damage.
+        if (itemDefinition.CategoryId == 14 && CombatOrbAbilities.TryResolve(itemDefinition.Comment, out var orb))
+            return HandleCombatOrb(connection, packet, packet.Data.Slot, clientItem, itemDefinition, orb);
+
+        // Health/Energy/Replenishment potions (CategoryId 9 - see PotionAbilities) - the same "potion belt"
+        // mechanic's self/group-restore half. CategoryId 9 is a broad bucket (also holds scrolls, buff
+        // items, unrelated potions), so this only matches items whose real name resolves to a known
+        // heal/energy potion - see PotionAbilities.TryResolve's suffix match.
+        if (itemDefinition.CategoryId == 9 && PotionAbilities.TryResolve(itemDefinition.Comment, out var potion))
+            return HandleCombatPotion(connection, packet.Data.Slot, clientItem, itemDefinition, potion);
 
         // Random-transform foods (e.g. Jack-O-Lantern) roll one of their listed
         // transformations instead of using the item's fixed ability id.
@@ -411,6 +440,219 @@ public static class AbilityPacketClientRequestStartAbilityHandler
 
         StartCooldown(connection.Player.Guid, itemDefinition.Id, cakeDefinition.CooldownMs);
         connection.Player.StartActionBarCooldown(2, slot, itemDefinition.Icon.Id, itemDefinition.NameId, clientItem.Count, cakeDefinition.CooldownMs);
+
+        return true;
+    }
+
+    private static bool HandleCombatPotion(GatewayConnection connection, int slot, ClientItem clientItem,
+        ClientItemDefinition itemDefinition, PotionDefinition potion)
+    {
+        var player = connection.Player;
+
+        if (IsOnCooldown(player.Guid, itemDefinition.Id))
+            return SendFailure(connection);
+
+        player.SendTunneledToVisible(new AbilityPacketStartCasting
+        {
+            Unknown = player.Guid,
+            Unknown2 = player.Guid,
+            Animation = PotionAbilities.DrinkAnimId,
+            AbilityId = slot + 1,
+            ActionTime = 0.4f,
+        }, sendToSelf: true);
+
+        var targets = potion.Shared
+            ? player.Zone.Players.ToList()
+            : [player];
+
+        foreach (var target in targets)
+        {
+            if (potion.Effect is PotionEffect.Health or PotionEffect.Replenishment)
+            {
+                // Live feedback 2026-07-27: "i dont see my health moving when using potions" - the packet
+                // below is only the floating "+N" combat text, it never touched CurrentHitpoints. Player.Heal
+                // is the real HP-bar update (same packets TakeDamage/RegenTick use). HealPercent (not a flat
+                // amount) so the potion scales with each player's own max HP instead of favoring low-HP
+                // players (live feedback: "make sure health potions ... scale for all players").
+                var healedAmount = target.HealPercent(PotionAbilities.HealFraction);
+                var maxHpStat = target.Stats.TryGetValue(CharacterStatId.MaxHealth, out var mh) ? mh.Int : 0;
+                target.SendTunneledToVisible(new PlayerUpdatePacketHitPointModification
+                {
+                    Guid = target.Guid,
+                    Guid2 = target.Guid,
+                    Unknown = true,
+                    Unknown2 = maxHpStat,
+                    Unknown3 = target.CurrentHitpoints,
+                    Unknown4 = healedAmount,
+                }, sendToSelf: true);
+                // CORRECTED 2026-07-28 (live feedback: "health effects seems to be stuck in the world
+                // during dungeon playthrough") - PotionAbilities.HealFxId (15921) is the SAME "_loop_" heal-
+                // shower asset the Health power-up/heart pickups use, fired here as a one-shot world-
+                // positioned trigger with no stop - same bug class as Volley's rain FX and the Health
+                // power-up before their own fixes. Tag-attach it to the drinker and remove it after a hold,
+                // instead of leaving a looping effect parked at the exact spot they happened to drink it.
+                var healTagId = System.Threading.Interlocked.Increment(ref _castFxTagCounter);
+                target.SendTunneledToVisible(new PlayerUpdatePacketAddEffectTagCompositeEffect
+                {
+                    Guid = target.Guid,
+                    TagId = healTagId,
+                    CompositeEffectId = PotionAbilities.HealFxId,
+                    SourceGuid = target.Guid,
+                }, sendToSelf: true);
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Task.Delay(PotionAbilities.HealShowerMs);
+                        target.SendTunneledToVisible(new PlayerUpdatePacketRemoveEffectTagCompositeEffect
+                        {
+                            Guid = target.Guid,
+                            TagId = healTagId,
+                        }, sendToSelf: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Potion heal-shower FX stop failed.");
+                    }
+                });
+            }
+
+            if (potion.Effect is PotionEffect.Energy or PotionEffect.Replenishment)
+            {
+                // Only the DRINKER'S OWN energy pool is ours to touch directly here (the private _energy
+                // dict is keyed per-player, same mechanism PowerupSystem.RequestEnergyRefill bridges into -
+                // this handler already owns it, no bridge needed for our own case). Party members' energy
+                // still gets the visual FX below even though we can't authoritatively refill a DIFFERENT
+                // connection's bar from here without its own GatewayConnection - a real gap for "Shared"
+                // energy/replenishment potions used on someone else, flagged rather than silently skipped.
+                if (target.Guid == player.Guid)
+                {
+                    _energy[player.Guid] = MaxEnergy;
+                    SendEnergy(player, MaxEnergy);
+                }
+                target.SendTunneledToVisible(new PlayerUpdatePacketPlayCompositeEffect
+                {
+                    Guid = target.Guid,
+                    CompositeEffectId = PotionAbilities.EnergyFxId,
+                    Position = target.Position,
+                }, sendToSelf: true);
+            }
+        }
+
+        const int PotionCooldownMs = 10000; // no wiki/data source for the real per-potion cooldown - a reasonable guess
+        StartCooldown(player.Guid, itemDefinition.Id, PotionCooldownMs);
+        player.StartActionBarCooldown(2, slot, itemDefinition.Icon.Id, itemDefinition.NameId, clientItem.Count, PotionCooldownMs);
+
+        if (itemDefinition.SingleUse)
+            ConsumeItem(connection, clientItem, itemDefinition, slot);
+
+        return true;
+    }
+
+    // Throw animation for a combat orb - reuses "air_throw" (1033), the same real thrown-item animation
+    // Ninja's Fan of Blades/1000 Storms already use elsewhere in this codebase. Not independently confirmed
+    // for battle-item use specifically (no dedicated "use potion belt item" animation was found), but it's
+    // a real, already-proven throw motion rather than a guessed id.
+    private const int OrbThrowAnim = 1033;
+
+    private static bool HandleCombatOrb(GatewayConnection connection, AbilityPacketClientRequestStartAbility packet,
+        int slot, ClientItem clientItem, ClientItemDefinition itemDefinition, CombatOrbDefinition orb)
+    {
+        var player = connection.Player;
+        var zone = player.Zone;
+
+        if (IsOnCooldown(player.Guid, itemDefinition.Id))
+            return SendFailure(connection);
+
+        // Same target resolution as a combat ability: honor the client's selected enemy, else nearest
+        // live hostile within the auto-target reach.
+        Npc? target = null;
+        if (packet.Guid != 0 && zone.TryGetNpc(packet.Guid, out var selected) && selected.IsDamageable && selected.IsAlive)
+        {
+            target = selected;
+        }
+        else
+        {
+            var reach2 = JobWeaponAbilities.AutoTargetReach(player);
+            reach2 *= reach2;
+            var best2 = reach2;
+            foreach (var n in zone.Npcs)
+            {
+                if (!n.IsHostile || !n.IsDamageable || !n.IsAlive)
+                    continue;
+                var dx = n.Position.X - player.Position.X;
+                var dz = n.Position.Z - player.Position.Z;
+                var d2 = dx * dx + dz * dz;
+                if (d2 >= best2)
+                    continue;
+                best2 = d2;
+                target = n;
+            }
+        }
+
+        if (target is null)
+            return SendFailure(connection); // no target in range - the orb isn't thrown/consumed
+
+        player.EnterWorldCombat();
+
+        player.SendTunneledToVisible(new AbilityPacketStartCasting
+        {
+            Unknown = player.Guid,
+            Unknown2 = target.Guid,
+            Animation = OrbThrowAnim,
+            AbilityId = slot + 1,
+            ActionTime = 0.4f,
+        }, sendToSelf: true);
+
+        var fxId = CombatOrbAbilities.ImpactFxFor(orb.Effect);
+
+        if (orb.Effect == OrbEffect.Damage)
+        {
+            var killed = target.ApplyDamage(orb.Damage);
+
+            player.SendTunneledToVisible(new AbilityPacketDetonateProjectile
+            {
+                Guid = target.Guid,
+                CompositeEffectId = fxId,
+            }, sendToSelf: true);
+
+            player.SendTunneledToVisible(new PlayerUpdatePacketHitPointModification
+            {
+                Guid = player.Guid,
+                Guid2 = target.Guid,
+                Unknown = true,
+                Unknown2 = target.MaxHealth,
+                Unknown3 = target.Health,
+                Unknown4 = -orb.Damage,
+            }, sendToSelf: true);
+
+            if (killed)
+                player.Zone.OnNpcKilled(player, target);
+            else
+                player.Zone.OnNpcDamaged(player, target);
+        }
+        else
+        {
+            player.SendTunneledToVisible(new AbilityPacketDetonateProjectile
+            {
+                Guid = target.Guid,
+                CompositeEffectId = fxId,
+            }, sendToSelf: true);
+
+            var kind = CombatOrbAbilities.ToStatusEffectKind(orb.Effect);
+            if (kind is { } k)
+                StatusEffects.Apply(target, k, orb.DurationMs, source: player);
+        }
+
+        _logger.LogInformation("Combat orb: {name} ({effect}) used by {who} on {target}.",
+            itemDefinition.Comment, orb.Effect, player.Name, target.Name);
+
+        const int OrbCooldownMs = 15000; // no wiki/data source for the real belt-slot cooldown - a reasonable guess
+        StartCooldown(player.Guid, itemDefinition.Id, OrbCooldownMs);
+        player.StartActionBarCooldown(2, slot, itemDefinition.Icon.Id, itemDefinition.NameId, clientItem.Count, OrbCooldownMs);
+
+        if (itemDefinition.SingleUse)
+            ConsumeItem(connection, clientItem, itemDefinition, slot);
 
         return true;
     }
@@ -882,6 +1124,16 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         var player = connection.Player;
         var zone = player.Zone;
 
+        // The "3" key / toolbar slot index 2 = the held power-up (PowerupSystem) - pinned there on top of
+        // the normal 2-slot weapon toolbar (0=basic, 1=special) whenever one is held. Never routes through
+        // the normal weapon-ability resolution below.
+        if (packet.Data.Slot == 2)
+        {
+            if (!PowerupSystem.TryUse(player, _resourceManager))
+                return SendFailure(connection);
+            return true;
+        }
+
         // We DON'T enter world-combat just for pressing fire — entry is gated on actually hitting an enemy (see
         // EnterWorldCombat once a target resolves, + the re-stamp in ResolveDamageAfterCast). Swinging at air
         // animates but doesn't flag you. The killing blow keeps you in combat for the decay window so the bow
@@ -934,6 +1186,11 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         // locks for the whole swing (ActionTime) and the number lands as it connects (DamageDelay ~85% in), so
         // hits sync with the animation instead of firing many per swing when you spam.
         var isBasicMelee = packet.Data.Slot <= 0;
+
+        // Silence blocks the named SPECIAL only - a basic melee swing still works while silenced (matches
+        // the standard MMO convention this system follows; see StatusEffects.IsSilenced).
+        if (!isBasicMelee && StatusEffects.IsSilenced(player.Guid))
+            return SendFailure(connection);
         var swingMs = isBasicMelee ? SwingMsForAnimation(ability.Animation) : 0;
         var actionTime = isBasicMelee ? swingMs / 1000f : SpecialActionTime;
         var damageDelay = isBasicMelee ? swingMs * 0.85f / 1000f : SpecialDamageDelay;
@@ -1196,6 +1453,17 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         if (ability.SummonCount > 0 && zone is StartingZone summonZone)
             summonZone.SummonShadowClones(player, ability.SummonCount, 12);
 
+        // Self-buff abilities (e.g. Ninja's Mystical Blade — see NinjaWeaponAbilities' MysticismKit
+        // comment) apply a temporary % damage multiplier to the CASTER instead of resolving damage
+        // against a target. The cast/animation + SwordEffectId FX above already played, so a buff needs
+        // nothing further and — critically — must NOT fall into the target-resolution path below, which
+        // would otherwise silently no-op the whole cast whenever no enemy happens to be in range.
+        if (ability.BuffMultiplierPct > 0)
+        {
+            CombatBuffs.AddDamageBuff(player.Guid, ability.BuffMultiplierPct, ability.BuffDurationMs);
+            return true;
+        }
+
         // AOE specials (AoeRadius > 0) hit EVERY live hostile within the radius of the CASTER — the whole
         // pack, not just the selected target. Single-target abilities keep the resolved target.
         System.Collections.Generic.List<Npc> targets;
@@ -1240,7 +1508,8 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             packet.Data.Slot, ability.Name, ability.Damage, scaledDamage, ability.Animation, ability.EffectId, targets.Count);
 
         ResolveDamageAfterCast(player, targets, scaledDamage, ability.EffectId, damageDelay,
-            ability.CasterEndEffectId, ability.EnemyExtraEffectId, ability.AoeRadius);
+            ability.CasterEndEffectId, ability.EnemyExtraEffectId,
+            ability.TickCount, ability.TickIntervalMs, ability.CasterEndEffectStopMs);
 
         return true;
     }
@@ -1249,9 +1518,14 @@ public static class AbilityPacketClientRequestStartAbilityHandler
     // After the cast bar completes: apply damage, play the hit FX, push each health bar, kill/respawn at 0 HP.
     // Runs off-thread so the cast time elapses first. AoE specials pass the whole in-radius pack (one
     // HitPointModification per victim in a burst, like the 04-01 capture).
+    //
+    // tickCount/tickIntervalMs (default 1/0 = a single pass, unchanged for every ability except Volley -
+    // see WeaponAbility's header comment): repeats the whole damage+FX pass this many times, spaced
+    // tickIntervalMs apart, so a "rain of arrows"-style special actually lands a few real hits instead of
+    // one hit under an FX that plays forever.
     private static void ResolveDamageAfterCast(Player player, System.Collections.Generic.IReadOnlyList<Npc> targets,
         int damage, int effectId, float damageDelay, int casterEndEffectId = 0, int enemyExtraEffectId = 0,
-        float aoeRadius = 0f)
+        int tickCount = 1, int tickIntervalMs = 0, int casterEndEffectStopMs = 0)
     {
         _ = Task.Run(async () =>
         {
@@ -1264,9 +1538,42 @@ public static class AbilityPacketClientRequestStartAbilityHandler
                 // the decay). Player owns the state machine, so getting HIT enters it too.
                 player.EnterWorldCombat();
 
-                // Caster-side end FX plays ONCE regardless of how many victims (e.g. Dragonstrike's land FX).
-                // Broadcast to visible players (sendToSelf) so teammates see it too.
-                if (casterEndEffectId > 0)
+                // Caster-side end FX plays ONCE regardless of how many victims/ticks (e.g. Dragonstrike's land
+                // FX). Broadcast to visible players (sendToSelf) so teammates see it too.
+                //
+                // CORRECTED 2026-07-27 (live feedback: Volley's rain-of-arrows FX "shouldn't last that long" -
+                // it's a "_loop_" asset played as a bare one-shot trigger with no stop, so it rained forever).
+                // casterEndEffectStopMs > 0 switches to the same tag-attach/remove mechanism CastEffectStopMs
+                // already uses for lingering CAST fx - held for that many ms, then explicitly removed, instead
+                // of firing a looping asset with nothing to ever turn it off.
+                if (casterEndEffectId > 0 && casterEndEffectStopMs > 0)
+                {
+                    var tagId = System.Threading.Interlocked.Increment(ref _castFxTagCounter);
+                    player.SendTunneledToVisible(new PlayerUpdatePacketAddEffectTagCompositeEffect
+                    {
+                        Guid = player.Guid,
+                        TagId = tagId,
+                        CompositeEffectId = casterEndEffectId,
+                        SourceGuid = player.Guid,
+                    }, sendToSelf: true);
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await Task.Delay(casterEndEffectStopMs);
+                            player.SendTunneledToVisible(new PlayerUpdatePacketRemoveEffectTagCompositeEffect
+                            {
+                                Guid = player.Guid,
+                                TagId = tagId,
+                            }, sendToSelf: true);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Caster-end FX stop failed.");
+                        }
+                    });
+                }
+                else if (casterEndEffectId > 0)
                 {
                     player.SendTunneledToVisible(new PlayerUpdatePacketPlayCompositeEffect
                     {
@@ -1276,45 +1583,43 @@ public static class AbilityPacketClientRequestStartAbilityHandler
                     }, sendToSelf: true);
                 }
 
-                foreach (var target in targets)
+                for (var tick = 0; tick < System.Math.Max(1, tickCount); tick++)
                 {
-                    if (!target.IsAlive)
-                        continue; // e.g. died to an earlier hit this same tick
+                    if (tick > 0)
+                        await Task.Delay(tickIntervalMs);
 
-                    // Job crit traits (each gated to its own job, so only the active job's applies): Archer
-                    // Precision/Marksmanship, Brawler Bruising Strikes/Savvy, Warrior Piercing Strikes, Wizard
-                    // Genius/Arcane Flare. Rolled per hit so AoE specials can crit some targets and not others.
-                    var hitDamage = ApplyWizardTraitDamage(player,
-                        ApplyWarriorTraitDamage(player,
-                            ApplyBrawlerTraitDamage(player, ApplyArcherTraitDamage(player, damage))));
-
-                    var killed = target.ApplyDamage(hitDamage);
-
-                    // Impact FX on the victim (the ability's EffectId). HitPointModification has no effect field,
-                    // so play it explicitly (the switch away from AttackProcessed had dropped every impact FX).
-                    if (effectId > 0)
+                    foreach (var target in targets)
                     {
-                        // SINGLE-TARGET impacts ride op36/14 DetonateProjectile, the retail impact packet.
-                        // Its CompositeEffectId is confirmed live (effect id 21 rendered; the same id in the
-                        // second int did nothing) and it renders safely.
+                        if (!target.IsAlive)
+                            continue; // e.g. died to an earlier hit this same tick
+
+                        // Job crit traits (each gated to its own job, so only the active job's applies): Archer
+                        // Precision/Marksmanship, Brawler Bruising Strikes/Savvy, Warrior Piercing Strikes, Wizard
+                        // Genius/Arcane Flare. Rolled per hit so AoE specials can crit some targets and not others.
+                        var hitDamage = ApplyWizardTraitDamage(player,
+                            ApplyWarriorTraitDamage(player,
+                                ApplyBrawlerTraitDamage(player, ApplyArcherTraitDamage(player, damage))));
+
+                        // Active self-buff (e.g. Mystical Blade) multiplies the final number - applied last so
+                        // it stacks with crit rolls rather than being rolled into the crit chance itself.
+                        hitDamage = CombatBuffs.ApplyDamage(player.Guid, hitDamage);
+
+                        var killed = target.ApplyDamage(hitDamage);
+
+                        // Impact FX on the victim (the ability's EffectId). HitPointModification has no effect field,
+                        // so play it explicitly (the switch away from AttackProcessed had dropped every impact FX).
                         //
-                        // AoE deliberately KEEPS PlayCompositeEffect: DetonateProjectile attaches the effect
-                        // to a GUID and structurally cannot carry a position (its whole 20-byte body holds
-                        // exactly one float - there is no room for a Vector4), whereas the AoE path relies on
-                        // passing target.Position explicitly. The two are not interchangeable; swapping AoE
-                        // over made ground effects snap to entities.
-                        //
-                        // Unknown2/Unknown3 stay 0 - the exact combination verified to render, and neither
-                        // showed any observable effect across 0/1/500 and 0.0/100.0.
-                        if (aoeRadius <= 0f)
-                        {
-                            player.SendTunneledToVisible(new AbilityPacketDetonateProjectile
-                            {
-                                Guid = target.Guid,
-                                CompositeEffectId = effectId,
-                            }, sendToSelf: true);
-                        }
-                        else
+                        // CORRECTED 2026-07-27 (live feedback: "i see the hit effects on the player when the enemy
+                        // attacks, but it should also show on the enemy when the player attacks" - i.e. the mob->
+                        // player path, CombatEncounterZone.PerformMobAttack's CombatPacketAttackProcessed, was
+                        // ALWAYS rendering fine; only the player->enemy path was silent). Single-target impacts used
+                        // to ride op36/14 DetonateProjectile specifically (once confirmed live with effect id 21,
+                        // a generic/likely-already-cached effect) - unlike the AoE branch's PlayCompositeEffect,
+                        // which was independently proven safe for a real per-ability EffectId landing on an NPC
+                        // target. Since DetonateProjectile is this opcode's ONLY real-world confirmation and it's
+                        // not rendering the actual per-job ids, drop the single-target/AoE split entirely and use
+                        // the proven-safe packet for both - same call, just always take the position-based branch.
+                        if (effectId > 0)
                         {
                             player.SendTunneledToVisible(new PlayerUpdatePacketPlayCompositeEffect
                             {
@@ -1323,49 +1628,49 @@ public static class AbilityPacketClientRequestStartAbilityHandler
                                 Position = target.Position,
                             }, sendToSelf: true);
                         }
-                    }
 
-                    // EnemyExtraEffectId plays an ADDITIONAL effect on each victim on top of the hit FX
-                    // (e.g. Soul Power's purple ring around the enemy).
-                    if (enemyExtraEffectId > 0)
-                    {
-                        player.SendTunneledToVisible(new PlayerUpdatePacketPlayCompositeEffect
+                        // EnemyExtraEffectId plays an ADDITIONAL effect on each victim on top of the hit FX
+                        // (e.g. Soul Power's purple ring around the enemy).
+                        if (enemyExtraEffectId > 0)
                         {
-                            Guid = target.Guid,
-                            CompositeEffectId = enemyExtraEffectId,
-                            Position = target.Position,
+                            player.SendTunneledToVisible(new PlayerUpdatePacketPlayCompositeEffect
+                            {
+                                Guid = target.Guid,
+                                CompositeEffectId = enemyExtraEffectId,
+                                Position = target.Position,
+                            }, sendToSelf: true);
+                        }
+
+                        // Deal the player's own hits via HitPointModification (op35/35), NOT AttackProcessed:
+                        // AttackProcessed resets the action-bar melee timer when attacker == local player (the [1]
+                        // cooldown bug); HitPointModification gives the number + bar + recoil without touching it.
+                        // Wire (04-01): Guid=source(player), Guid2=victim, leading bool=01, i2=maxHP, i3=curHP-after,
+                        // i4=-damage.
+                        player.SendTunneledToVisible(new PlayerUpdatePacketHitPointModification
+                        {
+                            Guid = player.Guid,           // source / attacker
+                            Guid2 = target.Guid,          // victim
+                            Unknown = true,               // player->NPC sample had the leading bool = 01
+                            Unknown2 = target.MaxHealth,  // max HP (bar denominator)
+                            Unknown3 = target.Health,     // current HP AFTER the hit (bar position)
+                            Unknown4 = -hitDamage,        // delta = -damage -> the floating number
                         }, sendToSelf: true);
+
+                        // ARCHER TRAIT — Lucky Shot (L20): a landed hit sometimes restores a little energy.
+                        TryLuckyShotEnergy(player);
+
+                        _logger.LogInformation(
+                            "Ability hit {name} ({guid}) for {dmg} -> {hp}/{max} HP (killed={killed})",
+                            target.Name, target.Guid, hitDamage, target.Health, target.MaxHealth, killed);
+
+                        // Route the kill to the zone (OnNpcKilled): starting zone resets the training dummy, Frostfang
+                        // advances the encounter. Non-fatal hits go to OnNpcDamaged so the zone can react to HP
+                        // thresholds (the Alpha flees at low health instead of dying).
+                        if (killed)
+                            player.Zone.OnNpcKilled(player, target);
+                        else
+                            player.Zone.OnNpcDamaged(player, target);
                     }
-
-                    // Deal the player's own hits via HitPointModification (op35/35), NOT AttackProcessed:
-                    // AttackProcessed resets the action-bar melee timer when attacker == local player (the [1]
-                    // cooldown bug); HitPointModification gives the number + bar + recoil without touching it.
-                    // Wire (04-01): Guid=source(player), Guid2=victim, leading bool=01, i2=maxHP, i3=curHP-after,
-                    // i4=-damage.
-                    player.SendTunneledToVisible(new PlayerUpdatePacketHitPointModification
-                    {
-                        Guid = player.Guid,           // source / attacker
-                        Guid2 = target.Guid,          // victim
-                        Unknown = true,               // player->NPC sample had the leading bool = 01
-                        Unknown2 = target.MaxHealth,  // max HP (bar denominator)
-                        Unknown3 = target.Health,     // current HP AFTER the hit (bar position)
-                        Unknown4 = -hitDamage,        // delta = -damage -> the floating number
-                    }, sendToSelf: true);
-
-                    // ARCHER TRAIT — Lucky Shot (L20): a landed hit sometimes restores a little energy.
-                    TryLuckyShotEnergy(player);
-
-                    _logger.LogInformation(
-                        "Ability hit {name} ({guid}) for {dmg} -> {hp}/{max} HP (killed={killed})",
-                        target.Name, target.Guid, hitDamage, target.Health, target.MaxHealth, killed);
-
-                    // Route the kill to the zone (OnNpcKilled): starting zone resets the training dummy, Frostfang
-                    // advances the encounter. Non-fatal hits go to OnNpcDamaged so the zone can react to HP
-                    // thresholds (the Alpha flees at low health instead of dying).
-                    if (killed)
-                        player.Zone.OnNpcKilled(player, target);
-                    else
-                        player.Zone.OnNpcDamaged(player, target);
                 }
             }
             catch (Exception ex)

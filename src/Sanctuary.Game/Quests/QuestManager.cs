@@ -867,6 +867,14 @@ public sealed class QuestManager : IQuestManager
     // at for the active goal. For an EncounterComplete goal this is the encounter's world giver (the
     // Frostfang Growler wolf near spawn â€” the thing you click to enter the arena), whose guid is dynamic;
     // for every other goal it's the static GoalTargetGuid.
+    //
+    // CORRECTED 2026-07-28 (live feedback: "Bixies Gone Bad"'s tracker light was on Sunflower instead of
+    // the Bixie Hive dungeon entrance) - the switch below only ever knew the two bespoke wandering-NPC
+    // encounters (Frostfang/Tormented Spirits); every REAL atlas dungeon (Bixie Hive, Cracked Claw Caverns,
+    // and any future one) fell through to null and then to the static GoalTargetGuid fallback below, which
+    // resolves to the quest's turn-in NPC - wrong for an "enter the dungeon" goal. Added a generic fallback
+    // via StartingZone.DungeonEntrance(EncounterId), which covers every atlas dungeon at once instead of
+    // needing its own one-off case here.
     private ulong ResolveGoalTargetGuid(Player player, QuestDefinition quest, int goalIndex)
     {
         var goals = quest.EffectiveGoals;
@@ -878,7 +886,7 @@ public sealed class QuestManager : IQuestManager
             {
                 Zones.FrostfangArenaZone.EncounterId => startingZone.GrowlerWolf,
                 Zones.TormentedSpiritsArenaZone.EncounterId => startingZone.TormentedSpiritEntry(),
-                _ => null,
+                _ => startingZone.DungeonEntrance(goals[goalIndex].EncounterId),
             };
             if (entry is not null)
                 return entry.Guid;

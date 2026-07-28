@@ -178,6 +178,7 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
     private readonly IZoneManager _zoneManager;
     private readonly IResourceManager _resourceManager;
     private readonly Sanctuary.Game.Quests.IQuestManager _questManager;
+    private readonly Microsoft.EntityFrameworkCore.IDbContextFactory<Sanctuary.Database.DatabaseContext> _dbContextFactory;
     private readonly Random _rng = new();
 
     public TormentedSpiritsArenaZone(IServiceProvider serviceProvider)
@@ -186,6 +187,7 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
         _zoneManager = serviceProvider.GetRequiredService<IZoneManager>();
         _resourceManager = serviceProvider.GetRequiredService<IResourceManager>();
         _questManager = serviceProvider.GetRequiredService<Sanctuary.Game.Quests.IQuestManager>();
+        _dbContextFactory = serviceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Sanctuary.Database.DatabaseContext>>();
     }
 
     private static BaseZoneDefinition CreateDefinition() => new TormentedSpiritsArenaDefinition
@@ -442,6 +444,7 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
                     Difficulty = Difficulty,
                     IconId = IconId,
                     MiniGameType = CombatMiniGameType,
+                    MembersOnly = true, // gates the win screen's "Members Only Bonus" Coins box
                     Launch = true,
                     Objectives =
                     [
@@ -455,6 +458,8 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
                     PreviewRewards = FrostfangArenaZone.GetPrizePreviewFor(player),
                     PreviewCoins = FrostfangArenaZone.PrizeCoins,
                     PreviewXp = FrostfangArenaZone.PrizeXp,
+                    RewardXp = EncounterXp,
+                    MemberCoins = FrostfangArenaZone.PrizeCoins,
                     ProfileType = FrostfangArenaZone.CombatProfileType,
                     ActivityId = EncounterId,
                 };
@@ -686,7 +691,7 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
                         var tgt = NearestLivePlayerSticky(here, players, state);
                         if (tgt is null)
                         {
-                            TickMobReturnHome(spirit, state, dt);
+                            TickMobReturnHome(spirit, state, dt, now);
                             continue;
                         }
 
@@ -795,14 +800,18 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
 
         foreach (var h in collected)
         {
+            // Real heal (2026-07-27 fix - was cosmetic-only, same bug class reported for potions/power-ups
+            // once passive regen was turned off in dungeons/encounters).
+            var healedAmount = player.Heal(HeartHeal);
+            var maxHpStat = player.Stats.TryGetValue(CharacterStatId.MaxHealth, out var mh) ? mh.Int : 0;
             player.SendTunneled(new PlayerUpdatePacketHitPointModification
             {
                 Guid = player.Guid,
                 Guid2 = player.Guid,
                 Unknown = true,
-                Unknown2 = 2500,
-                Unknown3 = 2500,
-                Unknown4 = HeartHeal,
+                Unknown2 = maxHpStat,
+                Unknown3 = player.CurrentHitpoints,
+                Unknown4 = healedAmount,
             });
 
             var tagId = ++_healTagCounter;
@@ -899,12 +908,45 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
             npc.GracefulRemoval = (true, SpiritDeathHoldMs, 0, DeathPoofFxId, 1000);
             npc.Dispose();
 
-            if (_rng.Next(100) < HeartDropPercent)
-                SpawnHeart(killer, deathPos);
+            // Folded into the shared 5-kind roll (CombatEncounterZone.TryDropPowerup) instead of a
+            // heart-only one - see the identical change in FrostfangArenaZone for why.
+            TryDropPowerup(deathPos);
         }
 
         if (allClear)
+        {
+            // Boss coin drop (ported from EncounterArenaZone.GrantKillCoins, 2026-07-26) - this dungeon has
+            // no distinct boss-tier spirit (every tormented spirit is functionally identical), so the
+            // final kill that clears the encounter stands in for it, same as the Alpha-kill-triggers-win
+            // pattern in FrostfangArenaZone.
+            GrantKillCoins(killer);
             WinEncounter(killer, deathPos);
+        }
+    }
+
+    private const int BossCoinsMin = 3;
+    private const int BossCoinsMax = 12;
+
+    private void GrantKillCoins(Player killer)
+    {
+        var coins = _rng.Next(BossCoinsMin, BossCoinsMax + 1);
+
+        using var dbContext = _dbContextFactory.CreateDbContext();
+        var dbCharacter = dbContext.Characters.SingleOrDefault(x => x.Id == Sanctuary.Core.Helpers.GuidHelper.GetPlayerId(killer.Guid));
+        if (dbCharacter is null)
+            return;
+
+        dbCharacter.Coins += coins;
+        dbContext.SaveChanges();
+        killer.Coins = dbCharacter.Coins;
+
+        killer.SendTunneled(new ClientUpdatePacketCoinCount { Coins = killer.Coins });
+        killer.SendTunneled(new RewardBundlePacket { Coins = coins, Unknown15 = 957 });
+        killer.SendTunneled(new ChatPacketDebugChat
+        {
+            Message = $"<font color='#0000FF'>You receive {coins} coins.</font>",
+            PrintToChat = true,
+        });
     }
 
     // The win moment — the Frostfang burst minus the alpha theater: parting drops, goal
@@ -936,8 +978,10 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
             member.SendTunneled(new ObjectiveCompletePacket { ObjectiveId = GoalBanishSpirits });
             member.SendTunneled(new UiObjectiveCompletePacket { ObjectiveId = GoalBanishSpirits });
 
+            // Grant XP now; hold the banner for the wheel-stop moment so it lands in ONE combined popup
+            // with the coins/item (see BaseMiniGamePacketHandler.HandleLootWheelStopped).
             member.AwardXp(EncounterXp);
-            member.SendTunneled(new RewardBundlePacket { Xp = EncounterXp });
+            member.PendingWheelXp = EncounterXp;
 
             // Credit any quest whose active goal is "win THIS encounter" — e.g. Ninja: That's the Spirit.
             _questManager.OnEncounterComplete(member, EncounterId);
@@ -1092,8 +1136,9 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
     protected override int FailEncounterId => EncounterId;
     protected override int FailInstanceId => EncounterInstanceId;
     protected override string EncounterLogName => "Spirit arena";
+    protected override IResourceManager ResourceManagerForPowerups => _resourceManager;
 
-    protected override void ReturnHome(Player player)
+    protected override void ReturnHome(Player player, bool immediate)
     {
         if (player.Zone != this)
             return;

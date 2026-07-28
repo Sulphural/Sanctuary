@@ -43,7 +43,22 @@ namespace Sanctuary.Game.Combat;
 // EnergyCost = what a NON-BASIC slot press drains from the 100-point energy bar (also the slot's
 //   ManaCost, which drives the client grey-out). Weapon specials keep the live-decoded full bar
 //   (100); extra job abilities can cost less so the bar supports more than one cast.
-public sealed record WeaponAbility(string Name, int IconImageId, int Damage, int Animation, int EffectId, int CastEffectId = 0, int SummonCount = 0, int SwordEffectId = 0, int CasterEndEffectId = 0, int EnemyExtraEffectId = 0, float AoeRadius = 0f, int CastEffectStopMs = 0, int EnergyCost = 100);
+// BuffMultiplierPct/BuffDurationMs (added 2026-07-27, field names/values informed by the community
+// "combat-v2" fork): a self-buff ability (0 Damage, BuffMultiplierPct > 0) applies a temporary % damage
+// multiplier to the caster instead of resolving damage against a target - see the short-circuit in
+// AbilityPacketClientRequestStartAbilityHandler.HandleCombatAbility. Default 0 = ordinary damage-dealing
+// ability, unchanged behavior for every existing entry.
+// TickCount/TickIntervalMs/CasterEndEffectStopMs (added 2026-07-27, live feedback: "archer's bow of volley
+// shouldn't last that long.. a ton of arrows coming from the sky, should damage the enemy a few times and
+// then stop after a bit"): Volley's CasterEndEffectId (16204) is a "_loop_" asset - playing it via the
+// normal one-shot PlayCompositeEffect in ResolveDamageAfterCast made it rain forever with no stop, while
+// the ability itself still only hit once, a mismatch with the "rain of arrows" visual implying multiple
+// hits. TickCount > 1 repeats the whole damage/FX pass that many times, TickIntervalMs apart (default 1/0 =
+// exactly one pass, unchanged for every other ability). CasterEndEffectStopMs > 0 switches the caster-end FX
+// from a one-shot trigger to a tag-attach (op35/41) held for that many ms then removed (op35/42) - same
+// stop mechanism CastEffectStopMs already uses for lingering CAST fx, just for the CASTER-END fx instead;
+// default 0 keeps the existing one-shot behavior for every other ability.
+public sealed record WeaponAbility(string Name, int IconImageId, int Damage, int Animation, int EffectId, int CastEffectId = 0, int SummonCount = 0, int SwordEffectId = 0, int CasterEndEffectId = 0, int EnemyExtraEffectId = 0, float AoeRadius = 0f, int CastEffectStopMs = 0, int EnergyCost = 100, int BuffMultiplierPct = 0, int BuffDurationMs = 0, int TickCount = 1, int TickIntervalMs = 0, int CasterEndEffectStopMs = 0);
 
 public sealed record NinjaWeapon(WeaponAbility Melee, WeaponAbility Special);
 
@@ -238,11 +253,16 @@ public static class NinjaWeaponAbilities
                                                                  // cast 16129 PFX_fire_orange_mouth_ninja-flame-breath on caster; enemy impact REMOVED (user: FX played by me only, not any enemy)
 
     private static readonly NinjaWeapon MysticismKit = new(
-        // Damage NOT changed: found "Ninja's Jagged Scythe of Mysticism" listed as a real level-12 weapon on the
-        // wiki, confirming Mysticism/Mystical Blade is a genuine retail special, but no page content with an
-        // actual damage number came back from search — genuinely searched, nothing found.
+        // CORRECTED 2026-07-27: Mystical Blade was a flat 3000-damage attack (its "no wiki damage number
+        // found" placeholder) with the sword-empowering FX as pure decoration. The name + the sword-glow
+        // FX (empowers the WEAPON, not the target) both point to this being a self-BUFF, not an attack -
+        // matches the community "combat-v2" fork's implementation (a real 0-damage self-buff wired through
+        // a damage-multiplier system). Now Damage=0 + BuffMultiplierPct/BuffDurationMs, short-circuited in
+        // AbilityPacketClientRequestStartAbilityHandler before target resolution (a buff needs no target).
+        // +200%/15s carried from the fork as a plausible estimate, NOT wiki-sourced or independently
+        // verified — needs live testing like everything else here.
         new("Mystic Rush",    MeleeIcon, 2608, MeleeAnimation, MeleeHitFx),
-        new("Mystical Blade",     22980, 3000, 1061141, 0, 0, 0, 16169)); // anim weapon_power (DEDICATED); empowers the WEAPON: 16169 WFX_beam-trail_blue-purple_ninja-mystical-blade binds to the SWORD slot (SwordEffectId); NO body/enemy FX (user round-2: only on my sword, not on any bodies)
+        new("Mystical Blade",     22980, 0, 1061141, 0, 0, 0, 16169, BuffMultiplierPct: 200, BuffDurationMs: 15000)); // anim weapon_power (DEDICATED); empowers the WEAPON: 16169 WFX_beam-trail_blue-purple_ninja-mystical-blade binds to the SWORD slot (SwordEffectId); NO body/enemy FX (user round-2: only on my sword, not on any bodies)
 
     private static readonly NinjaWeapon SoulPowerKit = new(
         new("Shadowslash",    MeleeIcon, 2609, MeleeAnimation, MeleeHitFx), // 2609 = ZAM/wiki "Ninja's Shadow Blade of Soul Power": Shadowslash deals 2609 damage (already matched, now cited)

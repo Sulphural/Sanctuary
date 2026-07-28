@@ -398,11 +398,20 @@ public static class ArcherWeaponAbilities
         new(basic, special, SniperShot(specialDmg), RainOfArrows(specialDmg));
 
     private static ArcherWeapon Volleys(int icon, int basicDmg, int specialDmg) => Make(
-        new("Barrage", icon, basicDmg, BasicShotAnim, BasicHitFx, 15489, CastEffectStopMs: 1200), // PRJ_magical_multi-arrow
+        // CORRECTED 2026-07-27 (live feedback: "bow of volleys should be like a green effect for the
+        // basic") — was 15489 PRJ_magical_multi-arrow (no color); real, name-matched green arrow trail is
+        // 15483 PRJ_magical_green_arrow (ActorCompositeEffectDefinitions.xml).
+        new("Barrage", icon, basicDmg, BasicShotAnim, BasicHitFx, 15483, CastEffectStopMs: 1200), // PRJ_magical_green_arrow
         // Volley rains arrows AROUND the archer (wiki: "rains arrows down around you striking nearby
         // opponents") — a caster-centered AoE like the ninja's 1000 Storms. Launch 1110 fires the
         // arrows up; the rain-loop 16204 lands at the caster's feet at the end; 1111 dusts each victim.
-        new("Volley", VolleyIcon, specialDmg, SpecialAnim01, 1111, 1110, CasterEndEffectId: 16204, AoeRadius: 10f),
+        // CORRECTED 2026-07-27 (live feedback: "shouldn't last that long.. a ton of arrows coming from the
+        // sky, should damage the enemy a few times and then stop after a bit") — 16204 is a "_loop_" asset;
+        // it was firing as a one-shot with no stop, so it rained forever while only ever landing ONE hit (a
+        // mismatch with the multi-arrow visual). Now 4 hits, 700ms apart (same total damage as before,
+        // split across the ticks), with the rain FX tag-held 3s then removed - a few real hits, then it stops.
+        new("Volley", VolleyIcon, System.Math.Max(1, specialDmg / 4), SpecialAnim01, 1111, 1110,
+            CasterEndEffectId: 16204, AoeRadius: 10f, TickCount: 4, TickIntervalMs: 700, CasterEndEffectStopMs: 3000),
         specialDmg);
 
     private static ArcherWeapon Blizzards(int icon, int basicDmg, int specialDmg) => Make(

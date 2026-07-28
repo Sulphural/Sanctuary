@@ -13,12 +13,19 @@ namespace Sanctuary.Game.Pathfinding;
 public sealed class ObstacleMap
 {
     private readonly record struct Obstacle(Vector4 Position, float Radius);
+    private readonly record struct WallSegment(Vector4 A, Vector4 B);
+
+    // Real cave/terrain wall boundaries (see GzneParser) block within this margin of the segment - a rough
+    // stand-in for a character's collision half-width, same spirit as FootprintRadius's per-prop guesses.
+    private const float WallMargin = 1.5f;
 
     private const float CellSize = 16f;
     private readonly Dictionary<(int, int), List<Obstacle>> _cells = [];
+    private readonly Dictionary<(int, int), List<WallSegment>> _wallCells = [];
     private readonly int _obstacleCount;
+    private readonly int _wallSegmentCount;
 
-    private ObstacleMap(List<(Vector4 Position, float Radius)> obstacles)
+    private ObstacleMap(List<(Vector4 Position, float Radius)> obstacles, List<(Vector4 A, Vector4 B)> walls)
     {
         _obstacleCount = obstacles.Count;
         foreach (var (position, radius) in obstacles)
@@ -31,11 +38,24 @@ public sealed class ObstacleMap
                 list.Add(obstacle);
             }
         }
+
+        _wallSegmentCount = walls.Count;
+        foreach (var (a, b) in walls)
+        {
+            var segment = new WallSegment(a, b);
+            foreach (var cell in CellsCoveringSegment(a, b, WallMargin))
+            {
+                if (!_wallCells.TryGetValue(cell, out var list))
+                    _wallCells[cell] = list = [];
+                list.Add(segment);
+            }
+        }
     }
 
     public int ObstacleCount => _obstacleCount;
+    public int WallSegmentCount => _wallSegmentCount;
 
-    public static ObstacleMap Build(IReadOnlyList<GcnkParser.Placement> placements)
+    public static ObstacleMap Build(IReadOnlyList<GcnkParser.Placement> placements, IReadOnlyList<GzneParser.WallStrip>? wallStrips = null)
     {
         var obstacles = new List<(Vector4, float)>(placements.Count);
         foreach (var placement in placements)
@@ -44,7 +64,18 @@ public sealed class ObstacleMap
             if (radius > 0f)
                 obstacles.Add((placement.Position, radius));
         }
-        return new ObstacleMap(obstacles);
+
+        var walls = new List<(Vector4, Vector4)>();
+        if (wallStrips is not null)
+        {
+            foreach (var strip in wallStrips)
+            {
+                for (var i = 0; i < strip.Points.Count - 1; i++)
+                    walls.Add((strip.Points[i], strip.Points[i + 1]));
+            }
+        }
+
+        return new ObstacleMap(obstacles, walls);
     }
 
     // Rough per-model-name footprint radius, biggest match wins. Not exact - a coarse stand-in for real
@@ -66,6 +97,13 @@ public sealed class ObstacleMap
         if (name.Contains("tree_giant")) return 9f;
         if (name.Contains("tree_medium")) return 6f;
         if (name.Contains("tree")) return 4f;
+        // Structural cave-wall/tunnel-boundary pieces (e.g. "cave_01_naturalcool_piece02.agr",
+        // "cave_02_naturalcool_blockade.agr") - a modular kit for building cave interiors, found 2026-07-26
+        // via a properly structured GcnkParser (the earlier ".adr\0"-only string-matching silently missed
+        // every one of these, since they use the ".agr" extension - this was the actual root cause of mobs
+        // still clipping through tunnel walls after the first placement-based obstacle pass). Sized like a
+        // building, not a small prop - these are large modular architecture pieces.
+        if (name.Contains("naturalcool_piece") || name.Contains("blockade")) return 12f;
         if (name.Contains("building") || name.Contains("house") || name.Contains("tower") ||
             name.Contains("cabin") || name.Contains("hut") || name.Contains("castle") ||
             name.Contains("shop") || name.Contains("facade") || name.Contains("store") ||
@@ -96,7 +134,39 @@ public sealed class ObstacleMap
                     return true;
             }
         }
+
+        foreach (var cell in CellsCovering(point, WallMargin))
+        {
+            if (!_wallCells.TryGetValue(cell, out var list))
+                continue;
+
+            foreach (var wall in list)
+            {
+                if (DistanceToSegmentSquared(point, wall.A, wall.B) <= WallMargin * WallMargin)
+                    return true;
+            }
+        }
+
         return false;
+    }
+
+    // 2D (X/Z) squared distance from `point` to the segment a-b.
+    private static float DistanceToSegmentSquared(Vector4 point, Vector4 a, Vector4 b)
+    {
+        var abx = b.X - a.X;
+        var abz = b.Z - a.Z;
+        var lenSq = abx * abx + abz * abz;
+        var apx = point.X - a.X;
+        var apz = point.Z - a.Z;
+
+        var t = lenSq > 0.0001f ? (apx * abx + apz * abz) / lenSq : 0f;
+        t = Math.Clamp(t, 0f, 1f);
+
+        var cx = a.X + abx * t;
+        var cz = a.Z + abz * t;
+        var dx = point.X - cx;
+        var dz = point.Z - cz;
+        return dx * dx + dz * dz;
     }
 
     // Samples along the a->b segment (2D, X/Z only - matches how obstacles are stored) and rejects the
@@ -128,6 +198,21 @@ public sealed class ObstacleMap
         var maxX = (int)MathF.Floor((position.X + radius) / CellSize);
         var minZ = (int)MathF.Floor((position.Z - radius) / CellSize);
         var maxZ = (int)MathF.Floor((position.Z + radius) / CellSize);
+
+        for (var cx = minX; cx <= maxX; cx++)
+            for (var cz = minZ; cz <= maxZ; cz++)
+                yield return (cx, cz);
+    }
+
+    // Every cell touching the segment's bounding box (padded by margin) - coarser than a true line
+    // rasterization, but segments are short (adjacent wall-strip points) so the padding waste is small,
+    // and it guarantees IsBlocked's cell lookup at any point within margin of the segment always hits.
+    private static IEnumerable<(int, int)> CellsCoveringSegment(Vector4 a, Vector4 b, float margin)
+    {
+        var minX = (int)MathF.Floor((MathF.Min(a.X, b.X) - margin) / CellSize);
+        var maxX = (int)MathF.Floor((MathF.Max(a.X, b.X) + margin) / CellSize);
+        var minZ = (int)MathF.Floor((MathF.Min(a.Z, b.Z) - margin) / CellSize);
+        var maxZ = (int)MathF.Floor((MathF.Max(a.Z, b.Z) + margin) / CellSize);
 
         for (var cx = minX; cx <= maxX; cx++)
             for (var cz = minZ; cz <= maxZ; cz++)

@@ -881,5 +881,99 @@
         "TargetGuid": 100000002501    // Hilforn
       }
     ]
+  },
+  {
+    // === Bixies Gone Bad ===  real FR quest sending the player into the Bixie Hive dungeon (activity id
+    // 37, DungeonCatalog[37]) to rescue the captive Bixie Queen from Drone Fauzz and the revolting Bixies -
+    // the exact same premise the dungeon's own escort sequence tells (per legacy.fanbyte.com/wiki, cross-
+    // checked against the game's own locale dump). Giver = Sunflower, a REAL, ALREADY-PLACED world NPC
+    // (Npcs.json Id 4513, fairy_m_farmer_01.adr, NameId 7669) - no new NPC spawn needed. Goal is
+    // EncounterComplete (Type 4, matching the Frostfang/Tormented Spirits dungeon-quest pattern above)
+    // rather than a literal "kill 12" counter: the dungeon already requires clearing every enemy to reach
+    // the queen/win, so gating on OnEncounterComplete is the correct real mechanic, not an arbitrary
+    // mid-dungeon count (the wiki's "defeat 12 revolting Bixies" reads as flavor text for "win the
+    // dungeon", same as Frostfang's own real capture ground-truthed a one-shot flag goal, not a per-kill one).
+    // Text ids are REAL, exact text_ids.txt matches except TargetDialogueId (flagged below - no dedicated
+    // Sunflower turn-in line was found; reuses the closest real, on-topic string rather than inventing new
+    // text, since the client needs an ACTUAL locale id, not a fabricated one).
+    "QuestId": 15335,
+    "TitleId": 15335,                 // "Bixies Gone Bad"
+    "DescriptionId": 15336,           // "A group of bixies are revolting and have taken their own queen hostage. Enter the Bixie Hive and save her!"
+    "GiverDialogueId": 15888,         // Sunflower: "Some bixies have gone bad and have captured the Queen! You must help her! Go into the Bixie Hives and save her before it is too late."
+    "ObjectiveDescriptionId": 15339,  // "Save the bixie queen in the Bixie Hive next to Sanctuary."
+    "SubGoalId": 15883,               // "Defeat revolting Bixies"
+    "TargetDialogueId": 15339,        // UNSOURCED as a dedicated turn-in line - see header comment
+    "IconId": 43278,
+    "GiverGuid": 100000004513,        // Sunflower (Queensfields)
+    "TargetGuid": 100000004513,       // return to Sunflower
+    "RewardCoins": 90,                // real, wiki-sourced reward
+    "RewardExperience": 0,            // no XP figure published anywhere for this quest - unsourced, left at 0 rather than guessed
+    "RewardItems": [],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 0,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        // GOAL 1 - EncounterComplete: win the Bixie Hive battle instance (activity id 37).
+        "NameId": 15883,             // "Defeat revolting Bixies"
+        "DialogueId": 417250,        // Sunflower mid-goal (real alt line): "The Bixie Queen is being attacked by rebel warriors inside her hive! Enter the Bixie Hive and fight your way in and rescue the Queen!"
+        "Type": 4,                   // QuestGoalType.EncounterComplete
+        "EncounterId": 37            // EncounterArenaZone via DungeonCatalog[37], "Bixie Hive"
+      },
+      {
+        // GOAL 2 - Return to Sunflower (TalkToNpc, the default type).
+        "NameId": 37595,             // "Return to Sunflower"
+        "DialogueId": 15339,         // her closing line - same unsourced-turn-in caveat as above
+        "TargetGuid": 100000004513   // Sunflower
+      }
+    ]
+  },
+  {
+    // === Ninja: Strike from the Shadows ===  real FR NINJA JOB quest sending the player into Cracked
+    // Claw Caverns (activity id 118, DungeonCatalog[118]) - Chloe (the SAME giver as "Ninja: That's the
+    // Spirit" above, GiverGuid 100000001557, Blackspore Swamp) sends the player to "demonstrate your
+    // ability to strike stealthily... Head to Cracked Claw Caverns and defeat the inhabitants within."
+    // (legacy.fanbyte.com/wiki, cross-checked against the game's own locale dump). Goal is
+    // EncounterComplete (Type 4), same reasoning as every other dungeon quest in this file: Cracked Claw
+    // Caverns' EncounterArenaZone only calls _questManager.OnEncounterComplete on the FULL clear/win, never
+    // a per-kill hook for kills inside the instance - so a literal "kill N Swamp Cray Brood/Cray/Elder"
+    // goal (matching the wiki's 5/7/1 breakdown) would never actually be able to progress with this
+    // engine. The wiki's per-species counts read as retail flavor text for "clear the dungeon" (same
+    // pattern already ground-truthed for Frostfang's real capture: a one-shot flag, not a per-kill
+    // counter), so this collapses to the SAME one-EncounterComplete-goal shape Frostfang/Tormented
+    // Spirits/Bixie Hive already use. All text ids are REAL, exact text_ids.txt matches.
+    "QuestId": 78853,
+    "TitleId": 78853,                 // "Ninja: Strike from the Shadows"
+    "DescriptionId": 139483,          // "Head to the nearby Cracked Claw Caverns and defeat the inhabitants within."
+    "GiverDialogueId": 78852,         // Chloe: "Before you return to Lakeshore, you must demonstrate your ability to strike stealthily, from the shadows... Head to Cracked Claw Caverns and defeat the inhabitants within."
+    "ObjectiveDescriptionId": 139483,
+    "SubGoalId": 90440,               // "Defeat several Swamp Cray" (representative of the 3 real sub-goal texts: 90432 Brood/90440 Cray/90442 Elder - collapsed to one goal, see header comment)
+    "TargetDialogueId": 139527,       // Chloe turn-in: "Kai will wish to know of your bravery and how you brought honor back to the Flying Dragons. You can find him in Seaside." (hints at a real follow-up quest via Kai in Seaside, not yet independently confirmed/linked)
+    "IconId": 43278,
+    "GiverGuid": 100000001557,        // Chloe (Blackspore Swamp)
+    "TargetGuid": 100000001557,       // return to Chloe
+    "RewardCoins": 0,
+    "RewardExperience": 125,          // wiki: "125 stars"
+    "RewardItems": [75390, 76210],    // Ninja's Ring of Energy I, Kusa Ninja Armwraps
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 0,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        // GOAL 1 - EncounterComplete: win Cracked Claw Caverns (activity id 118).
+        "NameId": 90440,             // "Defeat several Swamp Cray"
+        "DialogueId": 78852,         // Chloe mid-goal (no separate mid-goal line found; reuses the offer line)
+        "Type": 4,                   // QuestGoalType.EncounterComplete
+        "EncounterId": 118           // EncounterArenaZone via DungeonCatalog[118], "Cracked Claw Caverns"
+      },
+      {
+        // GOAL 2 - Return to Chloe (TalkToNpc, the default type).
+        "NameId": 388222,            // "Return to Chloe" (same real id "That's the Spirit" already uses)
+        "DialogueId": 139527,        // her closing line
+        "TargetGuid": 100000001557   // Chloe
+      }
+    ]
   }
 ]

@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 
+using Sanctuary.Game.Combat;
+
 namespace Sanctuary.Game.Dungeons;
 
 // One enemy type in a dungeon: a real client model + how many, how tough. Model IDs come from
@@ -13,6 +15,19 @@ public sealed class DungeonEnemy
     public float Scale = 1f;
     // Boss: shows a health bar + name plate; regular mobs use the hidden-plate pack recipe.
     public bool Boss;
+    // MainBoss: ALSO gets the real on-screen boss health display (CombatPacketEnableBossDisplay, op32/
+    // sub9) - separate from Boss/ShowHealthBar, live feedback 2026-07-28: "Unruly elite dont get boss
+    // health, just the main boss. unruly elite should just show health bar on top of his head" - a
+    // mini-boss (Boss=true) keeps its floating nameplate bar + coin drop, but only the DUNGEON's actual
+    // final boss (MainBoss=true) gets the prominent on-screen display. False for every existing Boss
+    // entry unless explicitly opted in.
+    public bool MainBoss;
+    // Real name for this specific enemy (e.g. a named boss like "Drone Fauzz"), overriding the old
+    // Boss-fallback convention (CreateMob used to always stamp a boss with Dungeon.TitleNameId - the
+    // DUNGEON's own name - which only happened to read right for dungeons literally named after their
+    // boss, like Cracked Claw Caverns' "Cracked Claw"). 0 = old behavior unchanged (falls back to
+    // Dungeon.TitleNameId for a boss, 0/nameless for a regular mob).
+    public int NameId;
 }
 
 // A data-driven combat dungeon (battle instance) for the generic EncounterArenaZone. Worlds +
@@ -39,9 +54,30 @@ public sealed class DungeonDefinition
     public float GroundY;
     public required int TitleNameId;
     public required int DescriptionId;
+    // Real Goals-panel text for the primary "defeat everyone" objective row (e.g. Bixie Hive's "Save the
+    // Queen from unruly Bixies!") - a DIFFERENT real string from the details-popup DescriptionId (Bixie
+    // Hive's "Drone Fauzz is trying to take over the hive!..."), which EncounterArenaZone used to also
+    // reuse for the goal row itself (fine for a dungeon whose "defeat everyone" goal happens to read the
+    // same as its overall description, wrong for one that has its own distinct real goal text). 0 = fall
+    // back to DescriptionId, unchanged behavior for every dungeon that doesn't set this.
+    public int PrimaryGoalNameId;
     public int Difficulty = 1;
     public int IconId = 1345;
     public int Xp = 12;
+
+    // Real coin reward for clearing this dungeon (previously a single shared constant across every
+    // data-driven dungeon - FrostfangArenaZone.PrizeCoins=10 - so every one of them paid out identically
+    // regardless of difficulty/length). Default matches that old shared value, so no dungeon changes
+    // behavior unless explicitly given its own wiki-sourced value.
+    public int Coins = 10;
+
+    // Per-kill coin drop range for BOSS kills only (EncounterArenaZone.GrantKillCoins) - a small "You
+    // receive N coins" toast during the fight, separate from the fixed Coins grant above at the very end.
+    // No wiki/ground-truth source for a real per-dungeon amount exists yet, so this default (shared by
+    // every dungeon unless overridden) is a reasonable placeholder, not a mined value - kept here instead
+    // of a flat constant so any dungeon CAN get a tuned range later without touching zone code.
+    public int BossCoinsMin = 3;
+    public int BossCoinsMax = 12;
 
     // Playable radius of the map (from the world's Areas.xml "Bed" sphere). Drives the zone's
     // tile grid size AND enemy placement: small (arena encounters, ~64) = a tight ring at center; large
@@ -58,13 +94,111 @@ public sealed class DungeonDefinition
     public int BonusTargetModelId;
     public int BonusTargetCount;
 
+    // Alternative bonus goal: interact with N scattered props, each of which spawns a hostile that must be
+    // DEFEATED before the bonus ticks (e.g. Cracked Claw Caverns' "Release the trapped spirits... 0/6" -
+    // clicking a "Lost Explorer Bones" prop spawns an attacking spirit; killing it is what actually counts).
+    // 0 = none. Mutually exclusive with the kill-based bonus above in practice — see BonusTotal/HasBonus.
+    public int BonusInteractModelId;   // the prop clicked to trigger a spawn
+    public int BonusInteractNameId;    // the prop's own name (e.g. "Lost Explorer Bones")
+    public int BonusInteractCount;
+    public int BonusSpawnModelId;      // the hostile that spawns on interact and must be killed
+    public int BonusSpawnNameId;       // its name (0 = nameless plate, matching the regular-mob convention)
+    public int BonusSpawnHealth = 1200;
+
+    // Real text id for the bonus row (used as both NameId and DescriptionId, matching how the primary
+    // objective already reuses DescriptionId for both). 0 renders blank.
+    public int BonusNameId;
+
+    public bool HasBonus => BonusTargetCount > 0 || BonusInteractCount > 0;
+    public int BonusTotal => BonusTargetCount > 0 ? BonusTargetCount : BonusInteractCount;
+
     // Optional real player-spawn / exit-door position (X, Y, Z), when it's known exactly (e.g. from a
     // hand-captured coordinate sheet) instead of the generic center-based estimate EncounterArenaZone
     // otherwise falls back to. Null = unchanged default behavior for every dungeon that doesn't set these.
     public (float X, float Y, float Z)? SpawnOverride;
     public (float X, float Y, float Z)? ExitOverride;
 
+    // "Frog Log" spawner props (Cracked Claw Caverns' sheet: "SPAWNS VENOMOUS FROGS", 3 real marker
+    // positions): a persistent, attackable prop that spawns a hostile whenever a player lingers within
+    // FrogLogTriggerRange, on a per-log cooldown, until the log itself is destroyed — one hit kills it
+    // (FrogLogHealth) and permanently stops that log's spawning. Empty array = none (default), so no
+    // dungeon has to opt in to be unaffected.
+    public int FrogLogModelId = 1916;      // real client prop: sg_spawner_toad_01.adr
+    public int FrogLogNameId = 422830;     // real client string "Frog Log"
+    public int FrogLogHealth = 1;          // "takes one shot to destroy" per the sheet, any hit kills it
+    public int FrogLogSpawnModelId;        // the hostile it spawns (e.g. Venomous Frog)
+    public int FrogLogSpawnHealth = 900;
+    public float FrogLogTriggerRange = 10f;
+    public int FrogLogSpawnCooldownMs = 8000;
+    // Total spawns a single log/tunnel will EVER produce before it goes quiet (still standing, no longer
+    // triggerable) - 0 = unlimited (default, Cracked Claw's original unbounded behavior unchanged). Live
+    // feedback, Bixie Hive's tunnels 2026-07-28: "defeated enemies will respawn.. this shouldn't happen" -
+    // an unbounded spawner produces visually-identical individuals forever, which reads as already-killed
+    // enemies coming back and means the room can never actually feel cleared.
+    public int FrogLogMaxSpawns;
+    public (float X, float Y, float Z)[] FrogLogPositions = [];
+
+    // Escort NPC (Bixie Hive's sheet: a captive "Bixie Queen" who speaks staged dialogue as the player
+    // clears the dungeon, each stage gating a reinforcement wave - the last stage's "wave" being the boss
+    // itself, held back until every earlier stage is cleared). 0/empty = no escort (default), unaffected
+    // for every other dungeon. The escort is stationary (no follow/pathing AI exists yet) and friendly -
+    // not a combat target.
+    public int EscortModelId;
+    public int EscortNameId;
+    public (float X, float Y, float Z)? EscortPosition;
+    // Said once, shortly after the encounter starts (the captive's ambient plea before being freed).
+    public int EscortGreetingLineId;
+    public DungeonEscortStage[] EscortStages = [];
+    // Said once the WHOLE encounter is won (every stage's spawns dead) - e.g. Bixie Hive's "Thank you so
+    // much for saving me!" 0 = none.
+    public int EscortVictoryLineId;
+
+    // A clickable loot prop that spawns at the FINAL kill's death spot on victory (e.g. Bixie Hive's real
+    // "sg_mystery_chest_01.adr" world prop on Drone Fauzz's body) - opening it grants a Battle Item Mystery
+    // Pack (10482), the same real "mystery" reward item already used across every dungeon's fixed prize
+    // list (no distinct chest-loot table exists in this codebase's resources, so its contents are reused
+    // from that proven item rather than invented). 0 = none, unaffected for every other dungeon.
+    public int MysteryChestModelId;
+    public int MysteryChestNameId;
+
     public int TotalEnemies => Enemies.Sum(e => e.Count);
+}
+
+// One escort-gated beat: fires once every enemy from the PRIOR stage (or the initial Enemies roster, for
+// stage 0) is dead. Plays the escort's voiceline, then spawns this stage's Enemies scattered around
+// SpawnPosition. The encounter only truly ends once the LAST stage's spawns are also cleared - see
+// EncounterArenaZone.OnNpcKilled/AdvanceEscortStage.
+public sealed class DungeonEscortStage
+{
+    public required int VoicelineNameId;
+    public required (float X, float Y, float Z) SpawnPosition;
+    public required DungeonEnemy[] Enemies;
+
+    // If true (default), spawned enemies immediately charge (dramatic ambush/boss entrance - the original
+    // design). If false, they spawn IDLE and only aggro via the normal proximity AggroRange check like
+    // every pre-placed mob (live feedback, Bixie Hive's reinforcement wave: "should start chasing the
+    // player (or player can walk over to them) when player gets close to them").
+    public bool InstantAggro = true;
+
+    // Delays this stage's Enemies from spawning until DelayMs after VoicelineNameId plays, instead of
+    // landing in the same instant - lets a stage narrate a beat (e.g. a "gift" of power-ups) before its
+    // combat wave shows up. 0 = spawn immediately (original behavior). WaveVoicelineNameId (if set) plays
+    // right as the delayed spawn actually happens.
+    public int DelayMs;
+    public int WaveVoicelineNameId;
+
+    // Optional "gift" sub-beat during the delay window (e.g. Bixie Hive's Queen: "I'll create some power
+    // ups for you to use!" + 3 guaranteed pickups placed side by side). 0/empty = no gift. GiftDelayMs is
+    // measured from VoicelineNameId, same clock as DelayMs (should be smaller so the gift lands first).
+    public int GiftVoicelineNameId;
+    public int GiftDelayMs;
+    public (float X, float Y, float Z) GiftPosition;
+    // Unit vector the gift's pickups are spread ALONG (side by side), centered on GiftPosition - live
+    // feedback 2026-07-28 (screenshot): they should read as a row laid out in front of the escort, not
+    // offset along the world's raw X axis regardless of which way she's actually facing. Default (1,0)
+    // preserves the old pure-X-offset behavior for a dungeon that doesn't set this.
+    public (float X, float Z) GiftPerpendicular = (1f, 0f);
+    public PowerupKind[] GiftPowerupKinds = [];
 }
 
 // All data-driven dungeons, keyed by activity id (excludes the bespoke Frostfang 145/174 +
@@ -956,16 +1090,152 @@ public static class DungeonCatalog
         },
 
         // 900062  ATLAS DUNGEON (POI 62) Bixie Hive -> sg_bixie_hive
+        // Real layout from a hand-captured coordinate sheet (2026-07-28): 12 Unruly Warrior pack markers
+        // (63 total), 7 Unruly Mage pack markers (26 total, each behind its own warrior pack), 2 lone
+        // Unruly Elites, 2 "Bixie Tunnel" spawners that keep producing warriors (modeled as
+        // FrogLogPositions with a huge FrogLogHealth so they're effectively indestructible - the sheet
+        // never calls them a destroyable prop, unlike Cracked Claw's real one-hit Frog Logs), a captive
+        // Bixie Queen (escort NPC) who speaks 4 real, locale-verified voicelines as the player clears her
+        // way and 2 reinforcement waves ambush, and the boss Drone Fauzz - who per the sheet's own note
+        // "SPAWNS AFTER ALL OTHER MOBS DEAD" - modeled as the escort's FINAL stage rather than a member of
+        // Enemies (see DungeonEscortStage / EncounterArenaZone.AdvanceEscortStage).
+        //
+        // Real ids (Models.txt + Npcs.json, high confidence): Unruly Warrior = 220 bixie_m_warrior.adr (a
+        // real, loadable model with no prior Npcs.json instance - unused until now). Unruly Mage = 211
+        // bixie_f_mage.adr (the OLD placeholder's tier-1 slot, which mislabeled this model as a generic
+        // enemy rather than the real Mage role). Unruly Elite = 218 bixie_m_elite_guard.adr (already
+        // correct in the old placeholder). Bixie Queen escort = 217 bixie_f_queen.adr (real, previously
+        // unused). Frightened Bixie Worker (bonus) = 210 bixie_f_gatherer.adr, the real civilian "Gatherer"
+        // role - a much closer thematic match than any combat model. Drone Fauzz has NO dedicated model
+        // anywhere in the client's resources - the OLD placeholder's boss slot (4472 "Bugawug Queen") is
+        // unrelated lore, clearly wrong. Per the user's own choice: reuse the real Unruly Elite model (218),
+        // scaled up, matching the wiki's own description of Fauzz as "an Unruly Elite on steroids."
+        //
+        // Real text ids (text_ids.txt exact matches): title "Bixie Hive" 5702 (already correct), description
+        // 16784 "Drone Fauzz is trying to take over the hive! Help Queen Bixie regain control by defeating
+        // Drone Fauzz!" (replacing the old generic 382845 placeholder - "Press to Teleport...", confirmed
+        // NOT real Bixie Hive text), primary goal 16791 "Save the Queen from unruly Bixies.", bonus 430337
+        // "Save the Frightened Bixie Workers!", enemy names 16346/16347/16348 (Unruly Elite/Mage/Warrior - a
+        // clean sequential trio), Bixie Queen's 4 voicelines 14787/38625/38626/38627 (also a clean
+        // sequential block), Drone Fauzz's own name 38510, "Bixie Tunnel" 421143, "Frightened Bixie Worker"
+        // 130479.
+        //
+        // Real reward (wiki freerealms.fandom.com/wiki/Bixie_Hive): 112 coins (there's also a separate
+        // 126-coin "Members Only Bonus" the wiki lists, which this codebase has no F2P/Member distinction to
+        // model - the single Coins field below is the base 112). Difficulty 1 (the wiki's own star rating) -
+        // CORRECTED from the old placeholder's Difficulty=3. No XP figure is published anywhere for this
+        // dungeon (unlike Cracked Claw's clean wiki-sourced 200) - every OTHER real ATLAS DUNGEON in this
+        // catalog is Difficulty 3-5 on a uniform placeholder curve (38/44/50), so Xp=26 here extrapolates
+        // that same ~6-per-tier step down to Difficulty 1 - flagged as an ESTIMATE, not wiki-sourced, unlike
+        // Coins.
         [37] = new()
         {
             ActivityId = 37, PoiId = 62, Comment = "Bixie Hive",
             World = "sg_bixie_hive", CenterX = 246f, CenterZ = 321f, GroundY = 81f, Radius = 200f,
-            TitleNameId = 5702, DescriptionId = 382845, Difficulty = 3, Xp = 38,
+            TitleNameId = 5702, DescriptionId = 16784, PrimaryGoalNameId = 16791, Difficulty = 1, Xp = 26, Coins = 112,
             Enemies =
             [
-                new() { ModelId = 211, Count = 7, Health = 700 },
-                new() { ModelId = 218, Count = 4, Health = 900 },
-                new() { ModelId = 4472, Count = 1, Health = 2000, Scale = 1.4f, Boss = true },
+                new() { ModelId = 220, Count = 63, Health = 700, NameId = 16348 },  // Unruly Warrior
+                new() { ModelId = 211, Count = 26, Health = 600, NameId = 16347 },  // Unruly Mage
+                // Boss=true (live feedback 2026-07-28: "Unruly Elite is a mini-boss, should have health bar
+                // show and give coins after defeat") - shows a persistent health bar (CreateMob's
+                // ShowHealthBar = group.Boss) and triggers the boss-only coin drop on kill (OnNpcKilled's
+                // wasBoss check reuses the same field).
+                new() { ModelId = 218, Count = 2, Health = 1400, NameId = 16346, Boss = true }, // Unruly Elite
+            ],
+            // Spawn point CORRECTED 2026-07-28 via live !pos (357.77, 85.65, 231.35) - the sheet's own
+            // (356.65, 85.96, 231.05) was close but not exact; this is the real measured settle point.
+            // Y stored as -20 (65.65) because EncounterArenaZone.CreateDefinition ALWAYS adds +20 to
+            // SpawnOverride's Y (a safety drop so the client falls onto real floor when the value is just
+            // an estimate) - this Y is already the exact live-measured settle height, not an estimate, so
+            // leaving it at 85.65 double-added the offset and spawned the player ~20 units too high
+            // (live feedback: "still spawning at the top of the spawn?? out of bounds").
+            SpawnOverride = (357.77f, 65.65f, 231.35f),
+            ExitOverride = (118.96f, 80.24f, 360.86f),
+
+            // 2 "Bixie Tunnel" spawners - real marker positions. CORRECTED 2026-07-28 (live feedback:
+            // "when shot once get destroyed. (same as Frog Log)") - destroyable in one hit, same as Cracked
+            // Claw's Frog Logs (was left at a huge HP as an unverified guess before this feedback).
+            // CORRECTED AGAIN 2026-07-28 (live feedback: "should be a model that spawns bixie warriors..
+            // enemy bixie's" - the tunnel prop itself was wrongly reusing the Warrior model, so it visually
+            // rendered AS a warrior standing there instead of an actual tunnel structure). Real model: 1906
+            // sg_spawner_bixie_01.adr, a dedicated Bixie spawner prop (Models.txt) - distinct from
+            // FrogLogSpawnModelId (220, Unruly Warrior) below, which is what it actually spawns.
+            FrogLogModelId = 1906, FrogLogNameId = 421143, FrogLogHealth = 1,
+            // CAPPED 2026-07-28 (live feedback: "defeated enemies will respawn.. this shouldn't happen") -
+            // was unbounded, producing warriors identical to the real roster forever. 4 per tunnel (8 total
+            // across both) reads as "a few reinforcements trickle in" without preventing the room from ever
+            // actually clearing - unsourced number, not from the sheet (which has no spawn-count data at all).
+            FrogLogMaxSpawns = 4,
+            FrogLogSpawnModelId = 220, FrogLogSpawnHealth = 700,
+            FrogLogPositions =
+            [
+                (240.65f, 80.29f, 350.82f),
+                (196.44f, 82.89f, 295.56f),
+            ],
+
+            // Bonus: "rescue" 4 Frightened Bixie Workers - reuses the interact-prop mechanic (Cracked
+            // Claw's "Lost Explorer Bones"), but with BonusSpawnModelId left at 0 so interacting FREES the
+            // worker directly (ticks the bonus) instead of spawning a hostile to fight - matches the
+            // wiki's "rescue", not "defeat".
+            BonusInteractModelId = 210, BonusInteractNameId = 130479, BonusInteractCount = 4,
+            BonusNameId = 430337,
+
+            // Escort: the captive Bixie Queen. Sequence REBUILT 2026-07-28 from the user's own live-tested
+            // recap (superseding the sheet's original, self-admitted-uncertain "4 mages, 6 warriors?" second
+            // wave note): roster clear -> "Thanks for rescuing me!..." -> a few seconds later, "I'll create
+            // some power ups for you to use!" + 3 guaranteed pickups appear in front of her -> shortly after,
+            // "My goodness, here come some more!..." + ONE combined reinforcement wave (4 Mages + 6 Warriors)
+            // spawns IDLE at the sheet's real marker, aggroing normally on approach (not an instant ambush,
+            // per live feedback) -> once cleared, "Fauzz, it breaks my heart that you would betray me!" +
+            // Drone Fauzz spawns (dramatic instant-charge entrance, unlike the wave) -> on his death, the
+            // generic win flow's Mystery Chest + EscortVictoryLineId fire (see WinEncounter).
+            // Position CORRECTED 2026-07-28 via live !pos (108.26, 83.12, 347.91, heading=74) - the sheet's
+            // own (104.87, 83.77, 345.25) was close but not exact; this is the real measured spot.
+            EscortModelId = 217, EscortNameId = 16234, EscortPosition = (108.26f, 83.12f, 347.91f),
+            EscortGreetingLineId = 14787, // "Get your hands off of us you brutes!"
+            EscortVictoryLineId = 38629,  // "Thank you so much for saving me!" (real, exact text_ids.txt match)
+            // Real "sg_mystery_chest_01.adr" world prop (Models.txt) - see WinEncounter's own comment for why
+            // its contents grant the real Treasure Chest housing item rather than an invented loot table.
+            MysteryChestModelId = 1511, MysteryChestNameId = 860,
+            EscortStages =
+            [
+                new()
+                {
+                    VoicelineNameId = 38625, // "Thanks for rescuing me! Wait, I see more coming! Please help!"
+                    // GiftPosition/GiftPerpendicular CORRECTED 2026-07-28 (live screenshot: "in front of her
+                    // like this and side to side") - computed from her real heading (74 deg) so the 3
+                    // pickups lay out in front of her and perpendicular to her OWN facing, not the world's
+                    // raw X axis: forward = (sin74, cos74) = (0.961, 0.276), 3 units ahead of EscortPosition;
+                    // perpendicular = (0.276, -0.961). GiftPowerupKinds themselves are still unsourced (the
+                    // sheet has no data for this beat at all - it's new from live feedback) - 3 distinct
+                    // kinds chosen for variety, not a specific real trio.
+                    GiftVoicelineNameId = 421146, // "I'll create some power ups for you to use!" (real match)
+                    // WIDENED 2026-07-28 (live feedback: "the queen dialog will stack on top, making it
+                    // harder to read") - each AnnounceEscortText is its own on-screen announcement with no
+                    // server-side control over how long the client keeps it up before dismissing; firing
+                    // them only 3s apart didn't leave enough room for one to clear before the next landed.
+                    // 6s/12s gives each line real room to breathe.
+                    GiftDelayMs = 6000,
+                    GiftPosition = (111.14f, 83.12f, 348.74f),
+                    GiftPerpendicular = (0.2756f, -0.9613f),
+                    GiftPowerupKinds = [PowerupKind.Health, PowerupKind.Energy, PowerupKind.SuperShield],
+                    DelayMs = 12000,
+                    WaveVoicelineNameId = 38626, // "My goodness, here come some more! Stay close, dearie, and use my power ups!"
+                    SpawnPosition = (170.35f, 79.89f, 417.89f),
+                    InstantAggro = false, // idle until the player approaches, per live feedback
+                    Enemies =
+                    [
+                        new() { ModelId = 211, Count = 4, Health = 600, NameId = 16347 }, // Unruly Mage
+                        new() { ModelId = 220, Count = 6, Health = 700, NameId = 16348 }, // Unruly Warrior
+                    ],
+                },
+                new()
+                {
+                    VoicelineNameId = 38627, // "Fauzz, it breaks my heart that you would betray me!"
+                    SpawnPosition = (171.32f, 79.98f, 421.70f),
+                    Enemies = [new() { ModelId = 218, Count = 1, Health = 4200, Scale = 1.5f, Boss = true, MainBoss = true, NameId = 38510 }],
+                },
             ],
         },
 
@@ -1255,12 +1525,13 @@ public static class DungeonCatalog
         // + 4 escort crays around the 2nd Elder + 2 Elder Swamp Cray + 13 roaming Venomous Frogs + the
         // boss, all at their real positions via bs_cracked_claw_caverns.lua's getSpawnPoints (group order
         // MUST match Enemies[] below: 50 Swamp Cray, 2 Elder Swamp Cray, 13 Venomous Frog, 1 boss = 66).
-        // NOT YET IMPLEMENTED from that same sheet (needs new spawner/objective mechanics the generic
-        // EncounterArenaZone doesn't have - placement-only, not dynamic spawns or interact objectives):
+        // NOT YET IMPLEMENTED from that same sheet (needs new spawner/hatch-trigger mechanics the generic
+        // EncounterArenaZone doesn't have - placement-only, not dynamic spawns):
         //   - 3 "Frog Log" spawners that produce Venomous Frogs over time (no live-spawner concept exists)
         //   - Swamp Cray Brood hatching from 8 eggs in the boss room on engage (no hatch-on-trigger concept)
-        //   - Bonus goal "Release the trapped spirits... 0/6" (interact-based; the bonus system here only
-        //     supports "kill N of model X", and the sheet gives no coordinates for the 6 spirits anyway)
+        // Bonus goal "Release the trapped spirits... 0/6" IS implemented (BonusInteractCount below) - the
+        // sheet gives no real coordinates for the 6 spirits, so they're scattered procedurally among the
+        // dungeon's other spawn points rather than at captured positions (everything else here is real).
         // Model ids: Swamp Cray = 471 cray_arctic_swamp.adr, Elder Swamp Cray = 677 cray_boss_swamp.adr
         // (real "elder" variant), boss = 4446 cray_king_lowtide.adr (the existing "ancient/king" cray boss
         // model reused elsewhere in this catalog - no distinct "Cracked Claw" model exists in Models.txt).
@@ -1269,11 +1540,33 @@ public static class DungeonCatalog
         // dog_large_frogdog.agr ("dog in frog suit"), the placeholder convention reused from activity 220
         // "Venomous Frogs!" - live-confirmed wrong (visibly a dog, not a frog); 220 likely has the same bug
         // but wasn't reported, not touched here.
+        // Text ids reversed via the T4 lookup2 hash (client fn FUN_00e7aa80, exact shift table 13/8/13/
+        // 12/16/5/3/10/15 - see reference_t4_localization_hash.md) against en_us_data.dat's real strings:
+        // TitleNameId 71771 already correctly resolves to "Cracked Claw Caverns" (verified, unchanged).
+        // DescriptionId was the generic 382845 placeholder shared by dozens of unrelated dungeons in this
+        // catalog - replaced with 76424, the REAL string "Defeat the ancient cray, Cracked Claw!" from the
+        // sheet's Primary goal. 139367 = "Release the trapped spirits of the explorers lost within Cracked
+        // Claw Caverns!" (real bonus body text, used as BonusNameId).
+        // Bonus mechanic (live-corrected 2026-07-26, user confirmed against retail): clicking a "Lost
+        // Explorer Bones" prop (real NameId 139359, model 725 sh_bones_02.adr) plays "The bones crumble and
+        // a tormented spirit materializes!" (real text 139366 - the SAME string TormentedSpiritsArenaZone
+        // already uses for its identical tombstone-spawns-a-spirit mechanic; this id cluster 139359/139366/
+        // 139367 being tightly adjacent confirms they're the same content block) and spawns a hostile spirit
+        // that must be DEFEATED before the bonus ticks - clicking alone does NOT complete it. Reused
+        // TormentedSpiritsArenaZone's own proven spirit recipe (model 10 ghostdwarf_m_miner_01.adr, live-
+        // tested) rather than inventing a new one, since no distinct "Wandering Spirit" text id was found in
+        // en_us_data.dat (only "Tormented Spirit"/generic "Spirit") - the user's own name for it may be
+        // descriptive rather than the literal client string. NameId left 0 (nameless plate + health bar,
+        // the same convention every other regular mob here already uses) rather than guess wrong.
         [118] = new()
         {
             ActivityId = 118, PoiId = 85, Comment = "Cracked Claw Caverns",
             World = "bs_cracked_claw_caverns", CenterX = 181f, CenterZ = 268f, GroundY = 39f, Radius = 125f,
-            TitleNameId = 71771, DescriptionId = 382845, Difficulty = 3, Xp = 38,
+            TitleNameId = 71771, DescriptionId = 76424, Difficulty = 3,
+            // Real reward per the wiki (freerealms.fandom.com/wiki/Cracked_Claw_Caverns via ZAM mirror,
+            // legacy.fanbyte.com/wiki/fr_place:Cracked_Claw_Caverns): 200 XP/stars, 58 coins - was the
+            // generic 38 XP / shared 10-coin placeholder every EncounterArenaZone dungeon used.
+            Xp = 200, Coins = 58,
             Enemies =
             [
                 new() { ModelId = 471, Count = 50, Health = 700 },              // 46 packed + 4 elder escorts
@@ -1281,9 +1574,22 @@ public static class DungeonCatalog
                 new() { ModelId = 1648, Count = 13, Health = 900 },              // Venomous Frogs (toad_black)
                 new() { ModelId = 4446, Count = 1, Health = 4500, Scale = 1.6f, Boss = true }, // Cracked Claw
             ],
+            BonusNameId = 139367,
+            BonusInteractModelId = 725, BonusInteractNameId = 139359, BonusInteractCount = 6,
+            BonusSpawnModelId = 10, BonusSpawnNameId = 0, BonusSpawnHealth = 1200,
             // Real Spawn (233.34, 43.08, 204.34) / Exit (137.24, 40.07, 243.38) points from the sheet.
             SpawnOverride = (233.34f, 43.08f, 204.34f),
             ExitOverride = (137.24f, 40.07f, 243.38f),
+            // 3 real "Frog Log" marker positions from the sheet ("SPAWNS VENOMOUS FROGS") - spawns the
+            // same real Venomous Frog (1648 toad_black.adr, Health 900, matching the pre-placed pack
+            // above) whenever a player lingers nearby, until the log itself is destroyed.
+            FrogLogSpawnModelId = 1648, FrogLogSpawnHealth = 900,
+            FrogLogPositions =
+            [
+                (170.86f, 30.34f, 287.59f),
+                (128.57f, 41.37f, 289.64f),
+                (160.57f, 40.05f, 248.99f),
+            ],
         },
 
         // 900086  ATLAS DUNGEON (POI 86) Tanglewood Fort -> bw_tanglewood_fort

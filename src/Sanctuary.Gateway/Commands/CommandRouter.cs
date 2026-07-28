@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sanctuary.Core.IO;
 using Sanctuary.Game;
+using Sanctuary.Game.Combat;
 using Sanctuary.Game.Entities;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common.Chat;
@@ -171,6 +172,9 @@ public static class CommandRouter
                 return HandleSpawnTest(conn, parts);
             case "giveitem":
                 return HandleGiveItem(conn, parts);
+            case "jobweapons":
+            case "testweapons":
+                return HandleJobWeapons(conn, parts);
             case "lua":
                 // ADMIN ONLY: asks the client to execute arbitrary Lua. Proven NOT to work on this build
                 // (the client ignores both op36/17 and op47/7), but it must not be player-reachable if the
@@ -822,6 +826,108 @@ public static class CommandRouter
                 }
             }
 
+            // RE PROBE (2026-07-26): hunting the packet behind the on-screen red banner text retail shows
+            // on encounter events (e.g. "The bones crumble and a tormented spirit materializes!", text id
+            // 139366) - no known-working mechanism exists in this codebase yet (TormentedSpiritsArenaZone
+            // hit the identical wall and left it as an open TODO). Best current candidate is HudMessagePacket
+            // (op35/64) - its own doc says "floating dialogue box" (an NPC speech bubble), which may or may
+            // not be the same widget as the full-width banner; testing live is faster than more guessing.
+            //   !hudtext <stringId> [guid1=0] [guid2=self]
+            // guid1=0 tests "no speaker" (system-wide style); pass your own/an NPC's guid to compare against
+            // an NPC-anchored bubble.
+            case "hudtext":
+            {
+                if (!RequireAdmin(conn))
+                    return true;
+
+                if (parts.Length < 2 || !int.TryParse(parts[1], out var stringId))
+                {
+                    SendSystem(conn, "Usage: !hudtext <stringId> [guid1] [guid2]");
+                    return true;
+                }
+
+                var g1 = parts.Length > 2 && ulong.TryParse(parts[2], out var gg1) ? gg1 : 0UL;
+                var g2 = parts.Length > 3 && ulong.TryParse(parts[3], out var gg2) ? gg2 : conn.Player.Guid;
+
+                conn.Player.SendTunneledToVisible(new HudMessagePacket
+                {
+                    Guid1 = g1,
+                    Guid2 = g2,
+                    StringId = stringId,
+                }, sendToSelf: true);
+                SendSystem(conn, $"!hudtext -> op35/64 HudMessage stringId={stringId} guid1={g1} guid2={g2}");
+                return true;
+            }
+
+            // RE PROBE (2026-07-26, continuing the banner-text hunt): decompiled the real client's op45/
+            // sub5 apply function (FUN_009bd970) directly and confirmed it fires a genuine
+            // FUN_0082ecd0(dest, L"New Objective: \"%s\"", objectiveNamePtr) banner via the SAME generic
+            // system-message queue used for "Goal Complete!"/energy warnings (FUN_00cb7070, 15+ callers,
+            // takes arbitrary text). ObjectiveAddPacket already exists in ObjectivePackets.cs, built in an
+            // earlier session and marked "DEPRECATED/DO NOT USE" purely because a 2014 ground-truth capture
+            // showed retail's NORMAL flow never sends it (objectives are pre-defined via op41/114 instead) -
+            // that's a real ground-truth fact about the COMMON case, not a test result showing this specific
+            // one-shot announce path is broken. !objannounce <stringId> fires it live with a throwaway id.
+            case "objannounce":
+            {
+                if (!RequireAdmin(conn))
+                    return true;
+
+                if (parts.Length < 2 || !int.TryParse(parts[1], out var annStringId))
+                {
+                    SendSystem(conn, "Usage: !objannounce <stringId>");
+                    return true;
+                }
+
+                // Status=2 (the class default) is a REQUEST CODE fed into FUN_00c42280's transition table,
+                // not a literal - request 2 unconditionally maps to internal status 3 (Completed), which is
+                // why the announce condition (native code checks internal status == 2, "InProgress") never
+                // fired. Request 1 maps to internal status 2 given Unknown4=false/Unknown8=0 (matches this
+                // packet's other defaults) - overriding it here for the test.
+                var annId = 800000 + (int)(DateTimeOffset.UtcNow.ToUnixTimeSeconds() % 100000);
+                conn.Player.SendTunneled(new ObjectiveAddPacket
+                {
+                    ObjectiveId = annId,
+                    NameId = annStringId,
+                    DescriptionId = annStringId,
+                    Status = 1,
+                });
+                SendSystem(conn, $"!objannounce -> op45/5 ObjectiveAdd id={annId} stringId={annStringId} status=1");
+                return true;
+            }
+
+            // FOLLOW-UP (same hunt): !objannounce showed the real text but the client hardcodes it as
+            // "New Objective: \"%s\"" in the CHAT window - not a banner. Trying ChatPacketFromStringId
+            // (op4) instead - the SAME mechanism Npc.SayStringId already proves works for real NPC overhead
+            // bubbles (IsChatLogged=false -> no chat-log line). No speaker guid (0) for a narrator-style
+            // line; HasColor+ColorId=1 (red) per the user's own description of the retail text.
+            // !chatannounce <stringId>
+            case "chatannounce":
+            {
+                if (!RequireAdmin(conn))
+                    return true;
+
+                if (parts.Length < 2 || !int.TryParse(parts[1], out var chatStringId))
+                {
+                    SendSystem(conn, "Usage: !chatannounce <stringId>");
+                    return true;
+                }
+
+                // SpeakerGuid=0 ("no speaker") produced nothing live - anchoring to the caller's own guid
+                // instead, a guaranteed-real/visible entity, for a clean test.
+                conn.Player.SendTunneled(new ChatPacketFromStringId
+                {
+                    SpeakerGuid = conn.Player.Guid,
+                    StringId = chatStringId,
+                    IsEmote = true,
+                    IsChatLogged = false,
+                    HasColor = true,
+                    ColorId = 1,
+                });
+                SendSystem(conn, $"!chatannounce -> op4 ChatPacketFromStringId stringId={chatStringId} speaker=self color=red");
+                return true;
+            }
+
             // Find the ability-cooldown field: re-send the SPECIAL's AbilityDefinition (op36/13) with ONE
             // candidate float set, then fire a special (op36/4 triggers the cooldown, reading the def's
             // duration). !abildef <1..8> <seconds>. Slots map to the def's still-zero floats:
@@ -991,6 +1097,7 @@ public static class CommandRouter
             "/spawntest - Spawn a combat test dummy\n" +
             "/testicons - Icon probe\n" +
             "/testsubtext - Subtext probe\n" +
+            "/jobweapons (or /testweapons) - Grant one weapon per unique special ability across every combat job\n" +
             "/lua [code] - Run a client Lua snippet\n" +
             "/luaspawn [NpcId] - Spawn an NPC on top of you via the server's zone-script spawn API (default: boombox)\n" +
             "/luareload - Reload your zone's .lua script from disk and re-run it, no server restart needed\n" +
@@ -2587,6 +2694,20 @@ public static class CommandRouter
             return true;
         }
 
+        var total = GrantItem(conn, def, count);
+        SendSystem(conn, total < 0
+            ? "Failed to save item to database."
+            : $"Gave {count}x item {itemId} (NameId={def.NameId}, now have {total}).");
+        return true;
+    }
+
+    // Shared item-grant logic (definition push, stack-onto-existing-or-add-new, DB persist, client packets)
+    // - factored out of /giveitem so other debug commands (e.g. /jobweapons) can silently grant a batch of
+    // items without each one printing its own chat line. Returns the resulting stack count, or -1 on a DB
+    // failure (new-item path only - stacking failures are logged but still treated as best-effort success
+    // since the in-memory/client state is already correct either way, matching the original /giveitem behavior).
+    private static int GrantItem(GatewayConnection conn, ClientItemDefinition def, int count)
+    {
         using var defWriter = new PacketWriter();
         defWriter.Write(new[] { def });
         conn.SendTunneled(new PlayerUpdatePacketItemDefinitions { Payload = defWriter.Buffer });
@@ -2614,17 +2735,13 @@ public static class CommandRouter
                 _logger.LogError(ex, "Failed to update item count for item {Id}", existing.Id);
             }
 
-            SendSystem(conn, $"Added {count}x item {itemId} (now have {existing.Count}).");
-            return true;
+            return existing.Count;
         }
 
         var newItem = new ClientItem { Definition = def.Id, Count = count, Tint = 0 };
 
         if (!conn.SaveItemToDatabase(newItem))
-        {
-            SendSystem(conn, "Failed to save item to database.");
-            return true;
-        }
+            return -1;
 
         conn.Player.Items.Add(newItem);
 
@@ -2632,7 +2749,53 @@ public static class CommandRouter
         newItem.Serialize(itemWriter);
         conn.SendTunneled(new ClientUpdatePacketItemAdd { Payload = itemWriter.Buffer });
 
-        SendSystem(conn, $"Gave {count}x item {itemId} (NameId={def.NameId}).");
+        return newItem.Count;
+    }
+
+    // ================== /JOBWEAPONS ==================
+
+    // Grants one weapon per DISTINCT special ability across every wired combat job (Ninja/Archer/Brawler/
+    // Warrior/Wizard - see Combat.JobKits), not literally every weapon item that exists. Most jobs' weapon
+    // ids fan out into many tiers (e.g. Archer's 30 bows) that all share the SAME 2 abilities and just scale
+    // damage by tier, while others (e.g. Ninja's 30+ weapons) branch into genuinely different named "kits"
+    // (Dragonstrike/Thousand Storms/Shuriken Storm/...) depending on which weapon id you equip. Deduping by
+    // the special ability's NameId (via IJobKit.SlotNameIcon, which doesn't need a live equip to resolve)
+    // keeps every unique ability reachable with one representative weapon each, instead of dumping 100+
+    // redundant tier duplicates into the inventory. Equip each one in turn (via the normal job-switch +
+    // weapon-equip flow) to see its basic/special. NOTE: this only grants the WEAPON items - it does not
+    // unlock a job's profile if the character doesn't already have it; use the in-game job-select flow for
+    // that first if a job you want to test isn't available yet.
+    private static bool HandleJobWeapons(GatewayConnection conn, string[] parts)
+    {
+        if (!RequireAdmin(conn))
+            return true;
+
+        var totalGranted = 0;
+        var perJob = new List<string>();
+
+        foreach (var kit in JobKits.All)
+        {
+            var seenSpecialNameIds = new HashSet<int>();
+            var grantedThisJob = 0;
+
+            foreach (var weaponDefId in kit.WeaponDefIds)
+            {
+                var special = kit.SlotNameIcon(weaponDefId, 1);
+                if (!seenSpecialNameIds.Add(special.NameId))
+                    continue; // same special as an already-granted weapon in this job - skip the redundant tier
+
+                if (!_resourceManager.ClientItemDefinitions.TryGetValue(weaponDefId, out var def))
+                    continue;
+
+                GrantItem(conn, def, 1);
+                grantedThisJob++;
+                totalGranted++;
+            }
+
+            perJob.Add($"profile {kit.ProfileId}: {grantedThisJob}");
+        }
+
+        SendSystem(conn, $"Gave {totalGranted} job weapons (one per unique special ability) - {string.Join(", ", perJob)}.");
         return true;
     }
 

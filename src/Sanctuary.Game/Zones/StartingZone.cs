@@ -534,6 +534,14 @@ public sealed partial class StartingZone : BaseZone
     // the real overworld location is still TBD. Neutral + interactable (clicking opens the future offer popup).
     private Npc? _growlerWolf;
 
+    // Every real atlas dungeon's entrance widget, keyed by ActivityId - populated by SpawnDungeonEntrances.
+    // Lets QuestManager.ResolveGoalTargetGuid route an EncounterComplete quest's tracker/breadcrumb at the
+    // real dungeon mouth for ANY atlas dungeon generically, not just the two bespoke wandering-NPC
+    // encounters (Frostfang/Tormented Spirits) that already had their own dedicated accessor. Live feedback
+    // 2026-07-28 ("Bixies Gone Bad" tracker light was on the giver NPC instead of the dungeon entrance).
+    private readonly Dictionary<int, Npc> _dungeonEntranceByActivityId = [];
+    public Npc? DungeonEntrance(int activityId) => _dungeonEntranceByActivityId.GetValueOrDefault(activityId);
+
     private void SpawnGrowlerWolf(Player player)
     {
         if (_growlerWolf is null)
@@ -863,6 +871,7 @@ public sealed partial class StartingZone : BaseZone
             entrance.HideNamePlate = false;          // keep the nameplate as the visible target
             entrance.CursorId = 11;                  // crossed-swords / adventure cursor on hover
             entrance.InteractRange = 18;
+            entrance.ShowCombatBadge = true;         // red crossed-swords badge + red minimap dot
 
             var pos = poi.SpawnPosition != default ? poi.SpawnPosition : poi.Position;
             var rot = new Quaternion(MathF.Sin(poi.Heading), 0f, MathF.Cos(poi.Heading), 0f);
@@ -871,6 +880,7 @@ public sealed partial class StartingZone : BaseZone
 
             entrance.UpdatePosition(pos, rot);
             GetTileFromPosition(pos).Entities.TryAdd(entrance.Guid, entrance);
+            _dungeonEntranceByActivityId[dungeon.ActivityId] = entrance;
         }
     }
 
@@ -891,6 +901,28 @@ public sealed partial class StartingZone : BaseZone
             });
         }
 
+        // Same primary(+bonus) objective rows the real launch packet defines (EncounterArenaZone's
+        // MakeLaunch) — mirrored here so the pre-entry info/offer popup shows the bonus goal too, not
+        // just the main "defeat everyone" row, and carries the dungeon's real per-goal XP reward.
+        List<EncounterObjective> objectives =
+        [
+            new EncounterObjective
+            {
+                ObjectiveId = dungeon.ActivityId, NameId = dungeon.DescriptionId,
+                DescriptionId = dungeon.DescriptionId,
+                Status = 1, Count = 0, Total = 1, Xp = dungeon.Xp,
+            },
+        ];
+        if (dungeon.HasBonus)
+        {
+            objectives.Add(new EncounterObjective
+            {
+                ObjectiveId = 900000 + dungeon.ActivityId, NameId = dungeon.BonusNameId,
+                DescriptionId = dungeon.BonusNameId,
+                Status = 1, Count = 0, Total = dungeon.BonusTotal,
+            });
+        }
+
         player.SendTunneled(new EncounterDetailsResponsePacket
         {
             Unknown = dungeon.ActivityId,
@@ -900,9 +932,13 @@ public sealed partial class StartingZone : BaseZone
             Difficulty = dungeon.Difficulty,
             IconId = dungeon.IconId,
             MiniGameType = 4, // COMBAT
+            MembersOnly = true, // gates the win screen's "Members Only Bonus" Coins box - see EncounterArenaZone.MakeLaunch
+            Objectives = objectives,
             PreviewRewards = FrostfangArenaZone.GetPrizePreviewFor(player),
-            PreviewCoins = FrostfangArenaZone.PrizeCoins,
+            PreviewCoins = dungeon.Coins,
             PreviewXp = FrostfangArenaZone.PrizeXp,
+            RewardXp = dungeon.Xp,
+            MemberCoins = dungeon.Coins,
             ProfileType = FrostfangArenaZone.CombatProfileType,
             ActivityId = dungeon.ActivityId,
         });
@@ -1185,6 +1221,7 @@ public sealed partial class StartingZone : BaseZone
             entry.MovementType = 2;              // PHYSICS — grounded amble (matches the world enemies)
             entry.InteractRange = 6;
             entry.ShowHealthBar = false;
+            entry.ShowCombatBadge = true;        // red crossed-swords badge - see this method's own header comment
 
             // A few units off the anchor NPC so it doesn't stack exactly on top of it.
             var pos = new Vector4(anchor.Position.X + 4f, anchor.Position.Y, anchor.Position.Z + 4f, 1f);

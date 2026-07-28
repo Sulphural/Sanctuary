@@ -17,6 +17,19 @@ public static class JobWeaponAbilities
     public static AbilityPacketSetDefinition? BuildToolbar(Player player, IResourceManager resources) =>
         JobKits.Active(player)?.BuildToolbar(player, resources);
 
+    // Same toolbar, with the held power-up (if any) pinned at slot index 2 (the "3" key) - see
+    // PowerupSystem. The normal toolbar only ever populates indices 0/1 (basic/special), so appending
+    // lands exactly at index 2 the way the wire format expects (see AbilityPacketSetDefinition.Serialize).
+    public static void SendToolbarWithPowerup(Player player, IResourceManager resources)
+    {
+        var def = BuildToolbar(player, resources) ?? AbilityPacketSetDefinition.CreateEmpty(player.ActiveProfileId);
+
+        if (PowerupSystem.MakeHeldSlot(player.Guid) is { } powerupSlot)
+            def.Slots.Add(powerupSlot);
+
+        player.SendTunneled(def);
+    }
+
     // Resolve a pressed slot; jobs without a kit fall back to the ninja bare-hand strike.
     public static WeaponAbility ResolveAbility(Player player, int slot) =>
         JobKits.Active(player)?.ResolveAbility(player, slot) ?? NinjaWeaponAbilities.ResolveAbility(player, slot);
@@ -98,5 +111,6 @@ public static class JobWeaponAbilities
                 Position = warmPos,
             });
         }
+
     }
 }

@@ -4,6 +4,12 @@ namespace Sanctuary.Packet.Common;
 
 public class BaseItemDefinition : ISerializableType
 {
+    // SERVER-SIDE ONLY - never on the wire (not written by Serialize below). The client never sees this;
+    // it's ClientItemDefinitions.json's own "Comment" field (the item's real internal/dev name, e.g.
+    // "Sleep Sphere"), loaded purely so server code can identify real items by name/keyword without a
+    // separate hardcoded id table - see Sanctuary.Game.Combat.CombatOrbAbilities.
+    public string Comment { get; set; } = "";
+
     public int Id { get; set; }
 
     public int Type { get; set; }

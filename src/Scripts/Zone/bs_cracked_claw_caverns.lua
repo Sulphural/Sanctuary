@@ -16,7 +16,14 @@
 -- from eggs in the boss room, and the "release the trapped spirits" bonus objective.
 function getSpawnPoints(zone)
     -- 6 real Swamp Cray pack markers
-    zone.addSpawnArea(228.14, 30.35, 228.99, 10)
+    -- CORRECTED 2026-07-27 (live feedback: "those enemies are still underground" - !pos npcs live-verified
+    -- the bug: standing directly on top of this marker's own X/Z reported the player's real ground Y as
+    -- 41.54, while the pack spawned there sat at the sheet's stated 30.35 - an 11-unit sink with the
+    -- scatter radius correctly tight (0.5-3.9u spread, not a scatter bug at all). The original 30.35 was a
+    -- bad sheet transcription for this row; 41.54 is the real, live-measured floor height at this X/Z.
+    -- marker 3 below shares the exact same suspicious 30.35 value and is UNVERIFIED - flagged, not yet
+    -- confirmed bad the same way.
+    zone.addSpawnArea(228.14, 41.54, 228.99, 10)
     zone.addSpawnArea(159.48, 40.68, 319.66, 9)
     zone.addSpawnArea(184.96, 30.35, 284.36, 5)
     zone.addSpawnArea(149.52, 40.32, 305.74, 8)

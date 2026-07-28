@@ -20,6 +20,11 @@ public sealed class EncounterObjective
     public int Unknown8;        // real obj0 carried 1 here
     public bool MemberOnly;
     public int Unknown10;
+
+    // Real per-goal XP reward (ground truth: obj 12642's own bundle carried U3=10, NOT the top-level
+    // preview bundle - see EncounterDetailsResponsePacket.PreviewXp). 0 = no reward on this row (the old,
+    // still-correct behavior for every objective that doesn't set this - writes the proven all-zero bundle).
+    public int Xp;
 }
 
 // (RewardEntry + the shared bundle serializer live in RewardBundle.cs — used by this packet's preview
@@ -116,6 +121,15 @@ public class EncounterDetailsResponsePacket : BaseEncounterPacket, ISerializable
     public int PreviewCoins;
     public int PreviewXp;
 
+    // The other two MiniGameInfo bundles (m_RewardBundleBase / m_RewardBundleBase_Member) were ALWAYS
+    // sent empty until now — confirmed live (2026-07-26 screenshot) to be the actual "Your Rewards"
+    // boxes on the win/score card: a "reward" bundle (Stars = this XP value, rendered as its own box —
+    // same DS Xp column the preview bundle uses) and a separate "member" bundle ("Members Only Bonus" —
+    // Coins). Distinct from PreviewXp/PreviewCoins above, which only feed the pre-entry offer popup +
+    // loot-wheel slice selection - the win screen reads THESE two instead.
+    public int RewardXp;
+    public int MemberCoins;
+
     // MiniGameInfo tail int "U20". GROUND TRUTH (04-01 idx 28053): the real server sends the
     // ClientActivityDefinitions ACTIVITY ID here (174 = Frostfang Growler). We sent 0 before 2026-07-04.
     public int ActivityId;
@@ -151,8 +165,12 @@ public class EncounterDetailsResponsePacket : BaseEncounterPacket, ISerializable
         writer.Write(ProfileType);       // ProfileType
         writer.Write(MiniGameType);      // Type
         writer.Write(MembersOnly);       // MembersOnly (byte)
-        WriteEmptyRewardBundle(writer);  // m_RewardBundleBase
-        WriteEmptyRewardBundle(writer);  // m_RewardBundleBase_Member
+        // NOTE: WriteRewardBundle (below) collapses to the all-zero empty shape whenever entries is empty,
+        // discarding any coins/xp passed alongside it - fine for the preview bundle (always has real item
+        // entries) but wrong here, where these two bundles carry ONLY a coins/xp value and no items. Call
+        // RewardBundle.Write directly so RewardXp/MemberCoins actually make it onto the wire.
+        RewardBundle.Write(writer, [], 0, RewardXp);        // m_RewardBundleBase — win-screen "Stars" box
+        RewardBundle.Write(writer, [], MemberCoins, 0);     // m_RewardBundleBase_Member — "Members Only Bonus" Coins box
         WriteRewardBundle(writer, PreviewRewards, PreviewCoins, PreviewXp); // m_RewardBundleBase_Preview (the popup prizes + loot wheel)
         writer.Write(Objectives.Count);  // ObjectiveData array — goals defined inline (real server flow)
         foreach (var obj in Objectives)
@@ -193,7 +211,10 @@ public class EncounterDetailsResponsePacket : BaseEncounterPacket, ISerializable
         writer.Write(obj.NameId);
         writer.Write(obj.DescriptionId);
         writer.Write(false);              // byte Unknown4
-        WriteEmptyRewardBundle(writer);   // RewardBundleBase (69-byte empty)
+        if (obj.Xp > 0)
+            RewardBundle.Write(writer, [], xp: obj.Xp); // real per-goal XP (ground-truthed shape, no items)
+        else
+            WriteEmptyRewardBundle(writer);   // RewardBundleBase (69-byte empty)
         writer.Write(obj.Status);
         writer.Write(obj.Count);
         writer.Write(obj.Total);
