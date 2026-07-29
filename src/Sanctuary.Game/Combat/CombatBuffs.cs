@@ -29,4 +29,29 @@ public static class CombatBuffs
 
         return damage * buff.Pct / 100;
     }
+
+    // Separate registry for INCOMING damage reduction (Medic's Immunize: "makes you and your group
+    // invincible") - a mirror of the outgoing-damage registry above, keyed the same way, but consumed from
+    // Player.TakeDamage instead of the ability-cast damage pipeline. Kept as its own dictionary rather than
+    // reusing _damage since a player can be simultaneously buffed on offense (e.g. Vitamins) and defense
+    // (Immunize) with different percentages/durations.
+    private static readonly ConcurrentDictionary<ulong, (int ReductionPct, long UntilTicks)> _damageTaken = new();
+
+    public static void AddDamageReductionBuff(ulong playerGuid, int reductionPct, int durationMs) =>
+        _damageTaken[playerGuid] = (reductionPct, Environment.TickCount64 + durationMs);
+
+    public static int ReduceIncomingDamage(ulong playerGuid, int damage)
+    {
+        if (!_damageTaken.TryGetValue(playerGuid, out var buff))
+            return damage;
+
+        if (Environment.TickCount64 >= buff.UntilTicks)
+        {
+            _damageTaken.TryRemove(playerGuid, out _);
+            return damage;
+        }
+
+        var reduced = damage * (100 - buff.ReductionPct) / 100;
+        return Math.Max(0, reduced);
+    }
 }

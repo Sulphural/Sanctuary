@@ -68,13 +68,19 @@ public static class AbilityPacketClientRequestStartAbilityHandler
 
     // Basic attack resolves ONE swing per ANIMATION, not per key-press (the client fires faster than the clip
     // plays). Pace it to the swing animation's length so the slot locks + the damage number land in sync and you
-    // can't spam faster than the swing. Default 660ms (sword/fist; 2014-04-01 capture median 0.662s); 2-handed
-    // hammers wind up slower, so they get their own longer pace below.
+    // can't spam faster than the swing. 660ms (sword/fist; 2014-04-01 capture median 0.662s) for every job's
+    // basic attack, no per-animation exceptions.
+    //
+    // CORRECTED 2026-07-29 (live feedback: "attack speed should match for all combat jobs") - this used to
+    // give 2-handed hammer swings (anim 1080, com_2hp_attack) their own 1150ms pace ("wind-up" flavor, not a
+    // retail-sourced number - no wiki/capture citation existed for it). That silently made Brawler (EVERY
+    // Brawler weapon is a 2-handed hammer) attack ~74% slower than every other job's basic attack, and made
+    // Warrior slower specifically on its higher-tier weapons (Battle Hammer/Double Axe/Warlord Axe all swing
+    // 1080; only the low-tier Cudgel/Axe are 1-handed) - an unintentional per-job/per-weapon-tier speed gap,
+    // not a deliberate design choice. SwingMsByAnim is kept (empty) as the mechanism for if a REAL per-
+    // animation pace number ever turns up, rather than deleting the pacing seam entirely.
     private const int BasicSwingMs = 660;
-    private static readonly System.Collections.Generic.Dictionary<int, int> SwingMsByAnim = new()
-    {
-        [1080] = 1150, // com_2hp_attack — 2-handed hammer swing (Brawler): slow, heavy wind-up
-    };
+    private static readonly System.Collections.Generic.Dictionary<int, int> SwingMsByAnim = new();
     private static int SwingMsForAnimation(int anim) => SwingMsByAnim.GetValueOrDefault(anim, BasicSwingMs);
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, long> _nextBasicSwingTicks = new();
 
@@ -263,6 +269,64 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         }
 
         return Math.Max(1, (int)(baseDamage * WizardWeaponAbilities.BaseCritMultiplier));
+    }
+
+    // Medic: Target Vitals (L5) adds a flat bonus to every hit; Shock Paddles (L15) splashes onto up to 2
+    // other nearby hostiles alongside every hit. Both always-on once unlocked - neither wiki entry mentions a
+    // crit/proc condition (Medic has no baseline crit-chance trait at all - see MedicWeaponAbilities.cs).
+    // First Aid/Vitamins (the other 2 real traits) are periodic and live on Player.MedicSkillsTick instead.
+    private static int ApplyMedicTraitDamage(Player player, int baseDamage, Npc? target)
+    {
+        var dmg = baseDamage;
+
+        if (MedicWeaponAbilities.HasTrait(player, MedicWeaponAbilities.TargetVitalsLevel))
+            dmg += MedicWeaponAbilities.TargetVitalsBonusDamage;
+
+        if (target is not null && MedicWeaponAbilities.HasTrait(player, MedicWeaponAbilities.ShockPaddlesLevel))
+            SplashShockPaddles(player, target);
+
+        return Math.Max(1, dmg);
+    }
+
+    // Shock Paddles splash: up to 2 other live hostiles within range of the crit's own target, each taking
+    // the skill's flat bonus damage. Reuses the same nearby-hostile pattern the multishot archer kit uses.
+    private static void SplashShockPaddles(Player player, Npc primaryTarget)
+    {
+        if (player.Zone is not { } zone)
+            return;
+
+        var tp = primaryTarget.Position;
+        var extras = zone.Npcs
+            .Where(n => !ReferenceEquals(n, primaryTarget) && n.IsHostile && n.IsDamageable && n.IsAlive)
+            .Select(n =>
+            {
+                var dx = n.Position.X - tp.X;
+                var dz = n.Position.Z - tp.Z;
+                return (npc: n, d2: dx * dx + dz * dz);
+            })
+            .Where(t => t.d2 <= MedicWeaponAbilities.ShockPaddlesSplashRadius * MedicWeaponAbilities.ShockPaddlesSplashRadius)
+            .OrderBy(t => t.d2)
+            .Take(MedicWeaponAbilities.ShockPaddlesExtraTargets)
+            .Select(t => t.npc);
+
+        foreach (var extra in extras)
+        {
+            var killedExtra = extra.ApplyDamage(MedicWeaponAbilities.ShockPaddlesBonusDamage);
+            player.SendTunneledToVisible(new PlayerUpdatePacketHitPointModification
+            {
+                Guid = player.Guid,
+                Guid2 = extra.Guid,
+                Unknown = true,
+                Unknown2 = extra.MaxHealth,
+                Unknown3 = extra.Health,
+                Unknown4 = -MedicWeaponAbilities.ShockPaddlesBonusDamage,
+            }, sendToSelf: true);
+
+            if (killedExtra)
+                player.Zone.OnNpcKilled(player, extra);
+            else
+                player.Zone.OnNpcDamaged(player, extra);
+        }
     }
 
     // Ability damage is tuned for a maxed job; scale it down by the caster's job rank so a fresh (level-1)
@@ -461,9 +525,23 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             ActionTime = 0.4f,
         }, sendToSelf: true);
 
-        var targets = potion.Shared
-            ? player.Zone.Players.ToList()
-            : [player];
+        // Shared potions heal nearby allies within a radius (see PotionAbilities.SharedRadius) - NOT every
+        // player in the zone instance, which would hand a free heal to unrelated strangers in an open-world
+        // town. Self is always included regardless of distance.
+        List<Player> targets;
+        if (potion.Shared && player.Zone is { } potionZone)
+        {
+            var c = player.Position;
+            var r2 = PotionAbilities.SharedRadius * PotionAbilities.SharedRadius;
+            targets = potionZone.Players
+                .Where(p => ReferenceEquals(p, player) ||
+                    ((p.Position.X - c.X) * (p.Position.X - c.X) + (p.Position.Z - c.Z) * (p.Position.Z - c.Z)) <= r2)
+                .ToList();
+        }
+        else
+        {
+            targets = [player];
+        }
 
         foreach (var target in targets)
         {
@@ -1242,6 +1320,20 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             meleeRefreshMs = cooldownMs;
         }
 
+        // Triage's real "healing you and your group" purpose (see MedicWeaponAbilities.cs's TriageHealAmount
+        // comment) — unlike Shock Paddles' revive (a passive TRAIT effect), Triage is the weapon SPECIAL
+        // itself, so it's correctly gated on actually casting it here (energy paid, cooldown started above),
+        // independent of whether a hostile is in range (its damage half is separately AoE-resolved below).
+        if (ability.Name == "Triage" && player.ActiveProfileId == MedicWeaponAbilities.MedicProfileId)
+            player.HealSelfAndNearbyAllies(MedicWeaponAbilities.TriageHealAmount, MedicWeaponAbilities.TriageHealRadius);
+
+        // Immunize's real "makes you and your group invincible" purpose (see MedicWeaponAbilities.cs's
+        // ImmunizeDamageReductionPercent comment) — same reasoning as Triage above: this is the weapon
+        // SPECIAL itself, gated on actually casting it, independent of whether a hostile is in range.
+        if (ability.Name == "Immunize" && player.ActiveProfileId == MedicWeaponAbilities.MedicProfileId)
+            player.ApplyDamageReductionToNearbyAllies(MedicWeaponAbilities.ImmunizeDamageReductionPercent,
+                MedicWeaponAbilities.ImmunizeDurationMs, MedicWeaponAbilities.ImmunizeBuffRadius);
+
         var startCastingFx = ability.CastEffectId;
 
         // RANGED jobs (Archer/Wizard): fly a real travelling projectile from caster -> target carrying the
@@ -1448,10 +1540,19 @@ public static class AbilityPacketClientRequestStartAbilityHandler
             }, sendToSelf: true);
         }
 
-        // COMBAT WIP: Shadow Army (any special with SummonCount>0) spawns temporary shadow-clone NPCs
-        // around the caster (using the caster's model), then they poof away after a few seconds.
-        if (ability.SummonCount > 0 && zone is StartingZone summonZone)
-            summonZone.SummonShadowClones(player, ability.SummonCount, 12);
+        // Any special with SummonCount>0 spawns temporary combat-capable clone NPCs around the caster, then
+        // they poof away after a few seconds - generalized 2026-07-29 (see CombatCloneConfig's header
+        // comment) to work in ANY zone against real nearby hostiles, not just the tutorial zone's training
+        // dummy. Two abilities use this: Ninja's Shadow Army (shadow-ninja clones) and Medic's Nurse!
+        // (medical-assistant clones, Nurse Naia's model) - dispatch on the ability name to pick the right
+        // look/config for whichever one was actually cast.
+        if (ability.SummonCount > 0 && zone is { } summonZone)
+        {
+            if (ability.Name == "Shadow Army")
+                summonZone.SummonCombatClones(player, ability.SummonCount, NinjaWeaponAbilities.ShadowArmyLifetimeSeconds, NinjaWeaponAbilities.ShadowArmyCloneConfig);
+            else if (ability.Name == "Nurse!")
+                summonZone.SummonCombatClones(player, ability.SummonCount, MedicWeaponAbilities.NurseSummonLifetimeSeconds, MedicWeaponAbilities.NurseCloneConfig);
+        }
 
         // Self-buff abilities (e.g. Ninja's Mystical Blade — see NinjaWeaponAbilities' MysticismKit
         // comment) apply a temporary % damage multiplier to the CASTER instead of resolving damage
@@ -1595,10 +1696,13 @@ public static class AbilityPacketClientRequestStartAbilityHandler
 
                         // Job crit traits (each gated to its own job, so only the active job's applies): Archer
                         // Precision/Marksmanship, Brawler Bruising Strikes/Savvy, Warrior Piercing Strikes, Wizard
-                        // Genius/Arcane Flare. Rolled per hit so AoE specials can crit some targets and not others.
-                        var hitDamage = ApplyWizardTraitDamage(player,
-                            ApplyWarriorTraitDamage(player,
-                                ApplyBrawlerTraitDamage(player, ApplyArcherTraitDamage(player, damage))));
+                        // Genius/Arcane Flare, Medic Target Vitals/Surgical Skills/Combat Medicine/Vitamins/Shock
+                        // Paddles. Rolled per hit so AoE specials can crit some targets and not others.
+                        var hitDamage = ApplyMedicTraitDamage(player,
+                            ApplyWizardTraitDamage(player,
+                                ApplyWarriorTraitDamage(player,
+                                    ApplyBrawlerTraitDamage(player, ApplyArcherTraitDamage(player, damage)))),
+                            target);
 
                         // Active self-buff (e.g. Mystical Blade) multiplies the final number - applied last so
                         // it stacks with crit rolls rather than being rolled into the crit chance itself.

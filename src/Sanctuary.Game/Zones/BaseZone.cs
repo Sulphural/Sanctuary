@@ -137,6 +137,193 @@ public abstract class BaseZone : IZone, IDisposable
     {
     }
 
+    // COMBAT: generic "summon N clone NPCs that fight alongside the caster, then despawn" engine — see
+    // CombatCloneConfig's header comment for why this lives here (zone-agnostic) instead of on one specific
+    // zone. Each clone independently (re)acquires the nearest live hostile within config.LeashRange of the
+    // SUMMONER every tick, chases it, and attacks on a cooldown once in range; on kill/hit it credits the
+    // SUMMONER via OnNpcKilled/OnNpcDamaged, same as any other player-dealt damage.
+    public void SummonCombatClones(Player summoner, int count, int lifetimeSeconds, Sanctuary.Game.Combat.CombatCloneConfig config)
+    {
+        // small arc around the caster
+        (float dx, float dz)[] offsets = [(-2f, -2f), (2f, -2f), (0f, -3f), (-3f, 1f), (3f, 1f)];
+
+        var clones = new List<Npc>(count);
+
+        for (var i = 0; i < count; i++)
+        {
+            if (!TryCreateNpc(out var clone))
+                break;
+
+            var (dx, dz) = offsets[i % offsets.Length];
+            var pos = new Vector4(summoner.Position.X + dx, summoner.Position.Y, summoner.Position.Z + dz, summoner.Position.W);
+
+            clone.ModelId = config.ModelId;
+            clone.Name = config.Name;
+            clone.NameId = 0;
+            clone.HideNamePlate = false;
+            clone.Disposition = 2; // Ally
+            clone.Scale = 1f;
+            clone.IsInteractable = false;
+            clone.CursorId = 0;
+            clone.CompositeEffectId = 0;
+            clone.RunAnimId = config.RunAnim;
+            clone.WalkAnimId = config.WalkAnim;
+            clone.StandAnimId = config.StandAnim;
+            clone.Visible = true;
+            clone.UpdatePosition(pos, summoner.Rotation);
+
+            summoner.OnAddVisibleNpcs(clone);
+            clone.OnAddVisiblePlayers(summoner); // track the caster so Dispose() removes it from their client
+
+            summoner.SendTunneled(new PlayerUpdatePacketPlayCompositeEffect
+            {
+                Guid = clone.Guid,
+                CompositeEffectId = config.SpawnPoofFx,
+                Position = pos,
+            });
+
+            clones.Add(clone);
+        }
+
+        if (clones.Count == 0)
+            return;
+
+        _logger.LogInformation("SummonCombatClones: summoned {n} '{name}' clones for {sec}s.",
+            clones.Count, config.Name, lifetimeSeconds);
+
+        // despawn after the lifetime (off-thread, mirrors the damage-resolve pattern)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var totalMs = lifetimeSeconds * 1000;
+                var nextAttackMs = new int[clones.Count];
+                var currentTargets = new Npc?[clones.Count];
+                var leashSq = config.LeashRange * config.LeashRange;
+
+                for (var elapsed = 0; elapsed < totalMs; elapsed += config.TickMs)
+                {
+                    await Task.Delay(config.TickMs);
+
+                    for (var i = 0; i < clones.Count; i++)
+                    {
+                        var clone = clones[i];
+
+                        // (Re)acquire target: nearest live hostile within leash range of the SUMMONER (not the
+                        // clone) - same nearby-hostile pattern SplashShockPaddles uses. Drops a target that
+                        // died OR wandered out of leash range, so clones don't chase forever across the zone.
+                        var target = currentTargets[i];
+                        if (target is not null && (!target.IsAlive || DistanceSq2D(summoner.Position, target.Position) > leashSq))
+                            target = null;
+
+                        if (target is null)
+                        {
+                            target = Npcs
+                                .Where(n => n.IsHostile && n.IsDamageable && n.IsAlive)
+                                .Select(n => (npc: n, d2: DistanceSq2D(summoner.Position, n.Position)))
+                                .Where(t => t.d2 <= leashSq)
+                                .OrderBy(t => t.d2)
+                                .Select(t => t.npc)
+                                .FirstOrDefault();
+                            currentTargets[i] = target;
+                        }
+
+                        if (target is null)
+                            continue; // no hostile nearby - hold position
+
+                        var here = new Vector3(clone.Position.X, clone.Position.Y, clone.Position.Z);
+                        var targetPos = new Vector3(target.Position.X, target.Position.Y, target.Position.Z);
+                        var toTarget = targetPos - here;
+                        var dist = toTarget.Length();
+
+                        var yaw = (float)Math.Atan2(toTarget.X, toTarget.Z);
+                        var rot = Quaternion.CreateFromYawPitchRoll(yaw, 0f, 0f);
+
+                        if (dist > config.AttackRange)
+                        {
+                            var step = Math.Min(config.MoveSpeed * (config.TickMs / 1000f), dist - config.AttackRange);
+                            var dir = toTarget / dist;
+                            var np = here + dir * step;
+                            var newPos = new Vector4(np.X, np.Y, np.Z, clone.Position.W);
+
+                            clone.UpdatePosition(newPos, rot);
+                            summoner.SendTunneled(new PlayerUpdatePacketUpdatePosition
+                            {
+                                Guid = clone.Guid, Position = newPos, Rotation = rot, State = 1, Unknown = 0,
+                            });
+                        }
+                        else
+                        {
+                            clone.UpdatePosition(clone.Position, rot);
+                            summoner.SendTunneled(new PlayerUpdatePacketUpdatePosition
+                            {
+                                Guid = clone.Guid, Position = clone.Position, Rotation = rot, State = 0, Unknown = 0,
+                            });
+
+                            if (elapsed >= nextAttackMs[i])
+                            {
+                                nextAttackMs[i] = elapsed + config.AttackCooldownMs;
+
+                                summoner.SendTunneled(new AbilityPacketStartCasting
+                                {
+                                    Unknown = clone.Guid, Unknown2 = target.Guid, CompositeEffectId = 0,
+                                    Animation = config.AttackAnim, AbilityId = 0, ActionTime = 0.3f, HasActionProgress = false,
+                                });
+
+                                var killed = target.ApplyDamage(config.AttackDamage);
+                                summoner.SendTunneled(new CombatPacketAttackProcessed
+                                {
+                                    AttackerGuid = clone.Guid,
+                                    TargetGuid = target.Guid,
+                                    Damage = config.AttackDamage,
+                                    MaxHealth = target.MaxHealth,
+                                    CompositeEffectId = config.HitFx,
+                                    CurrentHealth = target.Health,
+                                });
+
+                                if (killed)
+                                {
+                                    OnNpcKilled(summoner, target);
+                                    currentTargets[i] = null; // pick a new target next tick
+                                }
+                                else
+                                {
+                                    OnNpcDamaged(summoner, target);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "SummonCombatClones AI failed.");
+            }
+            finally
+            {
+                // poof out + remove every clone
+                foreach (var clone in clones)
+                {
+                    summoner.SendTunneled(new PlayerUpdatePacketPlayCompositeEffect
+                    {
+                        Guid = clone.Guid,
+                        CompositeEffectId = config.SpawnPoofFx,
+                        Position = clone.Position,
+                    });
+
+                    clone.Dispose(); // RemovePlayer to the caster + clears zone tile + zone registration
+                }
+            }
+        });
+    }
+
+    private static float DistanceSq2D(Vector4 a, Vector4 b)
+    {
+        var dx = a.X - b.X;
+        var dz = a.Z - b.Z;
+        return dx * dx + dz * dz;
+    }
+
     // The "Revive here" coin cost sent on the overworld respawn window, RAW (client shows it as
     // value/1000, so 100000 -> "100 coins").
     protected const int ReviveHereCostRaw = 100000;

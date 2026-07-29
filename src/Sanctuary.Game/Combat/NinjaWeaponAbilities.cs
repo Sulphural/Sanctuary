@@ -10,17 +10,52 @@ namespace Sanctuary.Game.Combat;
 // COMBAT WIP: abilities are driven by the EQUIPPED WEAPON, the way Free Realms did it. Each ninja
 // "Ninja's Shadow Blade of X" weapon (Resources/ClientItemDefinitions.json, ids 75110-75119) grants TWO
 // abilities: Ability 1 = a melee sword technique (slot 0), Ability 2 = the named special (slot 1).
-// Names + damage are from the Free Realms wiki (freerealms.fandom.com api.php).
+//
+// PER-WEAPON DAMAGE FIX (2026-07-29): every one of the ~90 real weapon items below now gets ITS OWN distinct
+// WeaponAbility pair with real per-tier numbers, sourced from the OSFR community combat spreadsheet's
+// weapon-summary tab (gid=1221468972, "CONFIRMED"/"PENDING" rows) cross-referenced against its icons/anim tab
+// (gid=983369777) for Icon IMAGE_ID/FX/Animation per named ability variant — NOT a single shared kit object
+// reused across every weapon that happens to grant the same special (that was the bug: the Training Sword,
+// Blade, Scythe, Jagged Scythe and Shadow Blade "of Dragonstrike" items, 5 completely different real weapons
+// spanning level 1-16, all showed the exact same top-tier "Dragonstrike" damage number, same shape of bug the
+// Warrior/Medic files had). Every special TYPE (Dragonstrike/1000 Storms/Shuriken Storm/Flame Wave/Shadow
+// Army/Solar Flare/Dragon Breath/Mysticism/Soul Power/Deception) is now a factory function parameterized by
+// melee icon + both real damage numbers, called once per real weapon item id. "CONFIRMED" rows use the
+// sheet's exact tooltip numbers; "PENDING" rows (mostly the "(?)" ability-name-uncertain scythe/bokken/blade
+// tier reskins) still carry real numbers, just flagged per-entry below since the exact basic-attack name
+// variant (and therefore its Icon IMAGE_ID) is unconfirmed - those fall back to the bare "Flame Flash" icon.
+// CORRECTED 2026-07-29: "Molten Dragon Blade" (48322) was previously aliased into DragonBreathKit (a themed
+// guess); the sheet's own weapon-summary row lists it as a DRAGONSTRIKE weapon (Flame Flash 8 / Dragonstrike
+// 4, both CONFIRMED) - remapped. "Lunar Blade" (78715) and "Precursor Energy Blade" (79022) were previously
+// aliased into MysticismKit/SoulPowerKit respectively (also themed guesses); the sheet gives both their OWN
+// real, distinct ability names (Moon Slice/Celestial Spin and Energy Slash/Energy Storm) not shared with any
+// "of X" weapon - each now gets its own dedicated kit below instead of borrowing an unrelated special's FX/
+// mechanic. "Dragon Blade" (13663/55337/70444/76470) and "Storm Breaker" (9031/13669/55360) have no dedicated
+// spreadsheet row of their own (their real in-game abilities weren't in either tab) - these stay a themed
+// reuse of the Shadow-Blade-tier Dragonstrike/1000-Storms numbers, same honest "no dedicated source" flag the
+// previous pass already carried, just now going through the shared factory instead of a hand-duplicated kit.
+//
+// ANIM CORRECTIONS from the same spreadsheet pass: Flame Wave's animation was 1032 (a guess); the sheet's own
+// notes column says "Updated Animation ID from 1032" -> 1036, taken here. Flame Breath (Dragon Breath's
+// special) was hard-flagged in the previous pass as a KNOWN-WRONG id (1037 = com_1hs_special_07, a generic
+// unnamed clip with zero fire/dragon/breath naming anywhere in the client tables, previously left in place
+// only for lack of a better-sourced alternative) - the sheet now offers 1071 (PENDING confidence, but a real
+// sourced value beats a confirmed-wrong placeholder), taken here. Fan of Blades (Deception's special) is the
+// one exception: the sheet lists 1051 at "UNKNOWN" confidence (the lowest tier in its own Anim Status column),
+// while the previous pass's 1033 (air_throw) was live user-verified by sight - kept 1033 rather than downgrade
+// to a lower-confidence value. Every other special's anim/FX already matched the sheet exactly (Dragonstrike/
+// 1000 Storms/Shuriken Storm/Shadow Army/Flaming Uppercut/Mystical Blade/Mystical Drain all CONFIRMED, no
+// change) so those are untouched.
 //
 // ICONS (cracked 2026-06-20): the ability-slot IconId is a flat IMAGE_ID, NOT an image-set id. The real
 // ninja ability icons are the abil_ninja_* image sets' IMAGE_IDs (Client/Resources/Images/ImageSetMappings.txt,
 // Small=type5). e.g. abil_ninja_shuriken_storm set 4902 -> Small IMAGE_ID 22986. (Sending the set id 4902 hit
 // the food/fruit image #4902 instead.) FX ids match ActorCompositeEffectDefinitions.xml (confirmed live:
-// id 1 = fire). Animations: 1099 com_swing is proven; per-ability anims TBD via !anim probe.
-// EffectId = impact FX played on the TARGET (AttackProcessed). CastEffectId = FX played on the CASTER during
-// StartCasting (the projectile/aura/ground-AoE you see come off the ninja); 0 = none. For projectile specials
-// (Shuriken throw, Dragonstrike) CastEffectId = the launch/trail and EffectId = the land/impact; for ground-AoE
-// specials the same id works for both. (Usage per drafts/ninja-special-anim-fx-research.md §FINDINGS iter 4.)
+// id 1 = fire). EffectId = impact FX played on the TARGET (AttackProcessed). CastEffectId = FX played on the
+// CASTER during StartCasting (the projectile/aura/ground-AoE you see come off the ninja); 0 = none. For
+// projectile specials (Shuriken throw, Dragonstrike) CastEffectId = the launch/trail and EffectId = the
+// land/impact; for ground-AoE specials the same id works for both. (Usage per
+// drafts/ninja-special-anim-fx-research.md §FINDINGS iter 4.)
 // SummonCount > 0 => this special also spawns that many temporary "shadow clone" NPCs around the caster
 // (Shadow Army). See StartingZone.SummonShadowClones.
 //
@@ -50,14 +85,8 @@ namespace Sanctuary.Game.Combat;
 // ability, unchanged behavior for every existing entry.
 // TickCount/TickIntervalMs/CasterEndEffectStopMs (added 2026-07-27, live feedback: "archer's bow of volley
 // shouldn't last that long.. a ton of arrows coming from the sky, should damage the enemy a few times and
-// then stop after a bit"): Volley's CasterEndEffectId (16204) is a "_loop_" asset - playing it via the
-// normal one-shot PlayCompositeEffect in ResolveDamageAfterCast made it rain forever with no stop, while
-// the ability itself still only hit once, a mismatch with the "rain of arrows" visual implying multiple
-// hits. TickCount > 1 repeats the whole damage/FX pass that many times, TickIntervalMs apart (default 1/0 =
-// exactly one pass, unchanged for every other ability). CasterEndEffectStopMs > 0 switches the caster-end FX
-// from a one-shot trigger to a tag-attach (op35/41) held for that many ms then removed (op35/42) - same
-// stop mechanism CastEffectStopMs already uses for lingering CAST fx, just for the CASTER-END fx instead;
-// default 0 keeps the existing one-shot behavior for every other ability.
+// then stop after a bit"): default 1/0/0 = exactly one pass, unchanged for every ninja ability (none of the
+// 10 specials use multi-tick).
 public sealed record WeaponAbility(string Name, int IconImageId, int Damage, int Animation, int EffectId, int CastEffectId = 0, int SummonCount = 0, int SwordEffectId = 0, int CasterEndEffectId = 0, int EnemyExtraEffectId = 0, float AoeRadius = 0f, int CastEffectStopMs = 0, int EnergyCost = 100, int BuffMultiplierPct = 0, int BuffDurationMs = 0, int TickCount = 1, int TickIntervalMs = 0, int CasterEndEffectStopMs = 0);
 
 public sealed record NinjaWeapon(WeaponAbility Melee, WeaponAbility Special);
@@ -84,6 +113,10 @@ public static class NinjaWeaponAbilities
                                              // separate crit-aware EffectId path, which is out of scope for this pass.
     // Melee slot shows the weapon's SWORD icon: the shadow-blade item set (3152) Small IMAGE_ID = 14407.
     // (abil_ninja_shadow_blade's 22599 renders as a leaf in our client; the item sword image is correct.)
+    // Kept as the BARE-weapon fallback (no equipped weapon def match); real per-weapon melee icons below vary
+    // instead — see the FlameFlashIconX/etc. constants, cross-referenced against each weapon's own exact
+    // basic-attack ability-instance name (e.g. "Flame Flash 9" vs bare "Flame Flash") from the spreadsheet's
+    // icons/anim tab, same technique the Medic file's per-weapon Icon4NNN consts use.
     private const int MeleeIcon = 14407;
 
     // PROVEN-castable AbilityDefinitionIds from the original capture (client renders + lets us cast these).
@@ -184,150 +217,331 @@ public static class NinjaWeaponAbilities
     public static bool HasTrait(Player player, int traitLevel) =>
         player.ActiveProfileId == NinjaProfileId && player.ActiveProfile.Rank >= traitLevel;
 
-    // The 10 ninja SPECIALS, each a full kit (melee technique on slot 0 + the named "of X" special on slot 1).
-    // IconImageId = the abil_ninja_* Small IMAGE_ID (real ability art). EffectId = the ability's REAL per-special
-    // composite effect (CONFIRMED from ActorCompositeEffectDefinitions.xml — the game's own dedicated
-    // `PFX_ninja_*` / `PFX_*_ninja-*` EffectDefinitions; see drafts/ninja-special-anim-fx-research.md §FINDINGS
-    // iter 4). Animation: all wired from the client's own animation table — decoded from the player model's
-    // actor-def `human_m.adr` (slot->clip records) + AnimationGroups.xml, VERIFIED against the client asset log
-    // (1011043->weapon_throw) and user sight (1034/1035). The 1hs specials reuse the shared named motion clips
-    // (flip_stab/flying_chop/overhand_spin/bum_rush/air_throw/weapon_throw/sweep); Flaming Uppercut + Mystical
-    // Blade use their DEDICATED clips (com_h2h_special_07=1017, com_cast_special_11=weapon_power=1061141); Shadow
-    // Army uses com_spawn=1404 (no dedicated summon clip). Full table: drafts/anim-NAMED-CLIPS-breakthrough.md.
-    //
-    // These animations play on the human_m BODY, so they're identical no matter which weapon MODEL grants the
-    // special — which is why all five weapon tiers (training sword / blade / scythe / jagged scythe / shadow
-    // blade) share these records below. (The melee SWING clip + icon are sword-styled; on a scythe that swing
-    // reads a touch off — a cosmetic live-polish item, not a functional one.)
+    // ── PER-WEAPON MELEE ICONS ── every "Flame Flash"/"Lightning Strike"/"Twisted Edge"/"Cinder Slash"/
+    // "Dark Assault"/"Ashen Strike" basic attack in the spreadsheet is really a family of numbered variants
+    // ("Flame Flash 9", "Flame Flash 12", bare "Flame Flash", ...), each with its OWN Icon IMAGE_ID in the
+    // icons/anim tab despite sharing the same base ability name (stripped to the base name in AbilityNameIds,
+    // same convention the Medic file uses for its own numbered-variant melee names). The letter suffix below
+    // groups weapons that happen to land on the same icon value across different ability-name families (e.g.
+    // bare "Flame Flash"/"Lightning Strike"/"Twisted Edge"/"Cinder Slash" all use icon 4335) — this is the
+    // sheet's own real data, not a mistake on this end.
+    private const int FlameFlashIconA = 4335;   // bare: Flame Flash / Flame Flash 2 / Lightning Strike / Twisted Edge / Cinder Slash
+    private const int FlameFlashIconB = 14746;  // "3": Flame Flash 10 / Flame Flash 3 / Twisted Edge 3 / Cinder Slash 3 / Dark Assault 2 / Ashen Strike 2
+    private const int FlameFlashIconC = 4113;   // "2/9": Flame Flash 9 / Lightning Strike 2 / Twisted Edge 2 / Cinder Slash 2 / Dark Assault (bare) / Ashen Strike (bare) / Fiery Slice (bare) / Mystic Rush (bare)
+    private const int FlameFlashIconD = 4323;   // "4/11": Flame Flash 11 / Lightning Strike 3 / Twisted Edge 4 / Cinder Slash 4 / Dark Assault 3 / Ashen Strike 3 / Fiery Slice 2 / Mystic Rush 2 / Shadowslash / Hidden Strike
+    private const int FlameFlashIconE = 4329;   // "6/12": Flame Flash 12 / Flame Flash 6 / Lightning Strike 4
+    private const int FlameFlashIconF = 14412;  // "7/8": Flame Flash 7 / Flame Flash 8
+    private const int FlameFlashIconG = 14109;  // "4": Flame Flash 4
+    private const int FlameFlashIconH = 14812;  // "5": Flame Flash 5
 
-    private static readonly NinjaWeapon ShurikenStormKit = new(
-        // Damage NOT changed: ZAM/wiki only turned up numbers for the lower-tier "Ninja's Jagged Scythe of
-        // Shuriken Storm" (level 12: Twisted Edge 1641, Shuriken Storm 4750), which is a different weapon tier
-        // than the Shadow Blade (top tier) values used here — not a like-for-like source, so left as-is per the
-        // "don't guess a better-sounding number" rule rather than porting a lower-tier number in.
-        new("Twisted Edge",   MeleeIcon, 2870, MeleeAnimation, MeleeHitFx),
-        new("Shuriken Storm",     22986, 8302, 1039, 4012, 0)); // LIVE-OBSERVED: anim com_1hs_special_09=inverted_flip_attack (frontflip + downward melee); FX 4012 PFX_Slashes_Three_Symbol ("3 scratch marks") on the ENEMY only (impact); no cast FX on caster
+    // ── SPECIAL-TYPE FX/ANIM/ICON (real, doesn't vary by weapon tier — see file header for what changed vs.
+    // the previous pass). Damage DOES vary by tier, hence the factory functions below instead of one shared
+    // constant WeaponAbility per special.
+    private const int DragonstrikeIcon = 22965, DragonstrikeAnim = 1035, DragonstrikeCasterEndFx = 16186;
+    private const int ThousandStormsIcon = 22992, ThousandStormsAnim = 1033, ThousandStormsCastFx = 16088;
+    private const int ShurikenStormIcon = 22986, ShurikenStormAnim = 1039, ShurikenStormFx = 4012;
+    private const int FlameWaveIcon = 22974, FlameWaveAnim = 1036, FlameWaveCastFx = 16140; // anim 1036 = sheet correction from 1032, see file header
+    private const int ShadowArmyIcon = 22989, ShadowArmyAnim = 1061143, ShadowArmyImpactFx = 21, ShadowArmyCastFx = 16483;
 
-    private static readonly NinjaWeapon FlameWaveKit = new(
-        new("Cinder Slash",   MeleeIcon, 2609, MeleeAnimation, MeleeHitFx), // 2609 = ZAM/wiki "Ninja's Shadow Blade of Flame Wave": Cinder Slash deals 2609 damage (already matched, now cited)
-        new("Flame Wave",         22974, 10674, 1032, 0, 16140)); // Damage 10674 = ZAM/wiki "Ninja's Shadow Blade of Flame Wave": Flame Wave deals 10674 damage (already matched, now cited). anim sweep; cast 16140 PFX_fire_orange_cog_ninja-flame-wave (ground AoE on caster, at feet); enemy impact REMOVED (user: FX only at my feet)
+    // Shadow Army's clone-summon config (see CombatCloneConfig's header comment for the generalized engine
+    // this feeds - BaseZone.SummonCombatClones). Model/FX ids are the same real ones this file already used
+    // before the 2026-07-29 generalization (model 945 human_m_ninja_ghost.adr, black-smoke poof 21, shadow-
+    // blade impact 15999); AttackDamage/AttackCooldownMs/MoveSpeed/AttackRange are unchanged gameplay
+    // constants carried over from the old StartingZone-only prototype, still ours to tune (no wiki number
+    // for a clone's own attack). LeashRange is NEW (the old version had no leash at all - it only ever chased
+    // one fixed dummy) - picked generously so the clones behave close to how they always did.
+    public static readonly CombatCloneConfig ShadowArmyCloneConfig = new(
+        ModelId: 945, Name: "Shadow Ninja", RunAnim: 3, WalkAnim: 2, StandAnim: 1, AttackAnim: 1021,
+        AttackDamage: 200, AttackCooldownMs: 1400, HitFx: 15999, SpawnPoofFx: 21, LeashRange: 25f);
+    public const int ShadowArmyLifetimeSeconds = 12;
+    private const int SolarFlareIcon = 22977, SolarFlareAnim = 1017, SolarFlareCastFx = 16119;
+    private const int DragonBreathIcon = 22971, DragonBreathAnim = 1071, DragonBreathCastFx = 16129; // anim 1071 = sheet correction from the previously-known-wrong 1037, see file header
+    private const int MysticismIcon = 22980, MysticismAnim = 1061141, MysticismSwordFx = 16169;
+    private const int SoulPowerIcon = 22983, SoulPowerAnim = 1034, SoulPowerFx = 16180;
+    private const int DeceptionIcon = 22968, DeceptionAnim = 1033, DeceptionCastFx = 16185; // anim kept at the previous pass's live-verified 1033 (air_throw) over the sheet's own "UNKNOWN"-confidence 1051, see file header
 
-    private static readonly NinjaWeapon DragonstrikeKit = new(
-        new("Flame Flash",    MeleeIcon, 2609, MeleeAnimation, MeleeHitFx), // 2609 matches the same-tier melee damage seen across every other Shadow Blade "of X" wiki page (Cinder Slash/Shadowslash/Hidden Strike/Fiery Slice all 2609) — consistent, not individually page-confirmed for "Flame Flash"
-        new("Dragonstrike",       22965, 10674, 1035, 0, 0, 0, 0, 16186)); // Damage 10674 corroborated by ZAM/wiki: "Molten Dragon Blade" and "Flying Dragon Sword" (other retail swords whose special is also Dragonstrike) both list 10674 damage; NOTE the specific coin-store "Dragon Blade" item (weapon def ids 13663/55337/70444/76470, aliased to this same kit below) is wiki-listed at 13876 instead — left unsplit since those ids are explicitly a thematic reuse ("themed to a fitting kit"), not a per-item stat table. anim flying_chop (confirmed); launch 16014 REMOVED; the LAND FX 16186 now plays ON THE CASTER (feet) at the END of the anim (CasterEndEffectId); nothing on the enemy (user round-2)
+    // Shadow Army's special damage has NO confirmed number at any tier (spreadsheet lists "(?)" every time,
+    // "Unknown super attack effect values" in its own Notes column) — estimated here to sit in the same range
+    // as every OTHER same-tier special (which IS sheet-confirmed), same convention as the Medic file's Nurse!/
+    // Vitamins placeholder-damage flag. Real melee damage (the "388 (x2)"-style entries) IS confirmed.
+    private const int ShadowArmySpecialEstL8 = 3492, ShadowArmySpecialEstL12 = 6107, ShadowArmySpecialEstL16 = 10674;
 
-    private static readonly NinjaWeapon ThousandStormsKit = new(
-        // Damage/AoE NOT changed: WebSearch confirmed the weapon "Ninja's Training Sword of 1000 Storms" exists
-        // (Coin Shop item, abilities Lightning Strike + 1000 Storms) but no ZAM/wiki page turned up actual
-        // damage or radius numbers for either ability — genuinely searched, nothing found, so left as-is rather
-        // than guessing. AoeRadius=12f below is still the pre-existing 2026-07-03 house-rule, not retail data.
-        new("Lightning Strike", MeleeIcon, 2372, MeleeAnimation, MeleeHitFx),
-        new("1000 Storms",          22992, 8302, 1033, 0, 16088, AoeRadius: 12f)); // anim 1033 air_throw (jump-up + air-slam motion; same clip as Deception — user-chosen); cast 16088 PFX_lightning_blue_root_ninja-special on caster; enemy impact REMOVED (user: stop casting on target; FX at my sword at end of anim — sword placement TODO). AOE (user request 2026-07-03, NOT retail-sourced): hits the whole pack within 12u of the caster
+    // ── SPECIAL-TYPE FACTORIES ── one per real special ABILITY TYPE, parameterized by the melee icon + both
+    // real per-weapon damage numbers so every weapon item below gets its own distinct pair instead of sharing
+    // one kit object (the bug this pass fixes). AoeRadius/SummonCount/etc. match the "Scope" column in the
+    // spreadsheet's icons/anim tab (Front cone/Surround/AOE => damages the whole pack; single-target otherwise).
+    private static NinjaWeapon Dragonstrike(int meleeIcon, int meleeDmg, int specialDmg) => new(
+        new("Flame Flash", meleeIcon, meleeDmg, MeleeAnimation, MeleeHitFx),
+        new("Dragonstrike", DragonstrikeIcon, specialDmg, DragonstrikeAnim, 0, 0, 0, 0, DragonstrikeCasterEndFx)); // Front cone; land FX plays on the CASTER's feet at the end of the anim, nothing on the enemy (user round-2)
 
-    private static readonly NinjaWeapon ShadowArmiesKit = new(
-        // Damage/SummonCount NOT changed: ZAM/wiki search confirmed the weapon "Ninja's Jagged Scythe of Shadow
-        // Army(ies)" exists (level 12 Ninja weapon) but no page content with the ability's damage or clone-count
-        // came back — genuinely searched, nothing found, so both values are left as pre-existing, unsourced.
-        new("Dark Assault",   MeleeIcon, 2608, MeleeAnimation, MeleeHitFx),
-        new("Shadow Army",        22989, 3000, 1061143, 21, 16483, 3)); // anim warcry; CAST 16483 PFX_summon_purple_cast (ONE-SHOT — 5276 was a _loop that never ended); impact 21 black smoke; SUMMONS 3 shadow clones (count unsourced)
+    private static NinjaWeapon ThousandStorms(int meleeIcon, int meleeDmg, int specialDmg) => new(
+        new("Lightning Strike", meleeIcon, meleeDmg, MeleeAnimation, MeleeHitFx),
+        new("1000 Storms", ThousandStormsIcon, specialDmg, ThousandStormsAnim, 0, ThousandStormsCastFx, AoeRadius: 12f)); // AOE (house rule, not retail-sourced radius); cast FX on caster, nothing on enemy (user: stop casting on target)
 
-    private static readonly NinjaWeapon SolarFlareKit = new(
-        new("Ashen Strike",     MeleeIcon, 2870, MeleeAnimation, MeleeHitFx),
-        new("Flaming Uppercut",     22977, 8302, 1017, 0, 16119)); // Damage 8302 = ZAM/wiki "Ninja's Shadow Blade of Solar Flare": Flaming Uppercut deals 8302 damage (already matched, now cited). anim flaming_uppercut (DEDICATED); cast 16119 PFX_ninja_flaming-uppercut on caster; enemy impact REMOVED (user: player is the only one with the FX, not the NPC)
+    private static NinjaWeapon ShurikenStorm(int meleeIcon, int meleeDmg, int specialDmg) => new(
+        new("Twisted Edge", meleeIcon, meleeDmg, MeleeAnimation, MeleeHitFx),
+        new("Shuriken Storm", ShurikenStormIcon, specialDmg, ShurikenStormAnim, ShurikenStormFx, 0)); // Surround (all directions); impact-only FX on the enemy, no cast FX
 
-    private static readonly NinjaWeapon DragonBreathKit = new(
-        new("Fiery Slice",  MeleeIcon, 2609, MeleeAnimation, MeleeHitFx), // 2609 = ZAM/wiki "Ninja's Shadow Blade of Dragon Breath": Fiery Slice deals 2609 damage (already matched, now cited)
-        new("Flame Breath",     22971, 10674, 1037, 0, 16129)); // Damage 10674 = ZAM/wiki "Ninja's Shadow Blade of Dragon Breath": Flame Breath deals 10674 damage (already matched, now cited).
-                                                                 // ANIM STILL WRONG/UNRESOLVED: id 1037 is NOT "bum_rush" (that name is the BRAWLER's
-                                                                 // charge-punch clip, abil_brawler_bum_rush — mislabeled here previously). Per
-                                                                 // AnimationGroups.xml, 1037 is actually "com_1hs_special_07", one of a generic bank of
-                                                                 // unnamed 1-handed-sword special-attack clips (1031-1039, com_1hs_special_01..09) that
-                                                                 // this file's other kits already reuse for their own specials (e.g. 1033=avoid dup with
-                                                                 // ThousandStorms/Deception, 1035=Dragonstrike, 1039=ShurikenStorm). Searched both
-                                                                 // AnimationGroups.xml and AnimationTypes.xml for "flame"/"fire"/"breath"/"dragon" —
-                                                                 // ZERO matches. The client's own animation tables contain NO dragon-breath-style clip
-                                                                 // for the human_m rig, so there is no better-sourced replacement available; a real fix
-                                                                 // would need a dedicated cast_special/emote-quality clip that doesn't exist in this
-                                                                 // client build, or a from-scratch fitting choice among the generic com_1hs_special_NN
-                                                                 // bank (cosmetic guess, not a sourced fix) — left as 1037 pending that decision.
-                                                                 // cast 16129 PFX_fire_orange_mouth_ninja-flame-breath on caster; enemy impact REMOVED (user: FX played by me only, not any enemy)
+    private static NinjaWeapon FlameWave(int meleeIcon, int meleeDmg, int specialDmg) => new(
+        new("Cinder Slash", meleeIcon, meleeDmg, MeleeAnimation, MeleeHitFx),
+        new("Flame Wave", FlameWaveIcon, specialDmg, FlameWaveAnim, 0, FlameWaveCastFx)); // Front cone; ground AoE FX at the caster's feet only (user: FX only at my feet)
 
-    private static readonly NinjaWeapon MysticismKit = new(
-        // CORRECTED 2026-07-27: Mystical Blade was a flat 3000-damage attack (its "no wiki damage number
-        // found" placeholder) with the sword-empowering FX as pure decoration. The name + the sword-glow
-        // FX (empowers the WEAPON, not the target) both point to this being a self-BUFF, not an attack -
-        // matches the community "combat-v2" fork's implementation (a real 0-damage self-buff wired through
-        // a damage-multiplier system). Now Damage=0 + BuffMultiplierPct/BuffDurationMs, short-circuited in
-        // AbilityPacketClientRequestStartAbilityHandler before target resolution (a buff needs no target).
-        // +200%/15s carried from the fork as a plausible estimate, NOT wiki-sourced or independently
-        // verified — needs live testing like everything else here.
-        new("Mystic Rush",    MeleeIcon, 2608, MeleeAnimation, MeleeHitFx),
-        new("Mystical Blade",     22980, 0, 1061141, 0, 0, 0, 16169, BuffMultiplierPct: 200, BuffDurationMs: 15000)); // anim weapon_power (DEDICATED); empowers the WEAPON: 16169 WFX_beam-trail_blue-purple_ninja-mystical-blade binds to the SWORD slot (SwordEffectId); NO body/enemy FX (user round-2: only on my sword, not on any bodies)
+    private static NinjaWeapon ShadowArmies(int meleeIcon, int meleeDmg, int specialDmg) => new(
+        new("Dark Assault", meleeIcon, meleeDmg, MeleeAnimation, MeleeHitFx),
+        new("Shadow Army", ShadowArmyIcon, specialDmg, ShadowArmyAnim, ShadowArmyImpactFx, ShadowArmyCastFx, SummonCount: 3)); // Summon (clones); summons 3 shadow-clone NPCs; specialDmg is an ESTIMATE, see const comment above
 
-    private static readonly NinjaWeapon SoulPowerKit = new(
-        new("Shadowslash",    MeleeIcon, 2609, MeleeAnimation, MeleeHitFx), // 2609 = ZAM/wiki "Ninja's Shadow Blade of Soul Power": Shadowslash deals 2609 damage (already matched, now cited)
-        new("Mystical Drain",     22983, 8302, 1034, 16180, 16180)); // Damage 8302 = ZAM/wiki "Ninja's Shadow Blade of Soul Power": Mystical Drain deals 8302 damage (already matched, now cited). anim flip_stab (confirmed); cast+impact 16180 PFX_beam_red_blue_circ_lg_AOE-drain
+    private static NinjaWeapon SolarFlare(int meleeIcon, int meleeDmg, int specialDmg) => new(
+        new("Ashen Strike", meleeIcon, meleeDmg, MeleeAnimation, MeleeHitFx),
+        new("Flaming Uppercut", SolarFlareIcon, specialDmg, SolarFlareAnim, 0, SolarFlareCastFx)); // Surround; caster-only FX (user: player is the only one with the FX, not the NPC)
 
-    private static readonly NinjaWeapon DeceptionKit = new(
-        new("Hidden Strike", MeleeIcon, 2609, MeleeAnimation, MeleeHitFx), // 2609 = ZAM/wiki "Ninja's Shadow Blade of Deception": Hidden Strike deals 2609 damage (already matched, now cited)
-        new("Fan of Blades",     22968, 5977, 1033, 0, 16185)); // Damage 5977 = ZAM/wiki "Ninja's Shadow Blade of Deception": Fan of Blades deals 5977 damage (already matched, now cited). anim air_throw; cast 16185 PFX_sparkles_multi_cog_ninja-fan-of-blades on caster; enemy impact REMOVED (user: FX only on the animation, not the targets — sword bone placement still TODO)
+    private static NinjaWeapon DragonBreath(int meleeIcon, int meleeDmg, int specialDmg) => new(
+        new("Fiery Slice", meleeIcon, meleeDmg, MeleeAnimation, MeleeHitFx),
+        new("Flame Breath", DragonBreathIcon, specialDmg, DragonBreathAnim, 0, DragonBreathCastFx)); // Front cone; caster-only FX (user: FX played by me only, not any enemy)
 
-    // weapon def id -> kit. ALL 30 ninja weapons (5 model tiers) are wired now; each is named "Ninja's <weapon>
-    // of X" and grants special X, so a lower tier just reuses the same tuned kit as the Shadow Blade (top tier).
-    // Only the Shadow Blade set (75110-75119) covers all 10 specials; the lower tiers stop earlier (no
-    // Soul Power / Deception below the Shadow Blade). Before this, only 75110-75119 were wired and the other 20
-    // fell back to the bare "Strike" with no special.
-    public static readonly IReadOnlyDictionary<int, NinjaWeapon> ByWeaponDefId = new Dictionary<int, NinjaWeapon>
+    // Mystical Blade is a self-BUFF (empowers the WEAPON, not a damage nuke) — Damage stays 0, short-circuited
+    // in AbilityPacketClientRequestStartAbilityHandler before target resolution. Only the MELEE (Mystic Rush)
+    // damage varies per weapon tier; the buff magnitude (+200%/15s, carried from the community "combat-v2"
+    // fork as a plausible estimate) is not sheet-sourced and stays fixed across tiers.
+    private static NinjaWeapon Mysticism(int meleeIcon, int meleeDmg) => new(
+        new("Mystic Rush", meleeIcon, meleeDmg, MeleeAnimation, MeleeHitFx),
+        new("Mystical Blade", MysticismIcon, 0, MysticismAnim, 0, 0, 0, MysticismSwordFx, BuffMultiplierPct: 200, BuffDurationMs: 15000));
+
+    private static NinjaWeapon SoulPower(int meleeIcon, int meleeDmg, int specialDmg) => new(
+        new("Shadowslash", meleeIcon, meleeDmg, MeleeAnimation, MeleeHitFx),
+        new("Mystical Drain", SoulPowerIcon, specialDmg, SoulPowerAnim, SoulPowerFx, SoulPowerFx)); // Surround (drain); same FX id for cast+impact (AOE-drain beam)
+
+    private static NinjaWeapon Deception(int meleeIcon, int meleeDmg, int specialDmg) => new(
+        new("Hidden Strike", meleeIcon, meleeDmg, MeleeAnimation, MeleeHitFx),
+        new("Fan of Blades", DeceptionIcon, specialDmg, DeceptionAnim, 0, DeceptionCastFx)); // Surround; caster-only FX (user: FX only on the animation, not the targets)
+
+    // ── UNIQUE NOVELTY KITS ── real names/damage from the spreadsheet's weapon-summary tab that are NOT
+    // variants of the 10 "of X" specials above (each has its own distinct pair of ability names). Icons from
+    // the icons/anim tab where listed; where the sheet leaves the icon column blank, a sensible existing icon
+    // is reused as a stand-in (flagged per kit) rather than shipping 0/blank, same convention as the Medic
+    // file's own MeleeIcon fallback.
+    private const int EverlovingMeleeIcon = 30203; // Secret Admirer (BASIC ATTACKS tab)
+    private const int EverlovingSpecialIcon = 30190; // Heart Breaker (SUPER ATTACKS tab)
+    private static readonly NinjaWeapon EverlovingKit = new(
+        // Everloving Edge (item 76810), L16, CONFIRMED. No FX/anim listed for either ability in the sheet —
+        // falls back to the generic melee-swing anim/hit-fx for both, same as Medic's own no-FX novelty kits.
+        new("Secret Admirer", EverlovingMeleeIcon, 2609, MeleeAnimation, MeleeHitFx),
+        new("Heart Breaker", EverlovingSpecialIcon, 6575, MeleeAnimation, MeleeHitFx));
+
+    private const int CandyMeleeIcon = 28474; // Stalking Stuffer (BASIC ATTACKS tab)
+    private const int CandySpecialIcon = 27727; // Candy Hurricane (SUPER ATTACKS tab)
+    private static readonly NinjaWeapon CandyStickKit = new(
+        // Candy Stick Sword (item 76560), CONFIRMED but the sheet gives a per-PLAYER-LEVEL scaling table
+        // (279/444/776/1357/2372 melee, 977/1544/2716/4750/8302 special for levels 1/4/8/12/16) rather than one
+        // fixed number — this server has no per-item level-scaling mechanic, so (same convention as the Medic
+        // file's Power Fist) the top-rank (L16) numbers are used as the single representative pair. No FX/anim
+        // listed for either ability.
+        new("Stalking Stuffer", CandyMeleeIcon, 2372, MeleeAnimation, MeleeHitFx),
+        new("Candy Hurricane", CandySpecialIcon, 8302, MeleeAnimation, MeleeHitFx));
+
+    private const int NatureClawMeleeIcon = 39211; // Feral Swipe (BASIC ATTACKS tab)
+    private const int NatureClawSpecialIcon = 39237; // Feral Spirit (SUPER ATTACKS tab)
+    private static readonly NinjaWeapon NatureClawKit = new(
+        // Ninja's Nature Claw (item 78199), CONFIRMED level-scaling table like Candy Stick Sword above (top
+        // rank 2609/9132 used here) — BUT the sheet's own Notes column flags "Basic and Super attack have
+        // additional dmg on top of variable dmg. Needs investigation" (an extra flat +1100/+1600 noted with a
+        // "(?)"), so the numbers below are the scaling-table figures only, NOT that extra flat bonus — flagged
+        // as the more uncertain of the two "Variable" novelty kits in this file. No FX/anim listed.
+        new("Feral Swipe", NatureClawMeleeIcon, 2609, MeleeAnimation, MeleeHitFx),
+        new("Feral Spirit", NatureClawSpecialIcon, 9132, MeleeAnimation, MeleeHitFx));
+
+    private const int EnergySlashIcon = 45902; // Energy Slash (BASIC ATTACKS tab)
+    private const int EnergyStormIcon = 294;   // Energy Storm (SUPER ATTACKS tab)
+    private static readonly NinjaWeapon EnergyStormKit = new(
+        // Precursor Energy Blade (item 79022), CONFIRMED level-scaling table (top rank 2609/8302 used, same
+        // convention as above). CORRECTED 2026-07-29: previously aliased into SoulPowerKit (a themed guess);
+        // the sheet gives this weapon its own real, distinct ability names (Energy Slash/Energy Storm), not
+        // Shadowslash/Mystical Drain. No FX/anim listed.
+        new("Energy Slash", EnergySlashIcon, 2609, MeleeAnimation, MeleeHitFx),
+        new("Energy Storm", EnergyStormIcon, 8302, MeleeAnimation, MeleeHitFx));
+
+    private static readonly NinjaWeapon LunarBladeKit = new(
+        // Lunar Blade (item 78715), PENDING ("Unknown attack variants; missing tooltip data") level-scaling
+        // table (top rank 2372/9132 used). CORRECTED 2026-07-29: previously aliased into MysticismKit (a
+        // themed guess borrowing the sword-glow buff mechanic); the sheet gives this weapon its own real,
+        // distinct ability names (Moon Slice/Celestial Spin), an ordinary damage pair, not a self-buff. Both
+        // icons are blank in the sheet — reuses the bare Flame-Flash melee icon and the Dragonstrike special
+        // icon as sensible stand-ins (flagged, not sheet-sourced) rather than shipping 0/blank.
+        new("Moon Slice", FlameFlashIconA, 2372, MeleeAnimation, MeleeHitFx),
+        new("Celestial Spin", DragonstrikeIcon, 9132, MeleeAnimation, MeleeHitFx));
+
+    private static readonly NinjaWeapon BalloonSwordKit = new(
+        // Balloon Sword (Reward Version) numbers used for ALL 3 named sheet variants (Reward/Coin Shop/
+        // Gifting Pinata — our item data doesn't distinguish them, ids 16355-16359/77447), CONFIRMED.
+        new("Surprise!", 31008, 2609, MeleeAnimation, MeleeHitFx),
+        new("Party Crasher", 291, 8463, MeleeAnimation, MeleeHitFx));
+
+    // weapon def id -> kit. Real client Ninja weapons (Training Sword L1, Blade L4/5, Scythe L8, Jagged Scythe
+    // L12, Shadow Blade L16 — the 75090-75119 "of <Special>" item series) + every real novelty/coin-shop/dye
+    // item found by exact Comment match against ClientItemDefinitions.json. Numbers cited per-entry above map
+    // to the spreadsheet's weapon-summary tab rows; ids verified directly against ClientItemDefinitions.json
+    // 2026-07-29 (Comment field, verbatim, batch-grepped).
+    private static readonly Dictionary<int, NinjaWeapon> _byWeaponDefId = new()
     {
-        // Training Sword (75090-75091, sword_ar_ag_weapon_trainingsword, rank 1)
-        [75090] = DragonstrikeKit,
-        [75091] = ThousandStormsKit,
+        // Training Sword (75090-75091, rank 1) — "Flame Flash 12"/"Lightning Strike 4"
+        [75090] = Dragonstrike(FlameFlashIconE, 279, 1143),
+        [75091] = ThousandStorms(FlameFlashIconE, 254, 889),
 
-        // Blade (75092-75095, sword_ar_ag_weapon_twistedblade)
-        [75092] = DragonstrikeKit,
-        [75093] = ThousandStormsKit,
-        [75094] = ShurikenStormKit,
-        [75095] = FlameWaveKit,
+        // Blade (75092-75095, rank 5) — "Flame Flash"(bare)/"Lightning Strike"(bare)/"Twisted Edge"(bare)/"Cinder Slash"(bare)
+        [75092] = Dragonstrike(FlameFlashIconA, 444, 1998),
+        [75093] = ThousandStorms(FlameFlashIconA, 488, 1554),
+        [75094] = ShurikenStorm(FlameFlashIconA, 537, 1554),
+        [75095] = FlameWave(FlameFlashIconA, 444, 1998),
 
-        // Scythe (75096-75101, axe_ar_ag_weapon_scythe)
-        [75096] = DragonstrikeKit,
-        [75097] = ThousandStormsKit,
-        [75098] = ShurikenStormKit,
-        [75099] = FlameWaveKit,
-        [75100] = ShadowArmiesKit,
-        [75101] = SolarFlareKit,
+        // Scythe (75096-75101, rank 8) — "Flame Flash 10"/"Lightning Strike 2"/"Twisted Edge 3"/"Cinder Slash 3"/"Dark Assault 2"/"Ashen Strike 2"
+        [75096] = Dragonstrike(FlameFlashIconB, 853, 3492),
+        [75097] = ThousandStorms(FlameFlashIconC, 853, 2716),
+        [75098] = ShurikenStorm(FlameFlashIconB, 938, 2716),
+        [75099] = FlameWave(FlameFlashIconB, 853, 3492),
+        [75100] = ShadowArmies(FlameFlashIconB, 776, ShadowArmySpecialEstL8), // melee = confirmed "388 (x2)" summed
+        [75101] = SolarFlare(FlameFlashIconB, 853, 2716),
 
-        // Jagged Scythe (75102-75109, axe_ar_ag_weapon_jaggedscythe)
-        [75102] = DragonstrikeKit,
-        [75103] = ThousandStormsKit,
-        [75104] = ShurikenStormKit,
-        [75105] = FlameWaveKit,
-        [75106] = ShadowArmiesKit,
-        [75107] = SolarFlareKit,
-        [75108] = DragonBreathKit,
-        [75109] = MysticismKit,
+        // Jagged Scythe (75102-75109, rank 12) — "Flame Flash 9"/"Lightning Strike 2"/"Twisted Edge 2"/"Cinder Slash 2"/"Dark Assault"(bare)/"Ashen Strike"(bare)/"Fiery Slice"(bare)/"Mystic Rush"(bare)
+        [75102] = Dragonstrike(FlameFlashIconC, 1492, 6107),
+        [75103] = ThousandStorms(FlameFlashIconC, 1357, 4750),
+        [75104] = ShurikenStorm(FlameFlashIconC, 1641, 4750),
+        [75105] = FlameWave(FlameFlashIconC, 1357, 6107),
+        [75106] = ShadowArmies(FlameFlashIconC, 1492, ShadowArmySpecialEstL12), // melee = confirmed "746 (x2)" summed
+        [75107] = SolarFlare(FlameFlashIconC, 1641, 4750),
+        [75108] = DragonBreath(FlameFlashIconC, 1492, 6107),
+        [75109] = Mysticism(FlameFlashIconC, 1492), // melee = confirmed "746 (x2)" summed
 
-        // Shadow Blade (75110-75119, sword_ar_ag_weapon_shadowblade — top tier, all 10 specials)
-        [75110] = DragonstrikeKit,
-        [75111] = ThousandStormsKit,
-        [75112] = ShurikenStormKit,
-        [75113] = FlameWaveKit,
-        [75114] = ShadowArmiesKit,
-        [75115] = SolarFlareKit,
-        [75116] = DragonBreathKit,
-        [75117] = MysticismKit,
-        [75118] = SoulPowerKit,
-        [75119] = DeceptionKit,
+        // Shadow Blade (75110-75119, rank 16, top tier — all 10 specials) — "Flame Flash 11"/"Lightning Strike 3"/
+        // "Twisted Edge 4"/"Cinder Slash 4"/"Dark Assault 3"/"Ashen Strike 3"/"Fiery Slice 2"/"Mystic Rush 2"/"Shadowslash"(bare)/"Hidden Strike"(bare)
+        [75110] = Dragonstrike(FlameFlashIconD, 2609, 10674),
+        [75111] = ThousandStorms(FlameFlashIconD, 2372, 8302),
+        [75112] = ShurikenStorm(FlameFlashIconD, 2870, 8302),
+        [75113] = FlameWave(FlameFlashIconD, 2609, 10674),
+        [75114] = ShadowArmies(FlameFlashIconD, 2609, ShadowArmySpecialEstL16), // melee = confirmed "1304 (x2)" summed
+        [75115] = SolarFlare(FlameFlashIconD, 2870, 8302),
+        [75116] = DragonBreath(FlameFlashIconD, 2609, 10674),
+        [75117] = Mysticism(FlameFlashIconD, 2609), // melee = confirmed "1304 (x2)" summed
+        [75118] = SoulPower(FlameFlashIconD, 2609, 8302),
+        [75119] = Deception(FlameFlashIconD, 2609, 5977),
 
-        // Retail ninja swords (coin store / give) — themed to a fitting kit so they get real abilities.
-        [13663] = DragonstrikeKit, [55337] = DragonstrikeKit, [70444] = DragonstrikeKit, [76470] = DragonstrikeKit, // Dragon Blade
-        [9031] = ThousandStormsKit, [13669] = ThousandStormsKit, [55360] = ThousandStormsKit,                       // Storm Breaker
-        [78715] = MysticismKit,     // Lunar Blade
-        [79022] = SoulPowerKit,     // Precursor Energy Blade
-        [48322] = DragonBreathKit,  // Molten Dragon Blade
+        // ── "Dragon Blade"/"Storm Breaker" (coin store / give) ── real items, but NEITHER has its own
+        // dedicated spreadsheet row (their real in-game abilities weren't found in either tab) - themed reuse
+        // of the top-tier (Shadow Blade) Dragonstrike/1000-Storms numbers, same as the previous pass, just
+        // through the shared factory now instead of a hand-duplicated kit object.
+        [13663] = Dragonstrike(FlameFlashIconA, 2609, 10674), [55337] = Dragonstrike(FlameFlashIconA, 2609, 10674),
+        [70444] = Dragonstrike(FlameFlashIconA, 2609, 10674), [76470] = Dragonstrike(FlameFlashIconA, 2609, 10674),
+        [9031] = ThousandStorms(FlameFlashIconA, 2372, 8302), [13669] = ThousandStorms(FlameFlashIconA, 2372, 8302),
+        [55360] = ThousandStorms(FlameFlashIconA, 2372, 8302),
+
+        // ── Unique novelty kits (own distinct ability names, not "of X" variants) ──
+        [78715] = LunarBladeKit,     // Lunar Blade — CORRECTED, was wrongly MysticismKit
+        [79022] = EnergyStormKit,    // Precursor Energy Blade — CORRECTED, was wrongly SoulPowerKit
+        [76810] = EverlovingKit,     // Everloving Edge
+        [76560] = CandyStickKit,     // Candy Stick Sword
+        [78199] = NatureClawKit,     // Ninja's Nature Claw
+
+        // ── Real named coin-shop/reward weapons found by exact Comment match, single-id or small dye/tint
+        // groups, CONFIRMED-sourced unless noted. All ride the Dragonstrike family (Flame-Flash melee variant
+        // + Dragonstrike special) per their weapon-summary row.
+        [4900] = Dragonstrike(FlameFlashIconA, 279, 1143),     // Amateur Ninja Blade ("Flame Flash 2")
+        [48163] = Dragonstrike(FlameFlashIconH, 2372, 10674),  // Butterfly Blade ("Flame Flash 5")
+        [68112] = Dragonstrike(FlameFlashIconF, 2609, 10674),  // Elitist's Sword ("Flame Flash 7")
+        [48181] = Dragonstrike(FlameFlashIconF, 776, 3492),    // Gemstone Blade ("Flame Flash 8")
+        [4818] = Dragonstrike(FlameFlashIconA, 2372, 10674),   // All-Star Ninja Blade ("Flame Flash", bare)
+        [48322] = Dragonstrike(FlameFlashIconF, 2372, 10674),  // Molten Dragon Blade ("Flame Flash 8") — CORRECTED, was wrongly DragonBreathKit
+        [2269] = Dragonstrike(FlameFlashIconA, 2372, 10674),   // Spider Bite ("Flame Flash", bare)
+        [22201] = Dragonstrike(FlameFlashIconB, 1357, 6107),   // Tidal Scythe ("Flame Flash 3")
+        [38178] = Dragonstrike(FlameFlashIconB, 2372, 10674),  // Aqua Scythe ("Flame Flash 3")
+        [22203] = Dragonstrike(FlameFlashIconG, 2372, 10674),  // Blazing Scythe ("Flame Flash 4")
     };
 
-    public static readonly int[] AllWeaponDefIds = ByWeaponDefId.Keys.ToArray();
+    // PENDING-sourced (ability-name variant uncertain, "(?)" in the sheet) or exact-name-unresolved entries —
+    // damage numbers are still real (from the sheet's own per-weapon-level column), just the basic-attack icon
+    // falls back to the bare "Flame Flash" icon since we can't confirm which numbered variant applies. Grouped
+    // separately from the CONFIRMED block above for clarity, same "flag the uncertainty, use the number anyway"
+    // convention the Medic file's PENDING rows use.
+    private static readonly (int Id, int MeleeDmg, int SpecialDmg)[] PendingDragonstrikeSingles =
+    [
+        (55815, 2372, 10674),  // Magical Essence Shadowblade (L20)
+        (22101, 776, 3492),    // Bubbleburst Blade (L4)
+        (38084, 444, 1998),    // Forest Root (L1)
+        (22102, 444, 1998),    // Nature's Root (L1)
+        (4844, 254, 1143),     // Student Ninja Bokken (L1)
+        (22100, 1357, 6107), (48132, 1357, 6107), // Juiced Scythe (L8, 2 ids)
+        (27936, 2372, 10674), (48133, 2372, 10674), // Frostflame Scythe (L12, 2 ids)
+        (22202, 2372, 10674), (48134, 2372, 10674), // Illuminating Scythe (L12, 2 ids)
+        (38160, 2372, 10674),  // Toxic Bite (L12)
+        (48223, 2372, 10674),  // Batty Scythe (L13)
+        (48229, 2372, 10674),  // Winged Scythe (L13)
+        (38187, 2372, 10674),  // Fiery Scythe (L16)
+    ];
+
+    // weapon def id -> icon var -> DYE/TINT RANGES and multi-id groups: real items, one Comment/NameId per
+    // group, several TintId variants of the same base weapon (stats don't vary by dye, only the model's
+    // color) — same pattern as the Medic file's own dye-range loops. Field initializers run before this ctor
+    // body, so AllWeaponDefIds (snapshotted at the end) picks these up too.
+    static NinjaWeaponAbilities()
+    {
+        // Flying Dragon Sword (L16, "Flame Flash" bare) — CONFIRMED, 10 dye variants.
+        foreach (var id in new[] { 38229, 38232, 38235, 38238, 38241, 38244, 38248, 38251, 38255, 38259 })
+            _byWeaponDefId[id] = Dragonstrike(FlameFlashIconA, 2372, 10674);
+
+        // Sturdy Summersaber (L16, "Flame Flash" bare) — CONFIRMED, 2 ids.
+        foreach (var id in new[] { 37003, 38111 })
+            _byWeaponDefId[id] = Dragonstrike(FlameFlashIconA, 2372, 10674);
+
+        // Striking Serpent Sword (L16, "Flame Flash (?)") — PENDING, 10 dye variants.
+        foreach (var id in new[] { 30530, 30531, 30532, 30533, 30534, 30535, 30536, 30537, 30538, 30539 })
+            _byWeaponDefId[id] = Dragonstrike(FlameFlashIconA, 2372, 10674);
+
+        // Smokey Shadowblade (L16, "Flame Flash (?)") — PENDING, 2 ids.
+        foreach (var id in new[] { 23020, 48138 })
+            _byWeaponDefId[id] = Dragonstrike(FlameFlashIconA, 2372, 10674);
+
+        // Luminous Shadowblade (L16, "Flame Flash (?)") — PENDING, 2 ids.
+        foreach (var id in new[] { 29931, 48135 })
+            _byWeaponDefId[id] = Dragonstrike(FlameFlashIconA, 2372, 10674);
+
+        // Glacial Blade (L16, "Flame Flash (?)") — PENDING, 2 ids.
+        foreach (var id in new[] { 27930, 48136 })
+            _byWeaponDefId[id] = Dragonstrike(FlameFlashIconA, 2372, 10674);
+
+        // Twisting Cobra Blade (L4, "Flame Flash (?)") — PENDING, 9 dye variants.
+        foreach (var id in new[] { 38115, 38118, 38121, 38124, 38127, 38130, 38134, 38137, 38142 })
+            _byWeaponDefId[id] = Dragonstrike(FlameFlashIconA, 776, 3492);
+
+        // Prowling Rat Bokken (L1, "Flame Flash (?)") — PENDING, 10 dye variants.
+        foreach (var id in new[] { 38076, 38079, 38082, 38086, 38089, 38092, 38096, 38099, 38103, 38107 })
+            _byWeaponDefId[id] = Dragonstrike(FlameFlashIconA, 444, 1998);
+
+        // Dancing Monkey Bokken (L1, "Flame Flash 6") — CONFIRMED, 10 dye variants.
+        foreach (var id in new[] { 30290, 30291, 30292, 30293, 30294, 30295, 30296, 30297, 30298, 30299 })
+            _byWeaponDefId[id] = Dragonstrike(FlameFlashIconE, 254, 1143);
+
+        // Diving Hawk Scythe (L8, "Flame Flash (?)") — PENDING, 10 dye variants.
+        foreach (var id in new[] { 30410, 30411, 30412, 30413, 30414, 30415, 30416, 30417, 30418, 30419 })
+            _byWeaponDefId[id] = Dragonstrike(FlameFlashIconA, 1357, 6107);
+
+        // Soaring Eagle Scythe (L12, "Flame Flash (?)") — PENDING, 10 dye variants.
+        foreach (var id in new[] { 38152, 38155, 38158, 38162, 38165, 38168, 38172, 38175, 38180, 38184 })
+            _byWeaponDefId[id] = Dragonstrike(FlameFlashIconA, 1357, 6107);
+
+        // Stalking Panther Scythe (L12, "Flame Flash (?)") — PENDING, 10 dye variants.
+        foreach (var id in new[] { 30470, 30471, 30472, 30473, 30474, 30475, 30476, 30477, 30478, 30479 })
+            _byWeaponDefId[id] = Dragonstrike(FlameFlashIconA, 2372, 10674);
+
+        // Balloon Sword (Reward/Coin Shop/Gifting Pinata, not distinguished in our data) — CONFIRMED, 6 ids.
+        foreach (var id in new[] { 16355, 16356, 16357, 16358, 16359, 77447 })
+            _byWeaponDefId[id] = BalloonSwordKit;
+
+        foreach (var (id, meleeDmg, specialDmg) in PendingDragonstrikeSingles)
+            _byWeaponDefId[id] = Dragonstrike(FlameFlashIconA, meleeDmg, specialDmg);
+
+        AllWeaponDefIds = _byWeaponDefId.Keys.ToArray();
+    }
+
+    public static IReadOnlyDictionary<int, NinjaWeapon> ByWeaponDefId => _byWeaponDefId;
+
+    public static readonly int[] AllWeaponDefIds;
 
     public static NinjaWeapon? GetEquippedWeapon(Player player)
     {

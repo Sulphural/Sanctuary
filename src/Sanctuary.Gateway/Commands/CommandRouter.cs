@@ -2775,17 +2775,23 @@ public static class CommandRouter
 
         foreach (var kit in JobKits.All)
         {
-            var seenSpecialNameIds = new HashSet<int>();
+            // Dedup by (special NameId, weapon rank) not just special NameId - collapses true reskin/dye
+            // duplicates (same name AND same rank, e.g. Warrior's Whirlwind color variants) without also
+            // hiding real distinct tiers that happen to share a special's name (e.g. Medic's Triage exists at
+            // 5 different ranks with 5 different real damage numbers - the old NameId-only dedup granted just
+            // the first one and silently skipped the other 4, which is exactly backwards from what testing
+            // per-tier data needs. Bug found live 2026-07-29 while verifying the Medic weapon-data fix).
+            var seen = new HashSet<(int NameId, int Rank)>();
             var grantedThisJob = 0;
 
             foreach (var weaponDefId in kit.WeaponDefIds)
             {
-                var special = kit.SlotNameIcon(weaponDefId, 1);
-                if (!seenSpecialNameIds.Add(special.NameId))
-                    continue; // same special as an already-granted weapon in this job - skip the redundant tier
-
                 if (!_resourceManager.ClientItemDefinitions.TryGetValue(weaponDefId, out var def))
                     continue;
+
+                var special = kit.SlotNameIcon(weaponDefId, 1);
+                if (!seen.Add((special.NameId, def.MinProfileRank)))
+                    continue; // same special AND same rank as an already-granted weapon - a true duplicate
 
                 GrantItem(conn, def, 1);
                 grantedThisJob++;
@@ -2795,7 +2801,7 @@ public static class CommandRouter
             perJob.Add($"profile {kit.ProfileId}: {grantedThisJob}");
         }
 
-        SendSystem(conn, $"Gave {totalGranted} job weapons (one per unique special ability) - {string.Join(", ", perJob)}.");
+        SendSystem(conn, $"Gave {totalGranted} job weapons (one per unique special ability PER RANK) - {string.Join(", ", perJob)}.");
         return true;
     }
 

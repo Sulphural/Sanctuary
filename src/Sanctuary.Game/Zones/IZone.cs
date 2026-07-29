@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
+using Sanctuary.Game.Combat;
 using Sanctuary.Game.Entities;
 using Sanctuary.Game.Resources.Definitions;
 using Sanctuary.Scripting;
@@ -35,6 +36,10 @@ public interface IZone : IScriptZone
     // NOT die), so the zone can react to HP thresholds — e.g. the Frostfang Alpha flees at low health
     // instead of dying. Default: no-op.
     void OnNpcDamaged(Player attacker, Npc npc);
+
+    // COMBAT: summon N combat-capable clone NPCs that fight alongside the summoner, then despawn - see
+    // CombatCloneConfig's header comment and BaseZone.SummonCombatClones for the generalized engine.
+    void SummonCombatClones(Player summoner, int count, int lifetimeSeconds, CombatCloneConfig config);
 
     // DEATH: the player's HP hit 0 (knocked out). Overworld = client shows its KO UI + revive in
     // place; combat instances count the knockout and fail the encounter at the limit.

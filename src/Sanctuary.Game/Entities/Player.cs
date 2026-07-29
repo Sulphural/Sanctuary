@@ -286,6 +286,7 @@ public sealed class Player : ClientPcData, IEntity
     public void UpdateEverySecond()
     {
         RegenTick();
+        MedicSkillsTick();
 
         var now = DateTimeOffset.UtcNow;
         foreach (var (key, cooldown) in _pendingCooldowns)
@@ -481,6 +482,11 @@ public sealed class Player : ClientPcData, IEntity
         if (IsDead)
             return;
 
+        // Medic's Immunize ("makes you and your group invincible") - see MedicWeaponAbilities.cs's
+        // ImmunizeDamageReductionPercent comment. Single central choke point for all player-taken damage, so
+        // hooking it here covers every source (world CombatNpc, arena claw, etc.), same as the rest of TakeDamage.
+        amount = Combat.CombatBuffs.ReduceIncomingDamage(Guid, amount);
+
         LastCombatDamageAt = DateTime.UtcNow; // gates HP regen so the bar doesn't jitter mid-fight
 
         CurrentHitpoints = Math.Max(0, CurrentHitpoints - amount);
@@ -528,6 +534,95 @@ public sealed class Player : ClientPcData, IEntity
         }, sendToSelf: true);
 
         return healed;
+    }
+
+    private DateTime _lastMedicTickAt = DateTime.MinValue;
+
+    // Medic Skills: First Aid (L1) - "Heals yourself and any ally near you for 250 health" - Vitamins (L10) -
+    // "increasing critical hit chance by 1% and critical hit damage by 10% for 5 seconds" (damage-% half only,
+    // see MedicWeaponAbilities.cs) - and Shock Paddles (L15), whose real client tutorial dialogue adds a
+    // "...reviving your allies" purpose alongside its combat splash (the splash half is trait-gated on-hit
+    // damage, see AbilityPacketClientRequestStartAbilityHandler.ApplyMedicTraitDamage; the revive half belongs
+    // here since it's a passive support effect, not a combat proc). CORRECTED 2026-07-29: the revive was
+    // initially wired to firing only when the equipped weapon's SPECIAL happens to be named "Shock Paddles" -
+    // wrong, since Shock Paddles is a job TRAIT (like First Aid/Vitamins), not a per-weapon gate, so most L15+
+    // Medics on a different-named weapon special would never trigger it. Moved to this same trait-gated
+    // per-second cadence instead, exactly like First Aid/Vitamins. None of the 3 wiki entries give a trigger
+    // condition, so all three ride this shared cadence (called alongside RegenTick from UpdateEverySecond)
+    // rather than a bespoke loop - interval/radius/heal amount are ours to tune.
+    private void MedicSkillsTick()
+    {
+        if (IsDead || ActiveProfileId != Combat.MedicWeaponAbilities.MedicProfileId)
+            return;
+
+        if (DateTime.UtcNow - _lastMedicTickAt < TimeSpan.FromMilliseconds(Combat.MedicWeaponAbilities.FirstAidTickIntervalMs))
+            return;
+        _lastMedicTickAt = DateTime.UtcNow;
+
+        if (Combat.MedicWeaponAbilities.HasTrait(this, Combat.MedicWeaponAbilities.FirstAidLevel))
+            HealSelfAndNearbyAllies(Combat.MedicWeaponAbilities.FirstAidHealAmount, Combat.MedicWeaponAbilities.FirstAidHealRadius);
+
+        if (Combat.MedicWeaponAbilities.HasTrait(this, Combat.MedicWeaponAbilities.VitaminsLevel))
+        {
+            var pct = 100 + (int)(Combat.MedicWeaponAbilities.VitaminsCritDamageBonusPercent * 100);
+            Combat.CombatBuffs.AddDamageBuff(Guid, pct, Combat.MedicWeaponAbilities.VitaminsDurationMs);
+        }
+
+        if (Combat.MedicWeaponAbilities.HasTrait(this, Combat.MedicWeaponAbilities.ShockPaddlesLevel))
+            ReviveOrHealNearbyAllies(Combat.MedicWeaponAbilities.ShockPaddlesAllyHealAmount, Combat.MedicWeaponAbilities.ShockPaddlesReviveRadius);
+    }
+
+    // Shared by First Aid's periodic tick.
+    public void HealSelfAndNearbyAllies(int amount, float radius)
+    {
+        Heal(amount);
+
+        var radiusSq = radius * radius;
+        foreach (var ally in VisiblePlayers.Values)
+        {
+            var dx = ally.Position.X - Position.X;
+            var dz = ally.Position.Z - Position.Z;
+            if (dx * dx + dz * dz <= radiusSq)
+                ally.Heal(amount);
+        }
+    }
+
+    // Shared by Shock Paddles' periodic tick - unlike First Aid, this does NOT heal self (you can't be both
+    // dead/wounded and casting; "reviving your allies" is ally-only per the sourced dialogue line). Downed
+    // allies are fully revived; wounded-but-alive ones are topped up by a flat amount.
+    public void ReviveOrHealNearbyAllies(int healAmount, float radius)
+    {
+        var radiusSq = radius * radius;
+        foreach (var ally in VisiblePlayers.Values)
+        {
+            var dx = ally.Position.X - Position.X;
+            var dz = ally.Position.Z - Position.Z;
+            if (dx * dx + dz * dz > radiusSq)
+                continue;
+
+            if (ally.IsDead)
+                ally.Respawn();
+            else
+                ally.Heal(healAmount);
+        }
+    }
+
+    // Shared by Immunize's on-cast handler - applies an incoming-damage-reduction buff (CombatBuffs.
+    // AddDamageReductionBuff) to the caster AND nearby allies, matching the "AoE (Buff)" scope of the real
+    // wiki description ("makes you and your group invincible"). Same nearby-ally pattern as
+    // HealSelfAndNearbyAllies, just calling a buff API instead of a heal.
+    public void ApplyDamageReductionToNearbyAllies(int reductionPct, int durationMs, float radius)
+    {
+        Combat.CombatBuffs.AddDamageReductionBuff(Guid, reductionPct, durationMs);
+
+        var radiusSq = radius * radius;
+        foreach (var ally in VisiblePlayers.Values)
+        {
+            var dx = ally.Position.X - Position.X;
+            var dz = ally.Position.Z - Position.Z;
+            if (dx * dx + dz * dz <= radiusSq)
+                Combat.CombatBuffs.AddDamageReductionBuff(ally.Guid, reductionPct, durationMs);
+        }
     }
 
     // Heal a FRACTION of max HP rather than a flat number (live feedback 2026-07-27: "make sure health
@@ -980,6 +1075,9 @@ public sealed class Player : ClientPcData, IEntity
             meleeCritChance = Combat.WizardWeaponAbilities.BaseCritChancePercent + Combat.WizardWeaponAbilities.GeniusCritChanceBonus;
             meleeCritMultiplier = Combat.WizardWeaponAbilities.BaseCritMultiplier;
         }
+        // Medic has no baseline "unlocks crit chance" trait (none of its real 4 traits are a crit-chance
+        // grant the way Warrior/Archer/Wizard/Brawler's are - see MedicWeaponAbilities.cs) - meleeCritChance
+        // stays 0 for Medic.
 
         UpdateCharacterStats(
             new CharacterStat(CharacterStatId.MaxHealth, maxHealth),

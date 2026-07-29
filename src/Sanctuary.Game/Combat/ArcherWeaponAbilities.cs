@@ -75,6 +75,41 @@ namespace Sanctuary.Game.Combat;
 // content. (Original note, kept for context: repeated targeted wiki searches for "Rain of Arrows" turned up
 // nothing FR-specific under that exact name — every source found instead named the Scoped Stalker Bow's AoE
 // ability "Volley".)
+//
+// ── 2026-07-29 PASS: per-real-item data from the OSFR community combat spreadsheet ──────────────────────
+// Same treatment MedicWeaponAbilities.cs got: the OLD ByWeaponDefId only covered the 30 canonical
+// "Archer's <Family> Bow of <Special>" items (75000-75029) + the 3 Molten Bow SKUs — every OTHER real bow
+// item (Shortbow, Recurve Bow, Jagged Bow, the ~60 named unique/reward/coin-shop bows, all their dye-tint
+// variants...) fell through GetEquippedWeapon to the generic FallbackWeapon/BareShot, i.e. they all showed
+// the SAME tier-1 Barrage/Volley numbers regardless of the real item's actual tier or special. Fixed by
+// mining the spreadsheet's weapon-summary tab (one row per real item, "Data Status" CONFIRMED = a real
+// tooltip number, PENDING = a real number whose exact ability-NAME VARIANT is uncertain, flagged "(?)") and
+// cross-referencing every named row's real Comment string against ClientItemDefinitions.json to resolve its
+// actual item id(s) — ~78 additional weapon rows / ~560 additional item ids now carry their own real,
+// distinct basic+special damage instead of the shared fallback. The already-mapped 75000-75029 tier's own
+// numbers were ALSO corrected against the sheet in this pass: the previous file interpolated a single flat
+// basic-damage number per tier (e.g. 1150 for every L8 Composite Bow special); the sheet shows the real
+// per-ABILITY basic damage differs even within one tier (e.g. Composite Bow's Icy Arrow 2 hits for 776 but
+// its Smoldering Shot hits for 853) - every 75000-75029 entry below now carries its own sheet-sourced number,
+// not the old interpolated curve. Rows whose Basic Attack name is a numbered "Barrage N"/"Icy Arrow N"/etc.
+// variant get that EXACT variant's own Icon IMAGE_ID from the icons/anim tab's BASIC ATTACKS section
+// (VariantIcon() below); rows marked "(?)" (variant genuinely unknown) fall back to the bow FAMILY's own
+// item-image icon (the pre-existing, real, ImageSetMappings.txt-sourced convention) rather than guessing a
+// numbered variant. "x2" rows (e.g. "222 (x2)") are a real double-hit the WeaponAbility record can't express
+// as two ticks on the basic slot, so the two hits are summed into one number (222x2=444), same simplification
+// MedicWeaponAbilities.cs uses for Cauterize. A few rows had an item COMMENT with no matching entry in
+// ClientItemDefinitions.json at all (this server build doesn't ship that content) — left unmapped, not
+// guessed: "Archer's Wild Bow of Forbidden Magic", "Archer's Tentacle Bow of Riptide", "Archer's Feathered
+// Bow of Ragnarok", "Archer's Forged Bow of Advantage" (so the Archer's Advantage special has no real item to
+// attach to — its factory function is still defined below for documentation, just unused), "Archer's
+// Awakened Bow of Forbidden Magic", "Old School Molten Bow" (superseded by the already-known 9033/55362
+// items), "Treasure Trader Molten Bow" (superseded by the already-known 13655 item), "New School Molten Bow".
+// AoE SCOPE FIX: the sheet's own Scope column marks Explosive Shot ("AoE explosion"), Splitting Arrow
+// ("Multi-target"), Firebomb ("AoE fire"), and Lightning Call ("...damage all enemies around you") as
+// area-effect, but their WeaponAbility entries had AoeRadius=0 (single-target) before this pass - given a
+// real radius now, same as Volley's existing AoE. Ricochet's "Bounces between targets" is a distinct
+// mechanic (sequential bounce, not a flat radius) — deliberately NOT given AoeRadius, kept single-target with
+// a comment, since the existing combat system has no bounce-chain primitive to express it.
 public sealed record ArcherWeapon(WeaponAbility Basic, WeaponAbility Special, WeaponAbility Sniper, WeaponAbility Rain);
 
 public static class ArcherWeaponAbilities
@@ -200,6 +235,15 @@ public static class ArcherWeaponAbilities
         ["Ricochet"]       = (421296, 0),
         ["Ember Arrow"]    = (421285, 0),
         ["Firebomb"]       = (421297, 0),
+        // "Archer's Advantage" (Perfect Shot/Archer's Advantage) has no real item id in this build (see the
+        // file header's 2026-07-29 note) - no NameId hunt was done for an unused pair. The novelty-weapon
+        // pairs below (Balloon/Beloved/Barber Pole/Archer's Power Bow/New School Scoped Stalker) are all-new
+        // names this pass didn't have client access to T4-hash-resolve (unlike MedicWeaponAbilities.cs's
+        // novelty pairs, which WERE resolved in an earlier session) - deliberately left OUT of this dict so
+        // BuildActiveEntry's unmapped-name path renders them via the tier-1 Barrage/Volley fallback label
+        // instead of a fabricated NameId, same honesty convention as every other "unresolved" flag in this
+        // file. Their damage numbers and icons are still real (sheet-sourced), only the display NAME/DESC
+        // text ids are unresolved.
     };
 
     private static AbilityExperience? BuildActiveEntry(WeaponAbility ability)
@@ -245,7 +289,9 @@ public static class ArcherWeaponAbilities
     // Panel display pair for an archer whose equipped bow isn't in the tiered kit — tier-1
     // Barrage/Volley (the starter abilities). Only drives the AbilitiesScreen columns; unmapped bows still
     // FIRE the bare shot in combat (a separate concern — map the bow into ByWeaponDefId to unify them).
-    private static readonly ArcherWeapon FallbackWeapon = Volleys(BowIcon, 350, 506);
+    // Damage corrected 2026-07-29 to the real CONFIRMED L1 number (279) from the "Archer's Bow of Volleys"
+    // weapon-summary row — was 350, an old unsourced approximation.
+    private static readonly ArcherWeapon FallbackWeapon = Volleys(BowIcon, 279, 506);
 
     // Resolve a client AbilityDefinition request (op36/12) for one of the archer's slot ability-def ids
     // to the equipped bow's real name/icon — this is what fills the AbilitiesScreen's Attack / Special Attack
@@ -355,6 +401,41 @@ public static class ArcherWeaponAbilities
     private const int RicochetIcon = 22572;       // abil_archer_ricochet (4789)
     private const int FireBombIcon = 22905;       // abil_archer_fire_bomb (4875)
 
+    // ── PER-WEAPON BASIC-ATTACK ICONS (2026-07-29) ── the icons/anim tab's BASIC ATTACKS section gives many
+    // numbered variants (Barrage 2..11, Icy Arrow 2/3, Charged Shot 2, ...) their OWN Icon IMAGE_ID, distinct
+    // from the bare ability's - real per-instance art, the same phenomenon MedicWeaponAbilities.cs documents
+    // for its Icon4254/Icon3961/etc. constants. Recorded here verbatim (every row from that section, not just
+    // the ones this file currently uses, since it's real citable data even where unused). VariantIcon() looks
+    // up a weapon-summary row's exact Basic Attack name; rows marked "(?)" (variant genuinely unknown) call it
+    // with the bare name instead and fall back to the bow FAMILY's own item-image icon at the call site (the
+    // pre-existing, real, ImageSetMappings.txt-sourced convention already used for every "*BowIcon" constant
+    // above) rather than guessing a numbered variant.
+    private static readonly IReadOnlyDictionary<string, int> BasicAttackVariantIcon = new Dictionary<string, int>
+    {
+        ["Barrage"] = 22570, ["Archer's Shot"] = 44869, ["Icy Arrow"] = 4131, ["Barrage 2"] = 4131,
+        ["Icy Arrow 2"] = 4161, ["Charged Shot"] = 4161, ["Smoldering Shot"] = 4161, ["Multi-Shot"] = 4161,
+        ["Power Shot"] = 4161, ["Barrage 3"] = 4161, ["Archer's Shot 2"] = 45325, ["Anniversary Arrow"] = 30987,
+        ["Anniversary Arrow 2"] = 30987, ["Archer's Shot 3"] = 45099, ["Barrage 10"] = 14145, ["Barrage 11"] = 14133,
+        ["Barrage 4"] = 4155, ["Barrage 5"] = 4137, ["Barrage 6"] = 14175, ["Barrage 7"] = 14169, ["Barrage 8"] = 14145,
+        ["Barrage 9"] = 14139, ["Charged Shot 2"] = 4155, ["Electric Arrow"] = 4143, ["Ember Arrow"] = 4143,
+        ["Icy Arrow 3"] = 4155, ["Magma Shot"] = 4149, ["Missile-Toe"] = 28450, ["Multi-Shot 2"] = 4155,
+        ["Perfect Shot"] = 39645, ["Power Shot 3"] = 4143, ["Power Shot 4"] = 4137, ["Precise Shot"] = 14163,
+        ["Shot to the Heart"] = 30194, ["Smoldering Shot 2"] = 4143, ["Smoldering Shot 3"] = 4137,
+    };
+
+    // Falls back to the bare "Barrage" icon (not 0/blank) when a variant name has no entry — same
+    // don't-ship-blank convention as every other fallback icon in this file.
+    private static int VariantIcon(string variantName) =>
+        BasicAttackVariantIcon.TryGetValue(variantName, out var id) ? id : BasicAttackVariantIcon["Barrage"];
+
+    // ── NOVELTY-WEAPON ability icons (Balloon/Beloved/Barber Pole/Archer's Power Bow/New School Scoped
+    // Stalker) — real Icon IMAGE_IDs from the icons/anim tab's SUPER ATTACKS section, same sourcing as the
+    // 10 core specials above.
+    private const int PartyCrasherIcon = 291;      // Party Crasher / Party Crasher 2 (both rows use this id)
+    private const int HeartBreakerIcon = 30190;    // Heart Breaker - no icon column value; the weapon-summary
+                                                    // row's own note flags "icon not visible (probably 30190)"
+    private const int CandyHurricaneIcon = 27727;  // Candy Hurricane
+
     // Same proven-castable slot ability-def ids the ninja toolbar uses (4895/4899, from the live
     // capture). 4896/4897 are the ids BETWEEN them — the same captured bar's middle slots, used for
     // the two level-ability slots (castability expected but not yet live-proven; first thing to
@@ -424,13 +505,16 @@ public static class ArcherWeaponAbilities
 
     private static ArcherWeapon Explosions(int icon, int basicDmg, int specialDmg) => Make(
         new("Charged Shot", icon, basicDmg, BasicShotAnim, BasicHitFx, 15479, CastEffectStopMs: 1200), // PRJ_flaming_orange_arrow
-        new("Explosive Shot", ExplosiveIcon, specialDmg, SpecialAnim03, 15373, 15479, CastEffectStopMs: 1200),    // explosive-arrow-land; flaming trail
+        // AoeRadius added 2026-07-29: the sheet's Scope column marks this "AoE explosion" - was single-target.
+        new("Explosive Shot", ExplosiveIcon, specialDmg, SpecialAnim03, 15373, 15479, CastEffectStopMs: 1200, AoeRadius: 8f),    // explosive-arrow-land; flaming trail
         specialDmg);
 
     private static ArcherWeapon Splintering(int icon, int basicDmg, int specialDmg) => Make(
         // Both cast FX are PRJ trails (see the Blizzards note) — tag-played with a timed stop.
         new("Multi-Shot", icon, basicDmg, BasicShotAnim, 5307, 16056, CastEffectStopMs: 1200),
-        new("Splitting Arrow", SplittingIcon, specialDmg, SpecialAnim04, 5246, 15488, CastEffectStopMs: 1200),
+        // AoeRadius added 2026-07-29: the sheet's Scope column marks this "Multi-target" (the arrow splits and
+        // hits several opponents) - was single-target.
+        new("Splitting Arrow", SplittingIcon, specialDmg, SpecialAnim04, 5246, 15488, CastEffectStopMs: 1200, AoeRadius: 6f),
         specialDmg);
 
     private static ArcherWeapon Stunning(int icon, int basicDmg, int specialDmg) => Make(
@@ -446,7 +530,9 @@ public static class ArcherWeaponAbilities
 
     private static ArcherWeapon Lightning(int icon, int basicDmg, int specialDmg) => Make(
         new("Electric Arrow", icon, basicDmg, BasicShotAnim, BasicHitFx, 5492, CastEffectStopMs: 1200), // PRJ_lightning_ball_light-blue
-        new("Lightning Call", LightningIcon, specialDmg, SpecialAnim07, 16117, 5492, CastEffectStopMs: 1200),    // rooted lightning strike on the victim; lightning trail
+        // AoeRadius added 2026-07-29: the wiki desc says it "calls lightning to damage all enemies AROUND
+        // YOU" (caster-centered), matching Volley's own AoE shape - was single-target.
+        new("Lightning Call", LightningIcon, specialDmg, SpecialAnim07, 16117, 5492, CastEffectStopMs: 1200, AoeRadius: 8f),    // rooted lightning strike on the victim; lightning trail
         specialDmg);
 
     private static ArcherWeapon Booming(int icon, int basicDmg, int specialDmg) => Make(
@@ -461,57 +547,126 @@ public static class ArcherWeaponAbilities
 
     private static ArcherWeapon Ricochet(int icon, int basicDmg, int specialDmg) => Make(
         new("Cover Fire", icon, basicDmg, BasicShotAnim, BasicHitFx, 16214, CastEffectStopMs: 1200), // ricochet trail
-        // 16214 is a PRJ trail (see the Blizzards note) — tag-played with a timed stop.
+        // 16214 is a PRJ trail (see the Blizzards note) — tag-played with a timed stop. NOT given an
+        // AoeRadius: the sheet's Scope is "Bounces between targets", a sequential bounce-chain mechanic, not a
+        // flat-radius splash - the combat system has no bounce-chain primitive to express that, so this stays
+        // single-target rather than approximating it as an AoE (which would hit everyone at once, not chain).
         new("Ricochet", RicochetIcon, specialDmg, SpecialAnim09, 16215, 16214, CastEffectStopMs: 1200),
         specialDmg);
 
     private static ArcherWeapon Firebomb(int icon, int basicDmg, int specialDmg) => Make(
         new("Ember Arrow", icon, basicDmg, BasicShotAnim, BasicHitFx, 15479, CastEffectStopMs: 1200), // PRJ_flaming_orange_arrow
-        new("Firebomb", FireBombIcon, specialDmg, SpecialAnim10, 16118, 15479, CastEffectStopMs: 1200),           // firebomb MIRV burst on the victim; flaming trail
+        // AoeRadius added 2026-07-29: the sheet's Scope column marks this "AoE fire" - was single-target.
+        new("Firebomb", FireBombIcon, specialDmg, SpecialAnim10, 16118, 15479, CastEffectStopMs: 1200, AoeRadius: 8f),           // firebomb MIRV burst on the victim; flaming trail
         specialDmg);
 
-    // weapon def id -> abilities, every retail bow (75000-75029), damage by the bow's level tier.
-    public static readonly IReadOnlyDictionary<int, ArcherWeapon> ByWeaponDefId = new Dictionary<int, ArcherWeapon>
+    // Archer's Advantage (Perfect Shot/Archer's Advantage) - CONFIRMED in the sheet ("The archer unleashes
+    // the power of the forge to temper nearby allies with increased movement speed. Nearby opponents are
+    // damaged and have reduced movement speed.", Scope = AoE dmg + AoE buff + AoE debuff) but NO matching
+    // item exists in ClientItemDefinitions.json ("Archer's Forged Bow of Advantage" isn't content this server
+    // build has - see the file header's 2026-07-29 note). Kept as a factory for documentation/future use,
+    // same as Medic keeps its own never-called kits; not called anywhere in ByWeaponDefId below. Icon 39861
+    // is real but is ALSO the Lucky Shot TRAIT's icon above (TraitData) - the sheet reuses the same art for
+    // both, not a mistake on this end. Buff/debuff (+/-30% move speed) aren't modeled — no such mechanic
+    // exists in WeaponAbility; only the damage half is representable.
+    private static ArcherWeapon Advantage(int icon, int basicDmg, int specialDmg) => Make(
+        new("Perfect Shot", icon, basicDmg, BasicShotAnim, BasicHitFx),
+        new("Archer's Advantage", 39861, specialDmg, 1051111, BasicHitFx, AoeRadius: 10f),
+        specialDmg);
+
+    // ── NOVELTY / VARIABLE-LEVEL WEAPONS (2026-07-29) ── real names/damage/icons from the spreadsheet's
+    // weapon-summary tab, same sourcing as the 10 core specials, but each has its own unique ability pair
+    // (not a variant of the 10 elemental families) so it's built directly via Make() rather than through a
+    // shared per-type factory - the same pattern MedicWeaponAbilities.cs uses for its HeartKit/BalloonKit/
+    // PowerFistKit. Display names for these pairs are NOT in AbilityText (no NameId sourced this pass — see
+    // the AbilityText dict's own comment), so the AbilitiesScreen columns show the tier-1 Barrage/Volley
+    // fallback label for them; the damage numbers and icons below are still real.
+    private static readonly ArcherWeapon BalloonKit = new(
+        // 3 real SKUs (Reward/Coin/Gifting Pinata) share ONE Comment in our item data ("Balloon Bow", 6 ids
+        // covering all of them) - can't split by item id, so every one uses the Reward Version's numbers, the
+        // same limitation MedicWeaponAbilities.cs's own BalloonKit flags.
+        new("Anniversary Arrow", VariantIcon("Anniversary Arrow"), 2372, BasicShotAnim, BasicHitFx),
+        new("Party Crasher", PartyCrasherIcon, 8453, SpecialAnim, BasicHitFx),
+        SniperShot(8453), RainOfArrows(8453));
+
+    private static readonly ArcherWeapon BelovedKit = new(
+        // Beloved Bow (item 76707).
+        new("Shot to the Heart", VariantIcon("Shot to the Heart"), 2372, BasicShotAnim, BasicHitFx),
+        new("Heart Breaker", HeartBreakerIcon, 6575, SpecialAnim, BasicHitFx),
+        SniperShot(6575), RainOfArrows(6575));
+
+    private static readonly ArcherWeapon BarberPoleKit = new(
+        // Barber Pole Bow (item 76557). "Variable" level in the sheet (a leveling reward bow); uses its
+        // top-bracket (L16) numbers, same one-representative-number convention MedicWeaponAbilities.cs uses
+        // for its own rank-scaled PowerFistKit.
+        new("Missile-Toe", VariantIcon("Missile-Toe"), 2372, BasicShotAnim, BasicHitFx),
+        new("Candy Hurricane", CandyHurricaneIcon, 8302, SpecialAnim, BasicHitFx),
+        SniperShot(8302), RainOfArrows(8302));
+
+    private static readonly ArcherWeapon PowerBowKit = new(
+        // Archer's Power Bow (item 78196). "Variable" level, top-bracket (L16) numbers. Neither ability has
+        // an Icon IMAGE_ID in either sheet tab (both columns blank) - bow-family icon used as the basic-slot
+        // stand-in, RainIcon (shared with Rain of Arrows) reused for Power Rain as the closest thematic fit.
+        new("Power Shot 2", BowIcon, 2372, BasicShotAnim, BasicHitFx),
+        new("Power Rain", RainIcon, 8302, SpecialAnim, RainLandFx, RainLaunchFx),
+        SniperShot(8302), RainOfArrows(8302));
+
+    private static readonly ArcherWeapon ScopedStalkerKit = new(
+        // New School Scoped Stalker Bow (item 13656) - distinguished from the "Old School" dye-range group
+        // (below, in the static ctor) by its own distinct NameId (31648 vs. the group's shared 17333) in
+        // ClientItemDefinitions.json, same evidence MedicWeaponAbilities.cs's Molten Bow note used for its
+        // own Old School/New School split. "Variable" level, top-bracket (L16) numbers. Special reuses the
+        // existing SniperIcon/SniperImpactFx (same real ability, just the "2" tooltip variant).
+        new("Precise Shot", VariantIcon("Precise Shot"), 2609, BasicShotAnim, BasicHitFx),
+        new("Sniper Shot", SniperIcon, 8302, SpecialAnim, SniperImpactFx),
+        SniperShot(8302), RainOfArrows(8302));
+
+    // weapon def id -> abilities. Real client Archer bows: the canonical 75000-75029 "of <Special>" series +
+    // 3 Molten Bow SKUs (below) + ~78 additional named weapon rows / ~560 additional item ids mined from the
+    // OSFR community spreadsheet 2026-07-29 (dye/reward-variant ranges are added in the static ctor below,
+    // same pattern MedicWeaponAbilities.cs uses for ITS dye ranges - field initializers here run first, then
+    // the ctor body appends the ranges, and AllWeaponDefIds is snapshotted last so it picks up everything).
+    private static readonly Dictionary<int, ArcherWeapon> _byWeaponDefId = new()
     {
-        // ── L1 "Archer's Bow" (350 / 640✓; Volley's own curve is 506✓ at L1) ──
-        [75000] = Volleys(BowIcon, 350, 506),
-        [75001] = Blizzards(BowIcon, 350, 640),
+        // ── L1 "Archer's Bow" ──
+        [75000] = Volleys(BowIcon, 279, 506), // Barrage 2/Volley 2 [CONFIRMED]
+        [75001] = Blizzards(BowIcon, 254, 640), // Icy Arrow/Blizzard Blast [CONFIRMED]
 
-        // ── L5 "Horse Bow" (855 / 1554✓; Volley interpolated 1000*) ──
-        [75002] = Volleys(HorseBowIcon, 855, 1000),
-        [75003] = Blizzards(HorseBowIcon, 855, 1554),
-        [75004] = Explosions(HorseBowIcon, 855, 1554),
-        [75005] = Splintering(HorseBowIcon, 855, 1554),
+        // ── L5 "Horse Bow" ──
+        [75002] = Volleys(HorseBowIcon, 488, 885), // Barrage 4/Volley 2 [CONFIRMED]
+        [75003] = Blizzards(HorseBowIcon, 444, 1118), // Icy Arrow 3/Blizzard Blast [CONFIRMED]
+        [75004] = Explosions(HorseBowIcon, 444, 1554), // Charged Blast 2(sic)/Explosive Shot [CONFIRMED]
+        [75005] = Splintering(HorseBowIcon, 444, 1554), // Multi-Shot 2 (222x2=444)/Splitting Arrow [CONFIRMED]
 
-        // ── L8 "Composite Bow" (1150* / 2100*; Volley = 1548✓ at L8) ──
-        [75006] = Volleys(CompositeBowIcon, 1150, 1548),
-        [75007] = Blizzards(CompositeBowIcon, 1150, 2100),
-        [75008] = Explosions(CompositeBowIcon, 1150, 2100),
-        [75009] = Splintering(CompositeBowIcon, 1150, 2100),
-        [75010] = Stunning(CompositeBowIcon, 1150, 2100),
-        [75011] = Flame(CompositeBowIcon, 1150, 2100),
+        // ── L8 "Composite Bow" ──
+        [75006] = Volleys(CompositeBowIcon, 853, 1548), // Barrage 3/Volley 2 [CONFIRMED]
+        [75007] = Blizzards(CompositeBowIcon, 776, 1955), // Icy Arrow 2/Blizzard Blast [CONFIRMED]
+        [75008] = Explosions(CompositeBowIcon, 776, 2716), // Charged Blast(sic)/Explosive Shot [CONFIRMED]
+        [75009] = Splintering(CompositeBowIcon, 776, 2716), // Multi-Shot (388x2=776)/Splitting Arrow [CONFIRMED]
+        [75010] = Stunning(CompositeBowIcon, 776, 1955), // Power Shot/Stunning Shot [CONFIRMED]
+        [75011] = Flame(CompositeBowIcon, 853, 3492), // Smoldering Shot/Flaming Arrow [CONFIRMED]
 
-        // ── L12 "Recurve Bow" (1492✓ / 2707✓) ──
-        [75012] = Volleys(RecurveBowIcon, 1492, 2707),
-        [75013] = Blizzards(RecurveBowIcon, 1492, 2707),
-        [75014] = Explosions(RecurveBowIcon, 1492, 2707),
-        [75015] = Splintering(RecurveBowIcon, 1492, 2707),
-        [75016] = Stunning(RecurveBowIcon, 1492, 2707),
-        [75017] = Flame(RecurveBowIcon, 1492, 2707),
-        [75018] = Lightning(RecurveBowIcon, 1492, 2707),
-        [75019] = Booming(RecurveBowIcon, 1492, 2707),
+        // ── L12 "Recurve Bow" ──
+        [75012] = Volleys(RecurveBowIcon, 1492, 2707), // Barrage 5/Volley [CONFIRMED]
+        [75013] = Blizzards(RecurveBowIcon, 1357, 3420), // Icy Arrow(?)/Blizzard Blast(?) [PENDING]
+        [75014] = Explosions(RecurveBowIcon, 1357, 4750), // Charged Shot(?)/Explosive Shot(?) [PENDING]
+        [75015] = Splintering(RecurveBowIcon, 1358, 4750), // Multi-Shot 2(?) (679x2=1358)/Splitting Arrow(?) [PENDING]
+        [75016] = Stunning(RecurveBowIcon, 1357, 3420), // Power Shot 4/Stunning Shot 2 [CONFIRMED]
+        [75017] = Flame(RecurveBowIcon, 1492, 6107), // Smoldering Shot 3/Flaming Arrow [CONFIRMED]
+        [75018] = Lightning(RecurveBowIcon, 1357, 4750), // Electric Arrow 2(?)/Lightning Call 2(?) [PENDING]
+        [75019] = Booming(RecurveBowIcon, 1357, 4750), // Sonic Arrow(?)/Sonic Boom(?) [PENDING]
 
-        // ── L16 "Raptor Bow" (2372✓ / 4750✓) ──
-        [75020] = Volleys(RaptorBowIcon, 2372, 4750),
-        [75021] = Blizzards(RaptorBowIcon, 2372, 4750),
-        [75022] = Explosions(RaptorBowIcon, 2372, 4750),
-        [75023] = Splintering(RaptorBowIcon, 2372, 4750),
-        [75024] = Stunning(RaptorBowIcon, 2372, 4750),
-        [75025] = Flame(RaptorBowIcon, 2372, 4750),
-        [75026] = Lightning(RaptorBowIcon, 2372, 4750),
-        [75027] = Booming(RaptorBowIcon, 2372, 4750),
-        [75028] = Ricochet(RaptorBowIcon, 2372, 4750),
-        [75029] = Firebomb(RaptorBowIcon, 2372, 4750),
+        // ── L16 "Raptor Bow" ──
+        [75020] = Volleys(RaptorBowIcon, 2609, 4732), // Barrage(?)/Volley(?) [PENDING]
+        [75021] = Blizzards(RaptorBowIcon, 2372, 5977), // Icy Arrow(?)/Blizzard Blast(?) [PENDING]
+        [75022] = Explosions(RaptorBowIcon, 2372, 8302), // Charged Blast(?)/Explosive Shot(?) [PENDING]
+        [75023] = Splintering(RaptorBowIcon, 2372, 8302), // Multi-Shot(2) (1186x2=2372)/Splitting Arrow(?) [PENDING]
+        [75024] = Stunning(RaptorBowIcon, 2372, 5977), // Power Shot 3/Stunning Shot 2 [CONFIRMED]
+        [75025] = Flame(RaptorBowIcon, 2609, 10674), // Smoldering Shot 2/Flaming Arrow [CONFIRMED]
+        [75026] = Lightning(RaptorBowIcon, 2372, 8302), // Electric Arrow/Lightning Call [CONFIRMED]
+        [75027] = Booming(RaptorBowIcon, 2372, 8302), // Sonic Arrow/Sonic Boom (named but row still marked PENDING) [PENDING]
+        [75028] = Ricochet(RaptorBowIcon, 2372, 10674), // Cover Fire/Ricochet [PENDING]
+        [75029] = Firebomb(RaptorBowIcon, 2372, 2324), // Ember Arrow/Firebomb (special LOWER than basic - real sheet number, kept as-is) [CONFIRMED]
 
         // ── MOLTEN BOW (epic leveling bow; three item variants share the model/art) ──
         // RE-SOURCED 2026-07-25 (freerealms.fandom.com search-result snippets — direct WebFetch 402'd on this
@@ -527,15 +682,152 @@ public static class ArcherWeaponAbilities
         // DescriptionId (31647/6749) — i.e. OUR data treats 9033/55362 as the same named item and 13655 as a
         // different one. That internal grouping is the only evidence available for WHICH id is which SKU (the
         // localized name text itself needs the Global.Text hash reversal, not done here), so: the duplicate-
-        // named pair (9033/55362) now gets Barrage/Volley (Old School — using the existing Volleys() kit, a
-        // real wiki-confirmed pair instead of a guess), and 13655 keeps Smoldering Shot/Flaming Arrow (Treasure
-        // Trader, also wiki-confirmed). Previously all three wrongly shared the Flame kit as an admitted guess.
-        [9033] = Volleys(MoltenBowIcon, 2372, 4750),
-        [13655] = Flame(MoltenBowIcon, 2372, 4750),
-        [55362] = Volleys(MoltenBowIcon, 2372, 4750),
+        // named pair (9033/55362) gets Barrage/Volley (Old School), and 13655 keeps Smoldering Shot/Flaming
+        // Arrow (Treasure Trader). Damage numbers corrected 2026-07-29 to the sheet's "Old School Scoped
+        // Stalker Bow"-tier row (3391/6143, the same oddly-high-for-its-listed-level value the sheet gives
+        // several other L1 "premium" bows — kept as-is, it's what the sheet says) and the "Treasure Trader
+        // Molten Bow" row (2609/10674) respectively — were the flat Raptor-tier numbers (2372/4750) before.
+        [9033] = Volleys(MoltenBowIcon, 3391, 6143), // Old School Molten Bow - Barrage(?)/Volley(?) [PENDING]
+        [13655] = Flame(MoltenBowIcon, 2609, 10674), // Treasure Trader Molten Bow - Smoldering Shot(?)/Flaming Arrow(?) [PENDING]
+        [55362] = Volleys(MoltenBowIcon, 3391, 6143), // Old School Molten Bow (2nd id) - Barrage(?)/Volley(?) [PENDING]
+
+        // ── L1 oddball high-value bows (real sheet numbers; unusually high damage despite a "Level 1" tag) ──
+        [4287] = Volleys(VariantIcon("Barrage 2"), 3391, 6143), // Briarsting Bow - Barrage 2/Volley [CONFIRMED]
+        [49611] = Volleys(MoltenBowIcon, 3391, 6143), // Coin Flow Mantis Bow - Barrage(?)/Volley(?) [PENDING]
+        [49381] = Volleys(MoltenBowIcon, 3391, 6143), [49601] = Volleys(MoltenBowIcon, 3391, 6143), // Star Flow Mantis Bow (2 ids) - Barrage(?)/Volley(?) [PENDING]
+
+        // ── L1 normal-value bows ──
+        [6958] = Volleys(HorseBowIcon, 279, 506), // Amateur Archer Bow - Barrage(?)/Volley(?) [PENDING]
+        [4266] = Volleys(VariantIcon("Barrage 11"), 279, 506), [29952] = Volleys(VariantIcon("Barrage 11"), 279, 506), // Student Archer Bow (2 ids, also the tutorial starter bow) - Barrage 11/Volley [CONFIRMED]
+        [48160] = Volleys(BowIcon, 2609, 4732), // Butterfly Bow - Barrage(?)/Volley(?) [PENDING]
+        [37140] = Volleys(BowIcon, 488, 885), // Forest Branch - Barrage(?)/Volley(?) [PENDING]
+        [48166] = Volleys(BowIcon, 2609, 4732), // Monarch Bow - Barrage(?)/Volley(?) [PENDING]
+        [22114] = Volleys(BowIcon, 488, 885), // Nature's Branch - Barrage(?)/Volley(?) [PENDING]
+
+        // ── L4/L5 tier ──
+        [22113] = Volleys(VariantIcon("Barrage 7"), 853, 1548), // Bubbleburst Bow - Barrage 7/Volley [CONFIRMED]
+        [37194] = Volleys(HorseBowIcon, 853, 1548), // Soapy Bow - Barrage(?)/Volley(?) [PENDING]
+        [48184] = Volleys(HorseBowIcon, 853, 1548), // Confetti Bow - Barrage(?)/Volley(?) [PENDING]
+        [48178] = Volleys(VariantIcon("Barrage 7"), 853, 1548), // Gemstone Bow - Barrage 7/Volley [CONFIRMED]
+        [48190] = Volleys(VariantIcon("Barrage 7"), 853, 1548), // Party Bow - Barrage 7/Volley [CONFIRMED]
+        [48202] = Volleys(HorseBowIcon, 853, 1548), // Sunlit Bow - Barrage(?)/Volley(?) [PENDING]
+
+        // ── L8 tier ──
+        [6864] = Volleys(CompositeBowIcon, 853, 1548), // Pro Archer Bow - Barrage/Volley [CONFIRMED]
+        [22217] = Volleys(CompositeBowIcon, 1492, 2707), // Tidal Bow - Barrage(?)/Volley(?) [PENDING]
+        [22216] = Volleys(CompositeBowIcon, 1492, 2707), // Venom's Sting - Barrage(?)/Volley(?) [PENDING]
+
+        // ── L12/L13 tier ──
+        [4300] = Volleys(RecurveBowIcon, 2609, 4732), [30191] = Volleys(RecurveBowIcon, 2609, 4732), // All-Star Archer Bow (2 ids) - Barrage/Volley [CONFIRMED]
+        [37229] = Volleys(CompositeBowIcon, 2609, 4732), // Aqua Bow - Barrage(?)/Volley(?) [PENDING]
+        [22219] = Volleys(RecurveBowIcon, 2609, 4732), // Blazing Bow - Barrage(?)/Volley(?) [PENDING]
+        [27940] = Volleys(VariantIcon("Barrage 9"), 2609, 4732), [48111] = Volleys(VariantIcon("Barrage 9"), 2609, 4732), // Frostflame Bow (2 ids) - Barrage 9/Volley [CONFIRMED]
+        [37211] = Volleys(CompositeBowIcon, 2609, 4732), // Toxic Sting - Barrage(?)/Volley(?) [PENDING]
+        [48220] = Volleys(VariantIcon("Barrage 6"), 2609, 4732), // Batty Bow - Barrage 6/Volley [CONFIRMED]
+        [48232] = Volleys(CompositeBowIcon, 2609, 4732), // Rainbow Bow - Barrage(?)/Volley(?) [PENDING]
+        [48226] = Volleys(CompositeBowIcon, 2609, 4732), // Winged Bow - Barrage(?)/Volley(?) [PENDING]
+
+        // ── L16 tier ──
+        [37238] = Volleys(RecurveBowIcon, 2609, 4732), // Fiery Bow - Barrage(?)/Volley(?) [PENDING]
+        [27934] = Volleys(RaptorBowIcon, 2609, 4732), [48114] = Volleys(RaptorBowIcon, 2609, 4732), // Glacial Bow (2 ids) - Barrage(?)/Volley(?) [PENDING]
+        [29935] = Volleys(RaptorBowIcon, 2609, 4732), [48113] = Volleys(RaptorBowIcon, 2609, 4732), // Luminous Bow (2 ids) - Barrage(?)/Volley(?) [PENDING]
+        [23024] = Volleys(RaptorBowIcon, 2609, 4732), [48116] = Volleys(RaptorBowIcon, 2609, 4732), // Smokey Bow (2 ids) - Barrage(?)/Volley(?) [PENDING]
+
+        // ── L20 tier ──
+        [48321] = Volleys(VariantIcon("Barrage 8"), 2609, 4732), // Bullseye's Blasting Bow - Barrage 8/Volley 2 [CONFIRMED]
+        [55819] = Volleys(RaptorBowIcon, 2609, 4732), // Magical Essence Bow - Barrage(?)/Volley(?) [PENDING]
+
+        // ── Novelty / variable-level weapons (own unique ability pairs — see the kits above) ──
+        [76707] = BelovedKit,      // Beloved Bow
+        [78196] = PowerBowKit,     // Archer's Power Bow
+        [76557] = BarberPoleKit,   // Barber Pole Bow
+        [13656] = ScopedStalkerKit, // New School Scoped Stalker Bow
     };
 
-    public static readonly int[] AllWeaponDefIds = ByWeaponDefId.Keys.ToArray();
+    // Large dye/reward-variant id ranges — real items, one sheet row covers every color, so every variant in
+    // a group maps to the same kit (dye doesn't change stats). Field initializers above run before this ctor
+    // body, so AllWeaponDefIds (snapshotted at the end) picks these up too — same structure
+    // MedicWeaponAbilities.cs uses for its own dye ranges.
+    static ArcherWeaponAbilities()
+    {
+        // Quick Shot Bow (10 dye/reward variants) - Barrage/Volley [CONFIRMED]
+        foreach (var id in new[] { 30250,30251,30252,30253,30254,30255,30256,30257,30258,30259 })
+            _byWeaponDefId[id] = Volleys(BowIcon, 279, 506);
+
+        // Shortbow (66 dye/reward variants) - Barrage 11/Volley [CONFIRMED]
+        foreach (var id in new[] { 4254,4255,4256,4257,4258,4261,4262,4263,4264,4265,4267,4268,4269,4270,4271,4272,4273,4274,4275,4276,4277,4278,4279,4280,4281,4282,4283,4284,4285,4286,4288,29950,29951,29953,29954,29955,29956,29957,29958,29959,37125,37126,37127,37128,37130,37131,37133,37134,37136,37137,37139,37141,37143,37144,37146,37147,37148,37150,37151,37153,37154,37155,37157,37158,37159,37161 })
+            _byWeaponDefId[id] = Volleys(VariantIcon("Barrage 11"), 279, 506);
+
+        // Swift Sting Bow (10 dye/reward variants) - Barrage/Volley [CONFIRMED]
+        foreach (var id in new[] { 37129,37132,37135,37138,37142,37145,37149,37152,37156,37160 })
+            _byWeaponDefId[id] = Volleys(BowIcon, 488, 885);
+
+        // Old School Scoped Stalker Bow (51 dye/reward variants) - Barrage(?)/Volley(?); item image set 3109
+        // has no known flat icon in our data, bare-Barrage stand-in used instead [PENDING]
+        foreach (var id in new[] { 7627,7628,7629,7630,7631,7632,7633,7634,7635,7636,7637,7638,7639,7640,7641,7642,7643,7644,7645,7646,7647,7648,7649,7650,7651,7652,7653,7654,7655,7656,7657,7658,7659,7660,7661,37313,37315,37317,37319,37320,37322,37324,37326,37328,37331,37332,37334,37337,37339,37341,37342 })
+            _byWeaponDefId[id] = Volleys(VariantIcon("Barrage"), 3391, 6143);
+
+        // Fast Blast Bow (10 dye/reward variants) - Barrage(?)/Volley(?) [PENDING]
+        foreach (var id in new[] { 30310,30311,30312,30313,30314,30315,30316,30317,30318,30319 })
+            _byWeaponDefId[id] = Volleys(HorseBowIcon, 488, 885);
+
+        // Rapid Shot Bow (10 dye/reward variants) - Barrage(?)/Volley(?) [PENDING]
+        foreach (var id in new[] { 37166,37169,37172,37175,37178,37181,37185,37188,37192,37197 })
+            _byWeaponDefId[id] = Volleys(HorseBowIcon, 853, 1548);
+
+        // Recurve Bow (68 dye/reward variants) - Barrage(?)/Volley(?) - plain "Recurve Bow" (L4), distinct
+        // from the "Archer's Recurve Bow of <Special>" L12 series above [PENDING]
+        foreach (var id in new[] { 6930,6931,6932,6933,6934,6937,6938,6939,6940,6941,6942,6943,6944,6945,6946,6947,6948,6949,6950,6951,6952,6953,6954,6955,6956,6957,6959,6960,6961,6962,6963,6964,30010,30011,30012,30013,30014,30015,30016,30017,30018,30019,37162,37163,37164,37165,37167,37168,37170,37171,37173,37174,37176,37177,37179,37180,37182,37183,37184,37186,37187,37189,37190,37191,37193,37195,37196,37198 })
+            _byWeaponDefId[id] = Volleys(HorseBowIcon, 488, 885);
+
+        // Focus Fire Bow (10 dye/reward variants) - Barrage/Volley [CONFIRMED]
+        foreach (var id in new[] { 30370,30371,30372,30373,30374,30375,30376,30377,30378,30379 })
+            _byWeaponDefId[id] = Volleys(CompositeBowIcon, 1492, 2707);
+
+        // Laminated Bow (69 dye/reward variants) - Barrage(?)/Volley(?) [PENDING]
+        foreach (var id in new[] { 6965,6966,6967,6968,6969,6972,6973,6974,6975,6976,6977,6978,6979,6980,6981,6982,6983,6984,6985,6986,6987,6988,6989,6990,6991,6992,6993,6994,6995,6996,6997,6998,6999,30070,30071,30072,30073,30074,30075,30076,30077,30078,30079,37199,37200,37201,37202,37204,37205,37207,37208,37210,37212,37214,37215,37217,37218,37220,37221,37222,37224,37225,37227,37228,37230,37232,37233,37234,37236 })
+            _byWeaponDefId[id] = Volleys(CompositeBowIcon, 488, 885);
+
+        // Curved Bow (68 dye/reward variants) - Barrage(?)/Volley(?) - plain "Curved Bow" (L12), distinct
+        // from "Archer's Recurve Bow of <Special>" above [PENDING]
+        foreach (var id in new[] { 6860,6861,6862,6863,6867,6868,6869,6870,6871,6872,6873,6874,6875,6876,6877,6878,6879,6880,6881,6882,6883,6884,6885,6886,6887,6888,6889,6890,6891,6892,6893,6894,30130,30131,30132,30133,30134,30135,30136,30137,30138,30139,37237,37239,37240,37241,37243,37244,37246,37247,37249,37250,37252,37253,37255,37256,37258,37259,37260,37262,37263,37266,37267,37268,37270,37271,37272,37274 })
+            _byWeaponDefId[id] = Volleys(RecurveBowIcon, 1492, 2707);
+
+        // Savage Sting Bow (10 dye/reward variants) - Barrage(?)/Volley(?) [PENDING]
+        foreach (var id in new[] { 30430,30431,30432,30433,30434,30435,30436,30437,30438,30439 })
+            _byWeaponDefId[id] = Volleys(RecurveBowIcon, 2609, 4732);
+
+        // Storm Shot Bow (10 dye/reward variants) - Barrage(?)/Volley(?) [PENDING]
+        foreach (var id in new[] { 37203,37206,37209,37213,37216,37219,37223,37226,37231,37235 })
+            _byWeaponDefId[id] = Volleys(CompositeBowIcon, 1492, 2707);
+
+        // Brutal Blast Bow (10 dye/reward variants) - Barrage/Volley [CONFIRMED]
+        foreach (var id in new[] { 30490,30491,30492,30493,30494,30495,30496,30497,30498,30499 })
+            _byWeaponDefId[id] = Volleys(RaptorBowIcon, 2609, 4732);
+
+        // Feral Fire Bow (10 dye/reward variants) - Barrage(?)/Volley(?) [PENDING]
+        foreach (var id in new[] { 37242,37245,37248,37251,37254,37257,37261,37265,37269,37273 })
+            _byWeaponDefId[id] = Volleys(RecurveBowIcon, 2609, 4732);
+
+        // Jagged Bow (67 dye/reward variants) - Barrage 10/Volley [CONFIRMED]
+        foreach (var id in new[] { 4289,4290,4291,4292,4293,4294,4295,4296,4297,4298,4299,4301,4303,4304,4305,4306,4307,4308,4309,4310,4311,4312,4313,4314,4315,4316,4317,4318,4319,4320,4321,4322,4323,30190,30192,30193,30194,30195,30196,30197,30198,30199,37275,37276,37277,37278,37280,37281,37283,37284,37286,37288,37290,37293,37294,37296,37297,37298,37300,37301,37303,37304,37305,37307,37308,37309,37311 })
+            _byWeaponDefId[id] = Volleys(VariantIcon("Barrage 10"), 2609, 4732);
+
+        // Trick Shot Bow (10 dye/reward variants) - Barrage(?)/Volley(?) [PENDING]
+        foreach (var id in new[] { 37279,37282,37285,37289,37292,37295,37299,37302,37306,37310 })
+            _byWeaponDefId[id] = Volleys(RaptorBowIcon, 2609, 4732);
+
+        // Balloon Bow (6 ids: Reward/Coin/Gifting Pinata variants share one Comment in our data) - see the
+        // BalloonKit comment above for why every id uses the Reward Version's numbers.
+        foreach (var id in new[] { 16340, 16341, 16342, 16343, 16344, 77444 })
+            _byWeaponDefId[id] = BalloonKit;
+
+        AllWeaponDefIds = _byWeaponDefId.Keys.ToArray();
+    }
+
+    public static IReadOnlyDictionary<int, ArcherWeapon> ByWeaponDefId => _byWeaponDefId;
+
+    public static readonly int[] AllWeaponDefIds;
 
     public static ArcherWeapon? GetEquippedWeapon(Player player)
     {

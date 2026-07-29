@@ -33,6 +33,15 @@ public static class PotionAbilities
     public const float HealFraction = 0.16f;
     public const int EnergyAmount = 100; // full refill - potions are a purchased item, generous by design
 
+    // FIX 2026-07-29 (live feedback: "wire it in for all healing things, including the shared potions") - a
+    // "Shared" potion was previously scoped to player.Zone.Players, i.e. EVERY player anywhere in the zone
+    // instance, including total strangers on the other side of an open-world town - clearly not what "shared"
+    // means (a group-heal consumable), and a real balance/exploit issue. Scoped to a radius instead, same
+    // nearby-ally pattern First Aid/Shock Paddles already use. Slightly larger than either (20m vs 15m) since
+    // this is a purchased item meant to be generous, not a free passive trait - no wiki/real number exists for
+    // this radius, ours to tune.
+    public const float SharedRadius = 20f;
+
     // Real, name-matched FX (see the class header comment for XML sourcing): the proven Health heal-shower
     // for a heal, and a real "short head-positioned mana heal" effect for energy.
     public const int HealFxId = 15921;   // PFX_magic-heal_red_head_shower_lg_loop_raised
