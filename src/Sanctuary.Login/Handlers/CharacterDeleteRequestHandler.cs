@@ -62,7 +62,12 @@ public static class CharacterDeleteRequestHandler
             return true;
         }
 
-        try
+        // Upstream 2a8de52: calling BeginTransaction directly crashes whenever a retrying execution
+        // strategy is configured, because a retry cannot replay a transaction it does not own. Run the
+        // whole delete through the strategy so it owns the transaction. Body is ours (raw SQL) - upstream
+        // rewrote this against its guild tables, which we do not have.
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        var committed = strategy.Execute(() =>
         {
             // Disable foreign key constraints temporarily (must be done outside transaction)
             dbContext.Database.ExecuteSqlRaw("PRAGMA foreign_keys = OFF");
@@ -83,21 +88,24 @@ public static class CharacterDeleteRequestHandler
                 dbContext.Database.ExecuteSqlRaw("DELETE FROM Characters WHERE Id = {0}", characterId);
 
                 transaction.Commit();
+                return true;
             }
-            catch
+            catch (Exception ex)
             {
                 transaction.Rollback();
-                throw;
+                _logger.LogError(ex, "Failed to delete character {characterId}", characterId);
+
+                return false;
             }
             finally
             {
                 // Re-enable foreign key constraints
                 dbContext.Database.ExecuteSqlRaw("PRAGMA foreign_keys = ON");
             }
-        }
-        catch (Exception ex)
+        });
+
+        if (!committed)
         {
-            _logger.LogError(ex, "Failed to delete character {characterId}", characterId);
             characterDeleteReply.Status = 2;
 
             connection.Send(characterDeleteReply);
