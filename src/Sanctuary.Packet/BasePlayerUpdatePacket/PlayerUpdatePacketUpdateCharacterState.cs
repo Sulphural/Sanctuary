@@ -27,6 +27,17 @@ public enum CharacterStatus
     IsBerserk = 0x20000,
     IsScriptedAnimation = 0x40000,
     IsPoppedUp = 0x100000,
+
+    // Minigame-subsystem activation bits (RE'd 2026-07-28, static Ghidra analysis, NOT live-confirmed
+    // yet): FUN_0092f460 case 20 (this opcode's client-side handler) checks several bits of the
+    // incoming Status against the corresponding minigame processor's own "ready" flag, calling that
+    // processor's activator (e.g. BattleMagesProcessor::SetActive @FUN_00b72f60, which flips its own
+    // +0x28 byte) the first time the bit is seen set. Until activated, a processor's per-tick update
+    // (FUN_00b70ad0) is a no-op and anything it owns (e.g. BattleMagesProxiedProjectile) never renders,
+    // even though packets that create those objects are still accepted and parsed. Only bit 21
+    // (BattleMages) has a byte-offset chain traced so far; the others are inferred from the same
+    // bit-check pattern, unnamed pending confirmation.
+    InBattleMages = 0x200000,   // bit 21
 }
 
 // op35 sub-opcode 20 = "UpdateCharacterState". Sets a proxied character's status bitfield

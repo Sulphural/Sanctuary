@@ -142,6 +142,8 @@ public static class CommandRouter
                 return HandleTestEffect(conn, parts);
             case "playeffect":
                 return HandlePlayEffect(conn, parts);
+            case "testdance":
+                return HandleTestDance(conn, parts);
             case "petspawn":
                 return HandlePetSpawn(conn, parts);
             case "petdespawn":
@@ -551,6 +553,74 @@ public static class CommandRouter
                 proj.GlideToTarget();           // single op125 -> client interpolates the whole flight smoothly
 
                 SendSystem(conn, $"!proj -> eff={effId} model={modelId} speed={speed} from=({start.X:0.#},{start.Y:0.#},{start.Z:0.#}) to=({tgt.X:0.#},{tgt.Y:0.#},{tgt.Z:0.#})");
+                return true;
+            }
+
+            // NATIVE op133/11 BattleMagesPacketCreateProxiedProjectile probe. RE'd 2026-07-28 via static
+            // Ghidra RTTI chain (BattleMagesProcessor vtable[4] dispatcher -> case 0xb create handler ->
+            // deserializer). A SEPARATE, self-contained proxied-projectile system from the dead native-
+            // ability launcher (b84190) - no session/registration gate seen in the create handler. Field
+            // semantics are inferred from shape only (id, guid, 4 vectors, 3 floats, 2 trailing ints) -
+            // this is a first live probe to see if the client renders ANYTHING, not a tuned effect.
+            //   !bmproj [id] [speed] [int1] [int2]
+            case "bmproj":
+            {
+                if (!RequireAdmin(conn))
+                    return true;
+
+                int BI(int i, int def) => parts.Length > i && int.TryParse(parts[i], out var v) ? v : def;
+                float BF(int i, float def) => parts.Length > i && float.TryParse(parts[i], out var v) ? v : def;
+
+                var id = BI(1, 1);
+                var speed = BF(2, 45f);
+                var int1 = BI(3, 0);
+                var int2 = BI(4, 0);
+
+                var start = conn.Player.Position;
+                start = new System.Numerics.Vector4(start.X, start.Y + 1.2f, start.Z, 1f);
+                var tgt = new System.Numerics.Vector4(start.X, start.Y, start.Z + 20f, 1f);
+                if (conn.Player.Zone is { } bz)
+                {
+                    var best = float.MaxValue;
+                    foreach (var n in bz.Npcs)
+                    {
+                        if (!n.Visible || !n.IsHostile) continue;
+                        var dx0 = n.Position.X - start.X; var dz0 = n.Position.Z - start.Z;
+                        var d0 = dx0 * dx0 + dz0 * dz0;
+                        if (d0 < best) { best = d0; tgt = new System.Numerics.Vector4(n.Position.X, n.Position.Y + 1.2f, n.Position.Z, 1f); }
+                    }
+                }
+
+                // Activation gate (RE'd 2026-07-28): BattleMagesProcessor's per-tick update/render loop
+                // (FUN_00b70ad0) no-ops until its own +0x28 byte is set true, which happens the first
+                // time the client sees CharacterStatus bit 21 (InBattleMages) on this character via
+                // op35/20 UpdateCharacterState. Send that once before the create packet so the object
+                // we're about to create actually gets processed instead of sitting inert in the list.
+                conn.Player.SendTunneled(new PlayerUpdatePacketUpdateCharacterState
+                {
+                    Guid = conn.Player.Guid,
+                    Status = CharacterStatus.InBattleMages,
+                });
+
+                var guid = conn.Player.Guid;
+                var packet = new BattleMagesPacketCreateProxiedProjectile
+                {
+                    Id = id,
+                    GuidLow = unchecked((int)(guid & 0xFFFFFFFF)),
+                    GuidHigh = unchecked((int)(guid >> 32)),
+                    Vector1 = start,
+                    Vector2 = tgt,
+                    Vector3 = System.Numerics.Vector4.Zero,
+                    Vector4Field = System.Numerics.Vector4.Zero,
+                    Float1 = speed,
+                    Float2 = 0f,
+                    Float3 = 0f,
+                    Int1 = int1,
+                    Int2 = int2,
+                };
+                conn.Player.SendTunneledToVisible(packet, sendToSelf: true);
+
+                SendSystem(conn, $"!bmproj -> id={id} speed={speed} int1={int1} int2={int2} from=({start.X:0.#},{start.Y:0.#},{start.Z:0.#}) to=({tgt.X:0.#},{tgt.Y:0.#},{tgt.Z:0.#})");
                 return true;
             }
 
@@ -976,9 +1046,11 @@ public static class CommandRouter
                 return true;
             }
 
-            // Find where a LONG, server-TICKED radial cooldown renders on the combat ability slots. This is
-            // the item-cooldown mechanism (ClientUpdatePacketUpdateActionBarSlot, ticked every second) that
-            // DOES show long radials (boombox 120s). Sweep <bar>/<slot> to find the combat special.
+            // Find where a long radial cooldown renders on the combat ability slots (item-cooldown
+            // mechanism, ClientUpdatePacketUpdateActionBarSlot - boombox uses this for its 180s cooldown).
+            // StartActionBarCooldown now sends ONE packet and trusts the client to animate the sweep from
+            // TotalRefreshTime on its own - use this to confirm that assumption live: does the sweep still
+            // animate smoothly with nothing further sent, or does it need periodic nudges after all?
             // !cd <bar> <slot> <seconds>   e.g. !cd 1 1 10  (bar 1, slot 1 = special, 10s)
             case "cd":
             {
@@ -993,8 +1065,8 @@ public static class CommandRouter
 
                 var ab = Sanctuary.Game.Combat.JobWeaponAbilities.ResolveAbility(conn.Player, slot);
                 conn.Player.StartActionBarCooldown(bar, slot, ab.IconImageId, 0, 1, secs * 1000);
-                SendSystem(conn, $"!cd -> bar {bar} slot {slot} for {secs}s (ticked radial). " +
-                                 $"Watch if the special icon shows a {secs}s sweep.");
+                SendSystem(conn, $"!cd -> bar {bar} slot {slot} for {secs}s (single packet, client-driven sweep). " +
+                                 $"Watch if the special icon shows a {secs}s sweep on its own.");
                 return true;
             }
 
@@ -2668,6 +2740,28 @@ public static class CommandRouter
         return true;
     }
 
+    // /testdance <animId> - sets a dance animation on your character directly, bypassing the boombox
+    // spawn/cooldown/song machinery entirely. For isolating whether a specific dance clip id actually
+    // animates at all vs. the boombox pipeline being the problem.
+    private static bool HandleTestDance(GatewayConnection conn, string[] parts)
+    {
+        if (!RequireAdmin(conn))
+            return true;
+
+        if (parts.Length < 2 || !int.TryParse(parts[1], out var animId))
+        {
+            SendSystem(conn, "Usage: /testdance <animId>");
+            return true;
+        }
+
+        var packet = new PlayerUpdatePacketSetSynchronizedAnimations();
+        packet.Animations.Add(new PlayerUpdatePacketSetSynchronizedAnimations.Animation { Guid = conn.Player.Guid, AnimationId = animId });
+
+        conn.Player.SendTunneledToVisible(packet, true);
+        SendSystem(conn, $"Set dance animation {animId} on your character.");
+        return true;
+    }
+
     // ================== /GIVEITEM ==================
 
     private static bool HandleGiveItem(GatewayConnection conn, string[] parts)
@@ -3159,62 +3253,20 @@ public static class CommandRouter
             return true;
         }
 
-        // Get pet definition using the Definition ID from the pet info
-        if (!_resourceManager.Pets.TryGetValue(petInfo.Definition, out var petDefinition))
+        // Reuse the real client-facing spawn path (PetSummonRecallPacketHandler, opcode 4/9 - the
+        // only pet-lifecycle opcodes that actually exist in the retail wire protocol; the
+        // PacketPetSpawn/PacketPetDismount/PetSpawnResponsePacket/PetDismountResponsePacket classes
+        // this used to duplicate were sending made-up opcodes 33-36 that collide with real, unrelated
+        // retail packets - PetPlayWithToy/PetMoodList/PetEquipByItemRecord/PetPacketOfferUpsell).
+        PetSummonRecallPacketHandler.SpawnPet(conn, petInfo);
+
+        if (conn.Player.Pet is null)
         {
-            SendSystem(conn, $"Pet definition not found (Definition ID: {petInfo.Definition}).");
+            SendSystem(conn, "Failed to spawn pet.");
             return true;
         }
 
-        // Create the pet in the zone
-        if (!conn.Player.Zone.TryCreatePet(conn.Player, petDefinition, out var pet))
-        {
-            SendSystem(conn, "Failed to spawn pet in zone.");
-            return true;
-        }
-
-        pet.Visible = true;
-
-        pet.Name = string.Empty; // Pet name not sent in PacketPetInfo (uses NameId for localization)
-        pet.NameId = petDefinition.NameId;
-        pet.ModelId = petDefinition.ModelId;
-
-        pet.TextureAlias = petDefinition.TextureAlias;
-        pet.TintAlias = petDefinition.TintAlias;
-        pet.TintId = petInfo.TintId;
-
-        pet.Scale = petDefinition.Scale;
-        pet.Disposition = 1;
-
-        pet.HideNamePlate = false;
-
-        pet.ImageSetId = petDefinition.ImageSetId;
-
-        // Set MovementType=2 (Physics) - server controls position
-        pet.MovementType = 2;
-
-        // Set walking animation
-        pet.Animation = 1;
-
-        conn.Player.Pet = pet;
-
-        pet.UpdatePosition(conn.Player.Position, conn.Player.Rotation);
-
-        // First send PetSpawnResponsePacket to spawn the pet
-        var petSpawnResponsePacket = new PetSpawnResponsePacket();
-        petSpawnResponsePacket.OwnerGuid = conn.Player.Guid;
-        petSpawnResponsePacket.PetGuid = pet.Guid;
-        petSpawnResponsePacket.CompositeEffectId = 0;
-        conn.Player.SendTunneledToVisible(petSpawnResponsePacket, true);
-
-        // Then send PetActivePacket to activate following behavior
-        var petActivePacket = new PetActivePacket();
-        petActivePacket.OwnerGuid = conn.Player.Guid;
-        petActivePacket.PetGuid = pet.Guid;
-        petActivePacket.CompositeEffectId = 46; // PFX_Teleport_Flash
-        conn.Player.SendTunneledToVisible(petActivePacket, true);
-
-        SendSystem(conn, $"Pet spawned!");
+        SendSystem(conn, "Pet spawned!");
         return true;
     }
 
@@ -3225,15 +3277,6 @@ public static class CommandRouter
             SendSystem(conn, "You don't have an active pet.");
             return true;
         }
-
-        // Send despawn response to all visible players
-        var petDismountResponsePacket = new PetDismountResponsePacket
-        {
-            OwnerGuid = conn.Player.Guid,
-            CompositeEffectId = 0
-        };
-
-        conn.Player.SendTunneledToVisible(petDismountResponsePacket, true);
 
         conn.Player.Pet.Dispose();
         conn.Player.Pet = null;
