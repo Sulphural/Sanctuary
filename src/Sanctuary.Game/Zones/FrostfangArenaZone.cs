@@ -278,6 +278,12 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
     // bundle rather than the wheel preview — the popup preview correctly keeps showing 0 XP).
     public const int EncounterXp = 10;
 
+    // Per-kill XP (added 2026-07-29, live feedback: "dungeon/encounter enemies should give a small amount
+    // of exp when killing them") - see EncounterArenaZone.PerKillXp's header comment for the full reasoning;
+    // same small-trickle convention, scaled to this encounter's own EncounterXp (10). The Alpha doesn't get
+    // a per-kill bump here - his defeat already triggers WinEncounter's full EncounterXp immediately.
+    private const int PerKillXp = 2;
+
     // ARCHER set — the REFERENCE VIDEO's ground truth (its player was an archer; popup frame at 0:09
     // shows exactly these three): Power Shard of Vitality I / Ring of Regeneration I / Bow of Volleys —
     // the mirror of the ninja structure (shard + training weapon + jewelry). The two HIDDEN slots
@@ -1282,6 +1288,7 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
             // instead of a heart-only one, so Frostfang gets Energy/Flame Wave/Earth Shard/Super Shield
             // drops too, not just hearts).
             TryDropPowerup(deathPos);
+            killer.AwardXp(PerKillXp);
 
             if (scheduleWave)
                 ScheduleNextWave(killer, _encounterRun);
@@ -1591,10 +1598,15 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
     }
 
     // Knockout / fail / revive lifecycle lives in CombatEncounterZone — supply the encounter id + log label.
-    // (Bites deal real damage, so hitting 0 HP knocks the player out and the 5th knockout fails the encounter.)
+    // (Bites deal real damage, so hitting 0 HP knocks the player out.)
     protected override int FailEncounterId => EncounterId;
     protected override int FailInstanceId => EncounterInstanceId;
     protected override string EncounterLogName => "Frostfang arena";
+
+    // A bespoke single-arena fight, not a DungeonCatalog "dungeon" - real source (legacy.fanbyte.com/wiki/
+    // Combat_(FR)): "Wandering battle instances are allowed 10 knockouts" (vs. 15 for dungeons - see
+    // CombatEncounterZone.KnockoutLimit's own comment for the dungeon default this overrides).
+    protected override int KnockoutLimit => 10;
     protected override IResourceManager ResourceManagerForPowerups => _resourceManager;
 
     // MoveToward is the shared CombatEncounterZone helper now.

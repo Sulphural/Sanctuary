@@ -157,6 +157,12 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
     // grants a bit more.
     public const int EncounterXp = 15;
 
+    // Per-kill XP (added 2026-07-29, live feedback: "dungeon/encounter enemies should give a small amount
+    // of exp when killing them") - see EncounterArenaZone.PerKillXp's header comment for the full reasoning;
+    // same small-trickle convention, scaled to this encounter's own EncounterXp (15). Tombstones don't get
+    // this - they're a destructible prop, not an enemy (the spirit THEY spawn does, once it's actually killed).
+    private const int PerKillXp = 2;
+
     private sealed class SpiritState : EncounterMobState { }
 
     private readonly object _stateLock = new();
@@ -911,6 +917,7 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
             // Folded into the shared 5-kind roll (CombatEncounterZone.TryDropPowerup) instead of a
             // heart-only one - see the identical change in FrostfangArenaZone for why.
             TryDropPowerup(deathPos);
+            killer.AwardXp(PerKillXp);
         }
 
         if (allClear)
@@ -1137,6 +1144,11 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
     protected override int FailInstanceId => EncounterInstanceId;
     protected override string EncounterLogName => "Spirit arena";
     protected override IResourceManager ResourceManagerForPowerups => _resourceManager;
+
+    // A bespoke single-arena fight, not a DungeonCatalog "dungeon" - real source (legacy.fanbyte.com/wiki/
+    // Combat_(FR)): "Wandering battle instances are allowed 10 knockouts" (vs. 15 for dungeons - see
+    // CombatEncounterZone.KnockoutLimit's own comment for the dungeon default this overrides).
+    protected override int KnockoutLimit => 10;
 
     protected override void ReturnHome(Player player, bool immediate)
     {

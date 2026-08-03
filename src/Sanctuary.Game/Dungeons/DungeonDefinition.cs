@@ -180,6 +180,15 @@ public sealed class DungeonEscortStage
     // player (or player can walk over to them) when player gets close to them").
     public bool InstantAggro = true;
 
+    // If true, spawned enemies immediately run toward Dungeon.EscortPosition (the escort NPC, e.g. a
+    // captive queen) instead of standing idle/wandering at SpawnPosition - a "they're coming for her!"
+    // reinforcement charge (live feedback, Bixie Hive: "the last set of bee enemies should spawn then start
+    // running over towards where the queen is"). A player who gets within AggroRange along the way still
+    // pulls the mob off course onto themselves first (see EncounterArenaZone's tick loop) - the charge is
+    // interceptable, not a scripted cutscene. Only meaningful when InstantAggro is false and Dungeon.
+    // EscortPosition is set; ignored otherwise.
+    public bool ConvergeOnEscort;
+
     // Delays this stage's Enemies from spawning until DelayMs after VoicelineNameId plays, instead of
     // landing in the same instant - lets a stage narrate a beat (e.g. a "gift" of power-ups) before its
     // combat wave shows up. 0 = spawn immediately (original behavior). WaveVoicelineNameId (if set) plays
@@ -1141,7 +1150,16 @@ public static class DungeonCatalog
                 // show and give coins after defeat") - shows a persistent health bar (CreateMob's
                 // ShowHealthBar = group.Boss) and triggers the boss-only coin drop on kill (OnNpcKilled's
                 // wasBoss check reuses the same field).
-                new() { ModelId = 218, Count = 2, Health = 1400, NameId = 16346, Boss = true }, // Unruly Elite
+                // TANKIER 2026-07-29 (live feedback: "Unruly Elite should be tankier than the regular mobs
+                // (mini-boss)") - Health 1400 was only 2x the Warrior's 700, the LOW end of every other
+                // Boss=true entry in this file (which run 1500-4500, comparing regular-mob HP 700-1000
+                // against their own boss HP) - AND it was the only Boss=true entry anywhere in this whole
+                // file with no Scale bump at all (every sibling mini-boss gets 1.3f-1.6f). Bumped Health to
+                // 2000 (in line with the Cracked Claw/Frostfang-tier mini-bosses' 1600-2200 range for a
+                // similarly-sized regular-mob pack) and added Scale 1.3f so it also reads as visibly bigger,
+                // matching the convention. Not sourced (no wiki HP numbers exist for FR mob stats), same
+                // ours-to-tune status as every other Health/Scale value in this file.
+                new() { ModelId = 218, Count = 2, Health = 2000, Scale = 1.3f, NameId = 16346, Boss = true }, // Unruly Elite
             ],
             // Spawn point CORRECTED 2026-07-28 via live !pos (357.77, 85.65, 231.35) - the sheet's own
             // (356.65, 85.96, 231.05) was close but not exact; this is the real measured settle point.
@@ -1224,6 +1242,13 @@ public static class DungeonCatalog
                     WaveVoicelineNameId = 38626, // "My goodness, here come some more! Stay close, dearie, and use my power ups!"
                     SpawnPosition = (170.35f, 79.89f, 417.89f),
                     InstantAggro = false, // idle until the player approaches, per live feedback
+                    // CORRECTED 2026-07-29 (live feedback: "the last set of bee enemies should spawn then
+                    // start running over towards where the queen is") - this wave's own voiceline literally
+                    // says "here come some more" as a threat TO the queen, so having them just stand at
+                    // SpawnPosition (417 units of cave away from her) until a player happens to wander over
+                    // undersold the moment. They now charge toward EscortPosition on spawn - a player
+                    // standing between them and her still pulls them off course same as any other mob.
+                    ConvergeOnEscort = true,
                     Enemies =
                     [
                         new() { ModelId = 211, Count = 4, Health = 600, NameId = 16347 }, // Unruly Mage
@@ -1234,6 +1259,14 @@ public static class DungeonCatalog
                 {
                     VoicelineNameId = 38627, // "Fauzz, it breaks my heart that you would betray me!"
                     SpawnPosition = (171.32f, 79.98f, 421.70f),
+                    // CORRECTED 2026-07-29 (live feedback: "Fauzz should also do the same when spawned") -
+                    // this used to keep the original "dramatic instant-charge" default (InstantAggro=true,
+                    // locking onto whichever player happens to be nearest the instant he spawns), which reads
+                    // oddly next to his own voiceline being the queen's betrayal accusation TO HIM, not a
+                    // player. Same treatment as the wave above: runs at EscortPosition (the queen) on spawn,
+                    // interceptable by a player who gets in his way.
+                    InstantAggro = false,
+                    ConvergeOnEscort = true,
                     Enemies = [new() { ModelId = 218, Count = 1, Health = 4200, Scale = 1.5f, Boss = true, MainBoss = true, NameId = 38510 }],
                 },
             ],

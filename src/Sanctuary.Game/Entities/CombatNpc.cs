@@ -187,13 +187,13 @@ public class CombatNpc : Npc
             return;
         }
 
-        // Check leash
-        var distToSpawn = DistanceTo(SpawnPosition);
-        if (distToSpawn > LeashRange)
-        {
-            StartReturning();
-            return;
-        }
+        // NO leash check here (removed 2026-07-29, live feedback: "enemies sometimes will walk away from
+        // you during a fight") - this used to disengage mid-swing the moment cumulative combat drift from
+        // SpawnPosition passed LeashRange, even while the NPC was standing right next to the player actively
+        // trading hits. That reads as a bug, not a design choice: if you're within AttackRange of it, it
+        // isn't "escaping" anything, so there's nothing for a leash to guard against. The leash still applies
+        // in UpdatePursuing (chasing but not yet engaged), which is its real job - stopping a mob from being
+        // lured clear across the map before it ever lands a hit.
 
         // Face the target
         FaceTarget(AggroTarget.Position);

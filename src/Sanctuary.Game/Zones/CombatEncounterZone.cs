@@ -33,6 +33,19 @@ public class EncounterMobState
     public int PathIndex;
     public long NextRepathTicks;
     public Vector4 PathTarget; // the slot position the CachedPath was planned toward, for staleness checks
+
+    // Stuck detection (added 2026-07-29, live feedback: "enemies dont seem to be going the best possible
+    // path... they go down a path that will eventually block them"). The waypoint graph is a uniform grid
+    // sample of the real wall data, not a guaranteed-connected navmesh - CombatEncounterZone.BuildMobPathfinding's
+    // own header comment already documents that a fragmented graph near a wall cluster makes FindPath return
+    // a stale/dead-end route (or nothing, falling back to a straight line INTO the very obstacle that made
+    // the graph search trigger). Rather than trying to make graph construction perfect for every dungeon's
+    // geometry (no live client to iteratively verify against), this detects the SYMPTOM directly: if a mob
+    // that's actively trying to move barely progresses over a full check window, the path it's following
+    // is bad - discard it and force a fresh plan next tick. Self-healing for any mob using ChaseStep, not
+    // just the queen-convergence case that surfaced it.
+    public Vector4 StuckCheckPos;
+    public long NextStuckCheckTicks;
 }
 
 // Shared base for the combat-encounter zones — the generic data-driven EncounterArenaZone
@@ -58,6 +71,16 @@ public abstract class CombatEncounterZone : BaseZone
     // only version (SpawnHeart/CollectHearts) which is untouched and still fires alongside this.
     private const float PowerupPickupRange = 2.6f; // matches the proven Health pickup radius
     private const int PowerupPickupTimeoutMs = 120_000;
+
+    // TIGHTENED 2026-07-29 (live feedback: "i cannot pick up powerup sometimes") - was 250ms. At a normal
+    // run speed a player can cross the whole 5.2-unit pickup diameter inside a single 250ms gap without a
+    // poll ever landing while they're in range, so a pickup grabbed "on the way through" instead of walked
+    // up to and stood on could be missed outright. 100ms (matching this file's own mob-AI TickMs elsewhere)
+    // quarters that miss window. This does NOT touch the OTHER real cause of "can't pick up" - already
+    // holding a held-type power-up (Flame Wave/Earth Shard/Super Shield) correctly blocks picking up
+    // ANOTHER held-type one per the tooltip's own "only one at a time" rule (PowerupSystem.Grant's default
+    // case) - that's by design, not a bug, and is already explicitly messaged to the player.
+    private const int PowerupPollMs = 100;
 
     // Rolls the drop (PowerupSystem.DropPercent chance) and, on a hit, spawns a walk-over pickup at pos
     // that grants a random real power-up kind on proximity. No-ops silently on a miss - callers don't need
@@ -116,14 +139,16 @@ public abstract class CombatEncounterZone : BaseZone
         {
             try
             {
-                for (var elapsed = 0; elapsed < PowerupPickupTimeoutMs; elapsed += 250)
+                for (var elapsed = 0; elapsed < PowerupPickupTimeoutMs; elapsed += PowerupPollMs)
                 {
-                    await Task.Delay(250);
+                    await Task.Delay(PowerupPollMs);
                     if (pickup.Zone != this)
                         return; // already collected/disposed elsewhere
 
                     foreach (var p in ActivePlayersForPowerups())
                     {
+                        if (p.IsDead)
+                            continue; // a knocked-out player can't walk over anything - don't hand it to them
                         var dx = p.Position.X - pickup.Position.X;
                         var dz = p.Position.Z - pickup.Position.Z;
                         if (dx * dx + dz * dz > PowerupPickupRange * PowerupPickupRange)
@@ -181,8 +206,14 @@ public abstract class CombatEncounterZone : BaseZone
     protected virtual IEnumerable<Player> ActivePlayersForPowerups() => Players;
     protected abstract IResourceManager ResourceManagerForPowerups { get; }
 
-    // Knockouts before the encounter fails (retail = 5).
-    protected const int KnockoutLimit = 5;
+    // Knockouts before the encounter fails. CORRECTED 2026-07-29 (real source: legacy.fanbyte.com/wiki/Combat_(FR)
+    // - "Wandering battle instances are allowed 10 knockouts while dungeons are allowed 15 knockouts.") - was a
+    // flat 5 for every CombatEncounterZone subclass, with a comment claiming "retail = 5" that had no actual
+    // citation behind it. Defaults to the DUNGEON figure (15) here since EncounterArenaZone - the data-driven
+    // DungeonCatalog zones this codebase already calls "dungeons" everywhere - is the primary/most numerous
+    // subclass; the two bespoke single-arena zones (Frostfang/Tormented Spirits) override down to the
+    // "wandering battle instance" figure (10) instead, see their own KnockoutLimit overrides.
+    protected virtual int KnockoutLimit => 15;
 
     private readonly object _knockoutLock = new();
     private readonly Dictionary<ulong, int> _knockouts = [];
@@ -612,8 +643,35 @@ public abstract class CombatEncounterZone : BaseZone
     // slot moved more than 4 units since the last plan), or its refresh timer elapses (1s) — A* every tick
     // per mob would be wasteful. Falls back to the straight line (not a freeze) if the graph is missing or
     // disconnected — that reproduces the pre-fix behavior for that one mob/tick rather than getting stuck.
+    // Stuck-detection window - see EncounterMobState.StuckCheckPos's header comment. Long enough that normal
+    // per-tick movement noise (attack pauses, waypoint corners) doesn't false-positive, short enough that a
+    // genuinely bad route gets abandoned quickly rather than grinding into a wall for many seconds.
+    private const float StuckThreshold = 1.2f;
+    private const int StuckCheckIntervalMs = 1200;
+
     private (Vector2 Dir, float Dist) ChaseStep(Vector3 here, Vector3 slot, EncounterMobState state, long now)
     {
+        // Stuck detection: if a cached A* route hasn't actually moved us in the last StuckCheckIntervalMs,
+        // it's leading into a dead end (graph fragmentation near the wall cluster that triggered pathfinding
+        // in the first place - see this class's header comment) - drop it so the repath check below plans a
+        // fresh route instead of faithfully re-walking the same bad one every tick.
+        if (state.NextStuckCheckTicks == 0)
+        {
+            state.StuckCheckPos = new Vector4(here.X, here.Y, here.Z, 1f);
+            state.NextStuckCheckTicks = now + StuckCheckIntervalMs;
+        }
+        else if (now >= state.NextStuckCheckTicks)
+        {
+            var progress = Vector2.Distance(new Vector2(here.X, here.Z), new Vector2(state.StuckCheckPos.X, state.StuckCheckPos.Z));
+            if (progress < StuckThreshold && state.CachedPath is not null)
+            {
+                state.CachedPath = null;
+                state.NextRepathTicks = 0; // force the repath check below to actually replan this tick
+            }
+            state.StuckCheckPos = new Vector4(here.X, here.Y, here.Z, 1f);
+            state.NextStuckCheckTicks = now + StuckCheckIntervalMs;
+        }
+
         var toSlot = new Vector2(slot.X - here.X, slot.Z - here.Z);
         var distToSlot = toSlot.Length();
         if (distToSlot <= 0.01f)

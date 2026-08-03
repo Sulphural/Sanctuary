@@ -62,6 +62,16 @@ public sealed class EncounterArenaZone : CombatEncounterZone
     private const int SpawnPoofFxId = 46;
     private const int DeathPoofFxId = 5017;
     private const int DeathHoldMs = 1500;
+
+    // Per-kill XP (added 2026-07-29, live feedback: "dungeon/encounter enemies should give a small amount
+    // of exp when killing them") - every kill inside a dungeon used to award NOTHING; only Dungeon.Xp at
+    // the very end (WinEncounter) ever touched AwardXp, so a 90-enemy dungeon like Bixie Hive paid the exact
+    // same total XP as a 10-enemy one. A flat SMALL trickle per real kill, scaled up a bit for a mini-boss
+    // (Boss=true), on the same small-number scale Dungeon.Xp itself already uses across every dungeon
+    // (12-38) - not wiki-sourced (no real per-kill dungeon XP data exists anywhere), same ours-to-tune
+    // status as every other small-number constant in this file.
+    private const int PerKillXp = 3;
+    private const int PerKillBossXp = 10;
     // Real client effect "PFX_dirt_brown_exp_sph_lg_troll-despawn" (ActorCompositeEffectDefinitions.xml) -
     // a dirt-explosion-sphere effect the client already ties to a despawn event, the closest real match to
     // "dirt explosion" for the Frog Log's destruction.
@@ -97,6 +107,24 @@ public sealed class EncounterArenaZone : CombatEncounterZone
         public bool Wander;
         public Vector2? WanderTarget;
         public long WanderPauseUntil;
+
+        // Converge-on-escort (DungeonEscortStage.ConvergeOnEscort, live feedback 2026-07-29: "the last set
+        // of bee enemies should spawn then start running over towards where the queen is"). Checked BEFORE
+        // Wander in the tick loop so a converging mob runs straight for the escort instead of ambling; a
+        // player within AggroRange still takes priority (see the tick loop), so the charge is interceptable.
+        // CORRECTED 2026-07-29 (live feedback: "they are teleporting to the queen until they get close and
+        // start walking.. i want them to walk all the way... with good pathfinding") - the first version
+        // moved these mobs with its own bespoke straight-line stepper that (a) never sent
+        // PlayerUpdatePacketExpectedSpeed, which a PHYSICS-actor client needs to INTERPOLATE between the
+        // 10Hz position updates instead of snapping straight to each one (the same reason CombatNpc.
+        // MoveTowards sends it for the overworld AI) - explains "teleporting" turning into real walking the
+        // moment BeginCharge fired (that method DOES send it) - and (b) had no obstacle/pathfinding
+        // awareness at all, unlike every other mob movement in this file. Fixed by repointing Home to the
+        // escort position (instead of the mob's own spawn point) and reusing TickMobReturnHome - already
+        // the exact "walk to Home with real A* pathfinding around dungeon geometry via ChaseStep, then plant
+        // idle" engine every other mob's disengage/return-to-post uses - instead of a bespoke duplicate. No
+        // separate target field needed any more; ConvergeToEscort is now just the branch flag.
+        public bool ConvergeToEscort;
     }
 
     private readonly object _stateLock = new();
@@ -1265,6 +1293,20 @@ public sealed class EncounterArenaZone : CombatEncounterZone
                     // "should start chasing the player... when player gets close to them") also reads as
                     // more alive if it ambles around while waiting, instead of standing frozen.
                     state = new MobState { SlotAngle = (float)(_rng.NextDouble() * Math.Tau), Home = pos, Wander = !stage.InstantAggro };
+                    // ConvergeOnEscort overrides plain Wander with a real-pathfinding run at the escort -
+                    // see MobState.ConvergeToEscort's header comment. Repointing Home to the escort position
+                    // (instead of leaving it at this mob's own spawn point) is what makes TickMobReturnHome
+                    // walk it THERE instead of back to SpawnPosition; ExpectedSpeed is sent once up front
+                    // (mirrors BeginCharge) so the client interpolates a real walk from the very first tick
+                    // instead of snapping between position updates until real combat kicks in. Silently
+                    // no-ops if the dungeon has no escort position set (ConvergeOnEscort should never be
+                    // true without one, but this stays safe).
+                    if (stage.ConvergeOnEscort && Dungeon.EscortPosition is { } ep)
+                    {
+                        state.Home = new Vector4(ep.X, ep.Y, ep.Z, pos.W);
+                        state.ConvergeToEscort = true;
+                        Broadcast(new PlayerUpdatePacketExpectedSpeed { Guid = mob.Guid, ExpectedSpeed = MobChaseSpeed });
+                    }
                     _mobStates[mob.Guid] = state;
                 }
                 if (stage.InstantAggro) // already provoked - same as SpawnBonusSpirit/SpawnFrogFromLog
@@ -1413,7 +1455,9 @@ public sealed class EncounterArenaZone : CombatEncounterZone
                             var dz = target.Z - here.Z;
                             if (dx * dx + dz * dz > AggroRange * AggroRange)
                             {
-                                if (state.Wander)
+                                if (state.ConvergeToEscort)
+                                    TickMobReturnHome(mob, state, dt, now);
+                                else if (state.Wander)
                                     TickMobWander(mob, state, here, now, dt);
                                 continue;
                             }
@@ -1566,6 +1610,9 @@ public sealed class EncounterArenaZone : CombatEncounterZone
         // Coin drops only from bosses (live feedback, 2026-07-26) - not every regular kill.
         if (wasBoss)
             GrantKillCoins(killer);
+
+        // Small per-kill XP trickle (see PerKillXp's header comment) - every real kill, not just bosses.
+        killer.AwardXp(wasBoss ? PerKillBossXp : PerKillXp);
 
         // Real power-up drops (user-supplied tooltip, 2026-07-27) - any kill has a chance, not just bosses
         // (matches "items that drop off enemies during combat", no boss-only wording).
