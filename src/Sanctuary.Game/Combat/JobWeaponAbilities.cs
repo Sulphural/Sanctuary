@@ -13,19 +13,42 @@ public static class JobWeaponAbilities
     // Does the active job have a weapon-ability kit?
     public static bool HasKit(Player player) => JobKits.Has(player.ActiveProfileId);
 
-    // The active job's weapon toolbar (op36/5), or null.
-    public static AbilityPacketSetDefinition? BuildToolbar(Player player, IResourceManager resources) =>
-        JobKits.Active(player)?.BuildToolbar(player, resources);
+    // The active job's weapon toolbar (op36/5), or null. ALWAYS carries the held power-up slot (if any) -
+    // see PowerupSystem.MakeHeldSlot - not just when explicitly sent via SendToolbarWithPowerup below.
+    //
+    // FIXED 2026-07-29 (live feedback: "still cannot pick up Flame Wave/Earth Shard/Super Shield even after
+    // not having it"): PowerupSystem._held is a static dictionary that only ever gets CLEARED by TryUse
+    // (pressing "3") - it has no expiry and isn't touched by zone transitions, job swaps, or level-ups. But
+    // the held-slot ICON only ever got attached by the two callers that explicitly asked for it (Grant/
+    // TryUse's own SendToolbarWithPowerup calls) - every OTHER toolbar refresh in the game (dungeon entry's
+    // SendToolbarWithFxPreload, weapon-swap, job-switch, Player.RestoreWeaponToolbar after a level-up) went
+    // through this method directly and silently OMITTED the slot. The very first unrelated toolbar refresh
+    // after picking one up would erase its visible icon from the player's screen while _held stayed set
+    // server-side - the player then has zero indication they're holding anything, yet every later pickup of
+    // a held-type kind keeps failing as "already holding" with nothing to visibly point at. Moving the
+    // append here (the single choke point every caller already goes through) means it can never desync
+    // again, instead of trying to find and patch every individual toolbar-send call site.
+    public static AbilityPacketSetDefinition? BuildToolbar(Player player, IResourceManager resources)
+    {
+        var def = JobKits.Active(player)?.BuildToolbar(player, resources);
+        if (def is not null && PowerupSystem.MakeHeldSlot(player.Guid) is { } powerupSlot)
+            def.Slots.Add(powerupSlot);
+        return def;
+    }
 
-    // Same toolbar, with the held power-up (if any) pinned at slot index 2 (the "3" key) - see
-    // PowerupSystem. The normal toolbar only ever populates indices 0/1 (basic/special), so appending
-    // lands exactly at index 2 the way the wire format expects (see AbilityPacketSetDefinition.Serialize).
+    // Same toolbar; BuildToolbar above already carries the held power-up slot (if any) whenever a job kit
+    // exists, so this only needs its own fallback for the no-kit case. Kept as a separate method (rather
+    // than folding call sites into plain BuildToolbar+SendTunneled) since PowerupSystem.Grant/TryUse want to
+    // guarantee the slot shows even for a player with no active combat job.
     public static void SendToolbarWithPowerup(Player player, IResourceManager resources)
     {
-        var def = BuildToolbar(player, resources) ?? AbilityPacketSetDefinition.CreateEmpty(player.ActiveProfileId);
-
-        if (PowerupSystem.MakeHeldSlot(player.Guid) is { } powerupSlot)
-            def.Slots.Add(powerupSlot);
+        var def = BuildToolbar(player, resources);
+        if (def is null)
+        {
+            def = AbilityPacketSetDefinition.CreateEmpty(player.ActiveProfileId);
+            if (PowerupSystem.MakeHeldSlot(player.Guid) is { } powerupSlot)
+                def.Slots.Add(powerupSlot);
+        }
 
         player.SendTunneled(def);
     }
