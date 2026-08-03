@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -23,10 +24,16 @@ namespace Sanctuary.Game.Combat;
 //   WeaponAbility.Animation field) - a citable simplification, not an invented number. No wieldType-gated
 //   special-anim dispatcher exists in the file (same gap Warrior's specials had); special anims below just
 //   alternate 1020/1040 as a placeholder, UNCONFIRMED - flagged per kit.
-// FX: 6 of 10 specials resolved to a real, exact-name-match composite in ActorCompositeEffectDefinitions.xml
-//   (Shock/Vitamins/Immunization/Antibodies/Reflexes/Lasers); Triage uses a real but thematic (not exact-name)
-//   match (the medic-bloodcell trio); the remaining 3 (Vitals/Alarm/Vitae) found no matching composite at all
-//   and fall back to the generic hit-flash, same honesty convention as Warrior's unconfirmed kits. ANIM: all 10
+// FX: 7 of 10 specials resolved to a real, exact-name-match composite in ActorCompositeEffectDefinitions.xml
+//   (Shock/Vitamins/Immunization/Antibodies/Reflexes/Lasers/Triage - Triage was on a stale pre-spreadsheet
+//   thematic guess, the "medic-bloodcell trio", until 2026-07-29 when it was corrected to its own real
+//   sourced FX per the spreadsheet's icons/anim tab); the remaining 3 (Vitals/Alarm/Vitae) found no matching
+//   composite at all and fall back to the generic hit-flash, same honesty convention as Warrior's unconfirmed
+//   kits. LINGERING FX: Antibodies' cast FX (16225) was a "_loop_" asset played bare with no stop mechanism
+//   and no bounded lifetime of its own - confirmed root cause of live feedback "medic has some effects still
+//   on the character for a really long time" (2026-07-29) - fixed with an explicit CastEffectStopMs, same
+//   fix class as the potion heal-shower/PowerupSystem.HealShowerMs bugs from earlier in the same session.
+//   ANIM: all 10
 //   specials now use real, distinct com_1hs/2hs_special_NN animation ids (re-checked 2026-07-28 against
 //   AnimationGroups.xml), not a placeholder reuse of the 2 melee swing anims. DAMAGE: 4 of 10 specials have a
 //   real number from a freerealms.fandom.com weapon-item page (via search snippet, not a raw page fetch - the
@@ -174,6 +181,64 @@ public static class MedicWeaponAbilities
     public static bool HasTrait(Player player, int traitLevel) =>
         player.ActiveProfileId == MedicProfileId && player.ActiveProfile.Rank >= traitLevel;
 
+    // Target Vitals (L5) adds a flat bonus to every hit; Shock Paddles (L15) splashes onto up to 2 other
+    // nearby hostiles alongside every hit. Both always-on once unlocked - neither wiki entry mentions a
+    // crit/proc condition (Medic has no baseline crit-chance trait at all). First Aid/Vitamins (the other 2
+    // real traits) are periodic and live on Player.MedicSkillsTick instead.
+    public static int ApplyTraitDamage(Player player, int baseDamage, Npc? target)
+    {
+        var dmg = baseDamage;
+
+        if (HasTrait(player, TargetVitalsLevel))
+            dmg += TargetVitalsBonusDamage;
+
+        if (target is not null && HasTrait(player, ShockPaddlesLevel))
+            SplashShockPaddles(player, target);
+
+        return Math.Max(1, dmg);
+    }
+
+    // Shock Paddles splash: up to 2 other live hostiles within range of the crit's own target, each taking
+    // the skill's flat bonus damage. Reuses the same nearby-hostile pattern the multishot archer kit uses.
+    private static void SplashShockPaddles(Player player, Npc primaryTarget)
+    {
+        if (player.Zone is not { } zone)
+            return;
+
+        var tp = primaryTarget.Position;
+        var extras = zone.Npcs
+            .Where(n => !ReferenceEquals(n, primaryTarget) && n.IsHostile && n.IsDamageable && n.IsAlive)
+            .Select(n =>
+            {
+                var dx = n.Position.X - tp.X;
+                var dz = n.Position.Z - tp.Z;
+                return (npc: n, d2: dx * dx + dz * dz);
+            })
+            .Where(t => t.d2 <= ShockPaddlesSplashRadius * ShockPaddlesSplashRadius)
+            .OrderBy(t => t.d2)
+            .Take(ShockPaddlesExtraTargets)
+            .Select(t => t.npc);
+
+        foreach (var extra in extras)
+        {
+            var killedExtra = extra.ApplyDamage(ShockPaddlesBonusDamage);
+            player.SendTunneledToVisible(new PlayerUpdatePacketHitPointModification
+            {
+                Guid = player.Guid,
+                Guid2 = extra.Guid,
+                Unknown = true,
+                Unknown2 = extra.MaxHealth,
+                Unknown3 = extra.Health,
+                Unknown4 = -ShockPaddlesBonusDamage,
+            }, sendToSelf: true);
+
+            if (killedExtra)
+                player.Zone.OnNpcKilled(player, extra);
+            else
+                player.Zone.OnNpcDamaged(player, extra);
+        }
+    }
+
     // ── SPECIALS (10) ── melee (slot 0) + the named special (slot 1). Real names/tiers from the 75060-75089
     // "Medic's <Weapon> of <Special>" item series in ClientItemDefinitions.json (Comment field, verbatim).
     // AoeRadius > 0 => hits every hostile in range of the caster.
@@ -206,12 +271,34 @@ public static class MedicWeaponAbilities
     private const int BloodCellIcon = 22945;      // abil_medic_bloodcell
 
     // Real FX per special-TYPE (doesn't vary by weapon tier, same convention as the anim pools above).
-    private const int TriageFx = 16218, TriageCastFx = 16220;   // medic_bloodcell trio (thematic, see above)
+    //
+    // Triage FX CORRECTED 2026-07-29 (live feedback: "read the description of the abilities" surfaced
+    // Triage's REAL sourced FX from the same spreadsheet tab this file already cites for names/anims/icons —
+    // "PFX_heal_red_hands_cast_starburst (aoe resolve: 16161)" — which was never applied when the ability's
+    // heal/AoE mechanics got fixed; the file was still on the OLD pre-spreadsheet "medic_bloodcell trio"
+    // thematic guess (16218/16220) from before the real data was found. TriageCastFx (16162,
+    // PFX_heal_red_hands_cast_starburst) plays on cast via StartCasting's CompositeEffectId - confirmed a
+    // genuine one-shot in ActorCompositeEffectDefinitions.xml (minLifeTime/defaultLifeTime = 1.0s), so no
+    // CastEffectStopMs needed. TriageFx (16161, PFX_heal_red_explosion_lg_AOE) plays on each enemy Triage's
+    // AoE damage hits, matching the "aoe resolve" pairing the sheet's own FX-name column documents.
+    private const int TriageFx = 16161, TriageCastFx = 16162;
     private const int ShockFx = 16154;
     private const int ImmunizeFx = 16190;
     private const int VitaminsFx = 16184;
     private const int ReflexTestFx = 16230;
+
+    // Antibodies FX. AntibodiesCastFx (16225, PRJ_beam_trail_orange_blobs_loop_medic-antibodies) is a
+    // "_loop_" asset with NO minLifeTime/defaultLifeTime bound declared in ActorCompositeEffectDefinitions.xml
+    // (unlike e.g. Triage's 16162 above, or Ninja's Flame Wave/Flame Breath cast FX, which are also
+    // "_loop_"-named but self-terminate via their own declared bound) - it was being played bare via
+    // StartCasting's one-shot CompositeEffectId field with no stop mechanism at all, so it never turned off
+    // once cast (live feedback 2026-07-29: "medic has some effects still on the character for a really long
+    // time" - this is the confirmed root cause, found by cross-referencing every FX id this file and its 5
+    // sibling job files use against the client's own "_loop_"-named effect definitions). Fixed by giving it
+    // AntibodiesCastEffectStopMs, which routes it through the tag-attach/explicit-remove mechanism instead
+    // (same fix class as the potion heal-shower and PowerupSystem's HealShowerMs earlier this session).
     private const int AntibodiesFx = 16264, AntibodiesCastFx = 16225;
+    public const int AntibodiesCastEffectStopMs = 2500;
     private const int LaserFx = 16153;
 
     // Real special-ability animation ids from the OSFR community spreadsheet's dedicated Icons/Anim tab
@@ -339,7 +426,7 @@ public static class MedicWeaponAbilities
     private static readonly MedicWeapon AntibodiesKit = new(
         // Only exists at the top tier (Shockrod, L16) per the spreadsheet — no lower-tier variant.
         new("Heartbreak", Icon4191, 2372, MeleeAnim, MeleeHitFx),
-        new("Antibodies", AntibodiesIcon, 10674, SpecialAnim9, AntibodiesFx, CastEffectId: AntibodiesCastFx));
+        new("Antibodies", AntibodiesIcon, 10674, SpecialAnim9, AntibodiesFx, CastEffectId: AntibodiesCastFx, CastEffectStopMs: AntibodiesCastEffectStopMs));
 
     private static readonly MedicWeapon LasersKit = new(
         // Only exists at the top tier (Shockrod, L16). Melee "Cauterize" hits twice per the sheet (1186 x2) —

@@ -102,6 +102,10 @@ public static class PowerupSystem
     // once at startup so a picked-up Energy powerup can actually refill it.
     public static Action<Player>? RequestEnergyRefill;
 
+    // Same bridge, but restores a partial amount instead of a full refill - used by trait procs (Wizard's
+    // Arcane Flare, Archer's Lucky Shot) that give back a little energy on a crit/landed hit.
+    public static Action<Player, int>? RestoreEnergy;
+
     public static PowerupKind RollDropKind()
     {
         var total = 0;

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -172,6 +173,19 @@ public static class WarriorWeaponAbilities
 
     public static bool HasTrait(Player player, int traitLevel) =>
         player.ActiveProfileId == WarriorProfileId && player.ActiveProfile.Rank >= traitLevel;
+
+    // Piercing Strikes (L10) adds crit CHANCE. A no-op for non-Warriors / below L10.
+    public static int ApplyTraitDamage(Player player, int baseDamage)
+    {
+        if (!HasTrait(player, PiercingStrikesLevel))
+            return baseDamage;
+
+        var critChance = BaseCritChancePercent + PiercingStrikesCritChanceBonus;
+        if (Random.Shared.Next(100) >= critChance)
+            return baseDamage;
+
+        return Math.Max(1, (int)(baseDamage * BaseCritMultiplier));
+    }
 
     // ── SPECIALS (10 types) ── melee (slot 0) + the named special (slot 1), one factory function PER SPECIAL
     // TYPE, called ONCE PER REAL WEAPON ITEM with that item's own real numbers (see file header - this is the

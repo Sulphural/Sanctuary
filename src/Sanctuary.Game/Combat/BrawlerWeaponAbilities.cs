@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -161,6 +162,25 @@ public static class BrawlerWeaponAbilities
 
     public static bool HasTrait(Player player, int traitLevel) =>
         player.ActiveProfileId == BrawlerProfileId && player.ActiveProfile.Rank >= traitLevel;
+
+    // Bruising Strikes adds crit CHANCE (an unlocked Brawler rolls crits here); Savvy makes those crits hit
+    // harder (crit MULTIPLIER). Rolled per hit, so AoE specials can crit some targets and not others. A no-op
+    // for non-Brawlers / a Brawler below level 5.
+    public static int ApplyTraitDamage(Player player, int baseDamage)
+    {
+        if (!HasTrait(player, BruisingStrikesLevel))
+            return baseDamage;
+
+        var critChance = BaseCritChancePercent + BruisingStrikesCritChanceBonus;
+        if (Random.Shared.Next(100) >= critChance)
+            return baseDamage;
+
+        var critMult = BaseCritMultiplier;
+        if (HasTrait(player, SavvyLevel))
+            critMult += SavvyCritBonus;
+
+        return Math.Max(1, (int)(baseDamage * critMult));
+    }
 
     // ── SPECIALS (10 real "of <Special>" types + Enrage/Knockout at the top tier) ── one factory function per
     // TYPE, parameterized by (meleeIcon, meleeDmg, specialDmg) and called ONCE PER REAL WEAPON ITEM ID with

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -169,6 +170,24 @@ public static class WizardWeaponAbilities
 
     public static bool HasTrait(Player player, int traitLevel) =>
         player.ActiveProfileId == WizardProfileId && player.ActiveProfile.Rank >= traitLevel;
+
+    // Genius (L10) adds crit CHANCE; on a crit, Arcane Flare (L20) absorbs a little energy back. A no-op
+    // for non-Wizards / below L10.
+    public static int ApplyTraitDamage(Player player, int baseDamage)
+    {
+        if (!HasTrait(player, GeniusLevel))
+            return baseDamage;
+
+        var critChance = BaseCritChancePercent + GeniusCritChanceBonus;
+        if (Random.Shared.Next(100) >= critChance)
+            return baseDamage;
+
+        // Arcane Flare: a crit absorbs arcane energy from the target back into the bar.
+        if (HasTrait(player, ArcaneFlareLevel))
+            PowerupSystem.RestoreEnergy?.Invoke(player, ArcaneFlareEnergyRestore);
+
+        return Math.Max(1, (int)(baseDamage * BaseCritMultiplier));
+    }
 
     // ── SPECIALS (10 standard element lines) ── one factory function per special TYPE, called once PER REAL
     // WEAPON ITEM with that item's own spreadsheet-CONFIRMED (or bracket-grouped PENDING) numbers — NOT a

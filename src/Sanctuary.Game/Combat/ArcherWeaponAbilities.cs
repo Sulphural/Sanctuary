@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -153,6 +154,42 @@ public static class ArcherWeaponAbilities
     // True when the player is an Archer whose active job rank has unlocked the given trait level.
     public static bool HasTrait(Player player, int traitLevel) =>
         player.ActiveProfileId == ArcherProfileId && player.ActiveProfile.Rank >= traitLevel;
+
+    // Apply Precision's flat bonus + crit chance, and (on a crit) Marksmanship's extra crit damage.
+    // Returns the final damage for this hit.
+    public static int ApplyTraitDamage(Player player, int baseDamage)
+    {
+        var dmg = (float)baseDamage;
+
+        if (HasTrait(player, PrecisionLevel))
+            dmg *= 1f + PrecisionDamageBonus;
+
+        // Crit chance: base + Precision's bonus (only archers with Precision roll crits here).
+        var critChance = 0;
+        if (HasTrait(player, PrecisionLevel))
+            critChance = BaseCritChancePercent + PrecisionCritChanceBonus;
+
+        if (critChance > 0 && Random.Shared.Next(100) < critChance)
+        {
+            var critMult = BaseCritMultiplier;
+            if (HasTrait(player, MarksmanshipLevel))
+                critMult += MarksmanshipCritBonus;
+            dmg *= critMult;
+        }
+
+        return Math.Max(1, (int)dmg);
+    }
+
+    // Lucky Shot: a chance on each landed hit to refund a little energy.
+    public static void TryLuckyShotEnergy(Player player)
+    {
+        if (!HasTrait(player, LuckyShotLevel))
+            return;
+        if (Random.Shared.Next(100) >= LuckyShotChancePercent)
+            return;
+
+        PowerupSystem.RestoreEnergy?.Invoke(player, LuckyShotEnergyRestore);
+    }
 
     // The four traits for the AbilitiesScreen's Traits section — real client ids. NameId/DescriptionId were
     // reversed from en_us_data via Jenkins lookup2 (names 420934-37, descriptions 420958-61); IconId from
