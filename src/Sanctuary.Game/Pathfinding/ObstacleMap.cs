@@ -17,7 +17,16 @@ public sealed class ObstacleMap
 
     // Real cave/terrain wall boundaries (see GzneParser) block within this margin of the segment - a rough
     // stand-in for a character's collision half-width, same spirit as FootprintRadius's per-prop guesses.
-    private const float WallMargin = 1.5f;
+    //
+    // WIDENED 2026-07-29 (live feedback: "enemies... taking a path that is blocked then eventually going
+    // through it") - 1.5 was thinner than the real cave wall geometry it's approximating: a .gzne wall strip
+    // traces the boundary CURVE of the walkable area (not a filled solid), so anything past this margin from
+    // the nearest strip segment reads as open space regardless of how much solid rock actually sits there.
+    // 1.5 units is barely wider than a character model - too easy for IsLineWalkable's blocked check to miss
+    // an actual wall a sample happened to graze the very edge of. Same reasoning as FootprintRadius's own
+    // comment ("a false 'blocked' just costs a slightly longer route, but a false 'clear' is exactly the
+    // 'walks through buildings' bug this exists to fix").
+    private const float WallMargin = 2.5f;
 
     private const float CellSize = 16f;
     private readonly Dictionary<(int, int), List<Obstacle>> _cells = [];
@@ -171,6 +180,12 @@ public sealed class ObstacleMap
 
     // Samples along the a->b segment (2D, X/Z only - matches how obstacles are stored) and rejects the
     // edge if any sample point falls inside an obstacle's footprint.
+    //
+    // TIGHTENED 2026-07-29 (live feedback: "enemies... taking a path that is blocked then eventually going
+    // through it", same root cause as WallMargin above) - 2-unit sample spacing could ALIAS PAST a short
+    // wall segment entirely: two consecutive samples straddling a thin blocking strip with neither one
+    // landing within WallMargin of it makes the whole line read as clear even though it visibly crosses
+    // solid geometry. 1 unit halves that gap.
     public bool IsLineWalkable(Vector4 a, Vector4 b)
     {
         var dx = b.X - a.X;
@@ -179,7 +194,7 @@ public sealed class ObstacleMap
         if (length < 0.001f)
             return true;
 
-        const float sampleSpacing = 2f;
+        const float sampleSpacing = 1f;
         var steps = Math.Max(1, (int)(length / sampleSpacing));
 
         for (var i = 0; i <= steps; i++)
