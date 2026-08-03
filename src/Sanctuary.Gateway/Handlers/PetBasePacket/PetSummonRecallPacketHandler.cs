@@ -48,18 +48,26 @@ public static class PetSummonRecallPacketHandler
             return true;
         }
 
+        ToggleSummon(connection, petInfo);
+
+        return true;
+    }
+
+    // Shared by every trigger that can summon/recall a pet (the pet-panel button via
+    // PetSummonRecallPacket, and using a summoning item from the bag via PetSummonByItemIdPacket) -
+    // same real-world action, same toggle behavior.
+    public static void ToggleSummon(GatewayConnection connection, PacketPetInfo petInfo)
+    {
         // If pet is already spawned, recall it
         if (connection.Player.Pet is not null)
         {
             connection.Player.Pet.Dispose();
             connection.Player.Pet = null;
-            return true;
+            return;
         }
 
         // Otherwise, spawn the pet
         SpawnPet(connection, petInfo);
-
-        return true;
     }
 
     public static void SpawnPet(GatewayConnection connection, PacketPetInfo petInfo)
@@ -89,9 +97,30 @@ public static class PetSummonRecallPacketHandler
 
         pet.ImageSetId = petDefinition.ImageSetId;
 
+        pet.MovementType = 2; // Physics - server controls position
+        pet.Animation = 1; // Walking
+
+        // "No rider" invalid-guid sentinel - every other dynamic NPC spawn in this codebase sets
+        // this explicitly (combat mobs, doors, pickups, coins). Left at the base Npc default of 0,
+        // this was the one field that made pets different from every other working dynamic spawn -
+        // likely read by the client as "attached to entity #0", stalling the initial draw until a
+        // full scene rebuild (minimize/restore) forced it through anyway.
+        pet.RiderGuid = ulong.MaxValue;
+
         connection.Player.Pet = pet;
 
         pet.UpdatePosition(connection.Player.Position, connection.Player.Rotation);
+
+        // TryCreatePet only registers the pet in the zone's server-side entity collections - the
+        // client never renders it until it's actually told about the new NPC. Every OTHER
+        // dynamically-spawned entity in this codebase (combat mobs, encounter pickups, doors, the
+        // training dummy) goes through Player.OnAddVisibleNpcs rather than a raw GetAddNpcPacket
+        // send - that's not just the AddNpc packet, it's the actual "this entity is now relevant to
+        // you" signal (also handles per-recipient badge/relevance fields). A bare AddNpc send (what
+        // this used to do) got the entity into the client's internal list but apparently didn't
+        // trigger an immediate draw - it only rendered after something else forced a full redraw
+        // (e.g. minimizing/restoring the window). Using the real relevance path instead.
+        connection.Player.OnAddVisibleNpcs([pet]);
 
         var petActivePacket = new PetActivePacket();
 

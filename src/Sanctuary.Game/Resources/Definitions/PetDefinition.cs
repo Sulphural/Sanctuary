@@ -6,6 +6,10 @@ public class PetDefinition
 
     public int NameId { get; set; }
 
+    // Server-side only - not sent over the wire (NameId is what the client resolves to display
+    // text). Used as the default name for a newly-acquired pet, before the player renames it.
+    public string DisplayName { get; set; } = null!;
+
     public int ImageSetId { get; set; }
 
     public string TextureAlias { get; set; } = null!;

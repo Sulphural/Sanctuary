@@ -37,8 +37,8 @@ public static class PetBasePacketHandler
         {
             PetSummonRecallPacket.OpCode => PetSummonRecallPacketHandler.HandlePacket(connection, reader.Span),
             PetListPacket.OpCode => PetListPacketHandler.HandlePacket(connection),
-            PacketPetSpawn.OpCode => PacketPetSpawnHandler.HandlePacket(connection, reader.Span),
-            PacketPetDismount.OpCode => PacketPetDismountHandler.HandlePacket(connection),
+            PetUiModePacket.OpCode => PetUiModePacketHandler.HandlePacket(connection, reader.Span),
+            PetSummonByItemIdPacket.OpCode => PetSummonByItemIdPacketHandler.HandlePacket(connection, reader.Span),
             _ => HandleUnknownOpCode(opCode)
         };
 

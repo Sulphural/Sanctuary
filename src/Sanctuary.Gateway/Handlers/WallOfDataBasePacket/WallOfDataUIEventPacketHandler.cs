@@ -73,6 +73,18 @@ public static class WallOfDataUIEventPacketHandler
             return HandleShowMounts(connection);
         }
 
+        // Clicking a pet tile in the "My Pets" panel sends this - previously completely unhandled.
+        // Live-observed 2026-08-02: after this event with Param=<db pet id> goes unanswered, the
+        // client's SUBSEQUENT PetSummonRecallPacket carries a garbage Id (uninitialized memory, not
+        // the real db id) instead of the pet that was actually clicked - the summon then fails
+        // ("tried to summon unknown pet") and the panel UI visibly breaks. Matches the same pattern
+        // already confirmed for HandleShowPets: the client needs an explicit PetStatusPacket to
+        // treat a pet as "known"/selected, not just its presence in the list.
+        if (packet.TableName == "BrowserV2" && packet.Callback == "SelectPet" && int.TryParse(packet.Param, out var selectedPetId))
+        {
+            return HandleSelectPet(connection, selectedPetId);
+        }
+
         Console.WriteLine("[DEBUG] Packet processed but not a claim code redemption");
         return true;
     }
@@ -125,28 +137,68 @@ public static class WallOfDataUIEventPacketHandler
         return true;
     }
 
+    // Alternates between two values on every call so PetStatusPacket's payload is always guaranteed
+    // to differ from whatever the client already has stored for a pet's stats - see HandleShowPets.
+    private static bool _petRefreshToggle;
+
     private static bool HandleShowPets(GatewayConnection connection)
     {
-        var petListPacket = new PetListPacket { Pets = connection.Player.Pets };
-
-        var rawBytes = petListPacket.Serialize();
-
-        Console.WriteLine($"[DEBUG] PetListPacket raw bytes ({rawBytes.Length}): {Convert.ToHexString(rawBytes)}");
-
-        if (connection.Player.Pets.Count > 0)
-        {
-            using var entryWriter = new Sanctuary.Core.IO.PacketWriter();
-            connection.Player.Pets[0].Serialize(entryWriter);
-            var entryBytes = entryWriter.Buffer;
-
-            Console.WriteLine($"[DEBUG] First pet entry raw bytes ({entryBytes.Length}): {Convert.ToHexString(entryBytes)}");
-            Console.WriteLine($"[DEBUG] First pet entry: Id={connection.Player.Pets[0].Id}, Name='{connection.Player.Pets[0].Name}', NameId={connection.Player.Pets[0].NameId}, TintId={connection.Player.Pets[0].TintId}, TextureAlias='{connection.Player.Pets[0].TextureAlias}'");
-        }
-
-        connection.SendTunneled(petListPacket);
+        connection.SendTunneled(new PetListPacket { Pets = connection.Player.Pets });
 
         _logger.LogInformation("Resent PetListPacket in response to Pets UI event. TotalPetsCount={count}",
             connection.Player.Pets.Count);
+
+        // The client only refreshes an ALREADY-OPEN "My Pets" panel on receipt of PetStatusPacket
+        // (op53/3) or PetSetNamePacket (op53/10) - RE'd via decompile of the client's op53 receive
+        // dispatcher (case 3 calls the same refresh path as case 10, both call FUN_00CCA680 on the
+        // PetList AND PetActive data sources). PetListPacket (op53/5) itself does NOT trigger this -
+        // that's the real reason the panel stayed empty even once the wire format and send timing
+        // were both correct: nothing ever told the already-constructed panel to repaint. Send a
+        // PetStatusPacket per owned pet to force it. The 4 stat floats only trigger the refresh if
+        // they differ from what the client already has stored (real hunger/hygiene/play/mood
+        // tracking doesn't exist yet - see project_pet_packet_opcode_audit memory), so toggle between
+        // two values each call rather than resending the same one.
+        _petRefreshToggle = !_petRefreshToggle;
+        var stat = _petRefreshToggle ? 0.99f : 0.98f;
+
+        foreach (var pet in connection.Player.Pets)
+        {
+            connection.SendTunneled(new PetStatusPacket
+            {
+                PetId = pet.Id,
+                Hunger = stat,
+                Hygiene = stat,
+                Play = stat,
+                Mood = stat
+            });
+        }
+
+        return true;
+    }
+
+    private static bool HandleSelectPet(GatewayConnection connection, int petId)
+    {
+        var pet = connection.Player.Pets.SingleOrDefault(x => x.Id == petId);
+
+        if (pet is null)
+        {
+            _logger.LogWarning("SelectPet UI event referenced unknown pet id {petId}.", petId);
+            return true;
+        }
+
+        _petRefreshToggle = !_petRefreshToggle;
+        var stat = _petRefreshToggle ? 0.99f : 0.98f;
+
+        connection.SendTunneled(new PetStatusPacket
+        {
+            PetId = pet.Id,
+            Hunger = stat,
+            Hygiene = stat,
+            Play = stat,
+            Mood = stat
+        });
+
+        _logger.LogInformation("Sent PetStatusPacket in response to SelectPet UI event. PetId={petId}", pet.Id);
 
         return true;
     }

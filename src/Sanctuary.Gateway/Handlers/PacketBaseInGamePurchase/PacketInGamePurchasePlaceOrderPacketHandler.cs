@@ -281,7 +281,7 @@ public static class PacketInGamePurchasePlaceOrderPacketHandler
                 var dbPet = new DbPet
                 {
                     Id = lastPetId + 1,
-                    Name = petDefinition.IsNameable ? "New Pet" : string.Empty,
+                    Name = petDefinition.IsNameable ? petDefinition.DisplayName : string.Empty,
                     Tint = orderDetailTint,
                     Definition = petDefinition.Id,
                     Created = DateTimeOffset.UtcNow,

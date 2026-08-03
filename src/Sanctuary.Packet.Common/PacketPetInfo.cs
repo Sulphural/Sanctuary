@@ -13,7 +13,7 @@ public class PacketPetInfo : ISerializableType
 
     public int NameId;
 
-    public int ImageSetId; // Server-side only - not serialized, client derives icon from NameId
+    public int ImageSetId; // Serialized at offset +0xFC (experimental, see Serialize())
 
     public int TintId;
     public string TintAlias = null!; // Server-side only - not serialized, client has no field for it
@@ -56,10 +56,12 @@ public class PacketPetInfo : ISerializableType
         writer.Write(Id); // ClientPetData::m_nId, offset +0x0
         writer.Write(false); // m_bUnknown2, offset +0x4
         writer.Write(0); // m_nUnknown3, offset +0x8
-        writer.Write(1.0f); // Hunger, offset +0x20
-        writer.Write(1.0f); // Hygiene, offset +0x24
-        writer.Write(1.0f); // Play, offset +0x28
-        writer.Write(1.0f); // Mood, offset +0x2C
+        // Live-tested 2026-08-02: 1.0f rendered as a near-empty bar in the My Pets panel - the
+        // client's stat bars expect a 0-100 range, not a 0-1 fraction.
+        writer.Write(100.0f); // Hunger, offset +0x20
+        writer.Write(100.0f); // Hygiene, offset +0x24
+        writer.Write(100.0f); // Play, offset +0x28
+        writer.Write(100.0f); // Mood, offset +0x2C
         writer.Write(false); // m_bUnknown8, offset +0x30
 
         writer.Write(0); // m_PetTricks HashList count (sub_8FCDB0, offset +0x34) - none known yet
@@ -71,7 +73,13 @@ public class PacketPetInfo : ISerializableType
 
         writer.Write(TintId); // unknown int, offset +0x100
         writer.Write(TextureAlias); // m_strTextureAlias, offset +0x108 (via sub_894B10)
-        writer.Write(0); // unknown int, offset +0xFC
+        // EXPERIMENT 2026-08-02: the pet portrait icon showed as a blank placeholder box.
+        // PacketMountInfo (a working, comparable system) explicitly sends ImageSetId over the
+        // wire - PacketPetInfo never did (the old assumption was "client derives icon from
+        // NameId", which the blank icon disproves). +0xFC is the first still-unlabeled int field
+        // in wire order, positionally clustered with the other cosmetic fields (TintId/TextureAlias)
+        // - trying it here first.
+        writer.Write(ImageSetId); // was: unknown int, offset +0xFC
         writer.Write(false); // unknown bool, offset +0x104
         writer.Write(0); // unknown int, offset +0x118
         writer.Write(false); // unknown bool, offset +0x11C

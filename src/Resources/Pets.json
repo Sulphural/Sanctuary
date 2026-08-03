@@ -1,74 +1,79 @@
 [
   {
-    "Comment": "Fluffy Dog Pet",
+    "Comment": "Fluffy Dog Pet (ModelId 3339 was skeleton_m.adr - fixed to dog_small_fluffy.adr; ImageSetId 5001 was a brawler pants icon - fixed to item_pet_dog_small_fluffy_solid)",
     "Id": 20001,
     "NameId": 10001,
-    "ImageSetId": 5001,
+    "DisplayName": "Fluffy Dog",
+    "ImageSetId": 3212,
     "TextureAlias": "",
     "TintAlias": "dyetint",
     "TintId": 0,
     "MembersOnly": false,
-    "ModelId": 3339,
+    "ModelId": 364,
     "IsNameable": true,
     "Stats": {
       "MaxMovementSpeed": 8.0
     }
   },
   {
-    "Comment": "Orange Tabby Cat Pet",
+    "Comment": "Orange Tabby Cat Pet (ModelId 2064 was wyvern_m.adr - fixed to cat_shorthair.adr; ImageSetId 5003 was a brawler pants icon - fixed to item_pet_cat_shorthair_tabby)",
     "Id": 20003,
     "NameId": 10003,
-    "ImageSetId": 5003,
+    "DisplayName": "Orange Tabby Cat",
+    "ImageSetId": 3194,
     "TextureAlias": "",
     "TintAlias": "dyetint",
     "TintId": 0,
     "MembersOnly": false,
-    "ModelId": 2064,
+    "ModelId": 50,
     "IsNameable": true,
     "Stats": {
       "MaxMovementSpeed": 8.0
     }
   },
   {
-    "Comment": "Baby Dragon (Red) Pet",
+    "Comment": "Baby Dragon (Red) Pet (ModelId 3480 was wyvern_m_poison.adr - fixed to dragon_m_basic.adr; ImageSetId 5005 was a brawler pants icon - fixed to item_pet_dragon_m_basic_goldtips, closest real dragon_m_basic-family icon available)",
     "Id": 20005,
     "NameId": 10005,
-    "ImageSetId": 5005,
+    "DisplayName": "Baby Dragon",
+    "ImageSetId": 5606,
     "TextureAlias": "",
     "TintAlias": "dyetint",
     "TintId": 0,
     "MembersOnly": false,
-    "ModelId": 3480,
+    "ModelId": 1756,
     "IsNameable": true,
     "Stats": {
       "MaxMovementSpeed": 8.0
     }
   },
   {
-    "Comment": "White Rabbit Pet",
+    "Comment": "White Rabbit Pet (ModelId 3500 was farming_vinehigh_jellybean_mature_01.adr - fixed to rabbit.adr; ImageSetId 5008 was a brawler pants icon - fixed to item_vanitypet_rabbit_m)",
     "Id": 20008,
     "NameId": 10008,
-    "ImageSetId": 5008,
+    "DisplayName": "White Rabbit",
+    "ImageSetId": 6086,
     "TextureAlias": "",
     "TintAlias": "dyetint",
     "TintId": 0,
     "MembersOnly": false,
-    "ModelId": 3500,
+    "ModelId": 403,
     "IsNameable": true,
     "Stats": {
       "MaxMovementSpeed": 7.5
     }
   },
   {
-    "Comment": "Phoenix Hatchling Pet",
+    "Comment": "Phoenix Hatchling Pet (ModelId 3600 was farming_fruit_stand_snowberry_01.agr, a static prop - fixed to phoenix_m.adr; ImageSetId 5017 was a wizard shoe icon - fixed to item_pet_dragon_m_phoenix_basic)",
     "Id": 20017,
     "NameId": 10017,
-    "ImageSetId": 5017,
+    "DisplayName": "Phoenix Hatchling",
+    "ImageSetId": 6955,
     "TextureAlias": "",
     "TintAlias": "dyetint",
     "TintId": 0,
     "MembersOnly": false,
-    "ModelId": 3600,
+    "ModelId": 3292,
     "IsNameable": true,
     "Stats": {
       "MaxMovementSpeed": 8.5
@@ -78,6 +83,7 @@
     "Comment": "Wolf Pet",
     "Id": 1088,
     "NameId": 6270,
+    "DisplayName": "Wolf",
     "ImageSetId": 6873,
     "TextureAlias": "base",
     "TintAlias": "base_metal",
@@ -93,6 +99,7 @@
     "Comment": "Lava Tiger Pet",
     "Id": 4243,
     "NameId": 6369,
+    "DisplayName": "Lava Tiger",
     "ImageSetId": 7058,
     "TextureAlias": "lava-tiger",
     "TintAlias": "dyetint",

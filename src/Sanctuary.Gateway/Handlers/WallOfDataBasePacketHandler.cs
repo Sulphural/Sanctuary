@@ -31,6 +31,11 @@ public static class WallOfDataBasePacketHandler
         return opCode switch
         {
             WallOfDataUIEventPacket.OpCode => WallOfDataUIEventPacketHandler.HandlePacket(connection, reader.Span),
+            // Sub-opcodes 2 and 6: client-side UI telemetry (config-driven via the client's own
+            // WallOfDataEventTypes.txt, sibling classes are PlayerClickMove/PlayerKeyboard/WalletBalance -
+            // not gameplay-relevant). Acknowledged as a no-op to stop UNHANDLED log spam rather than
+            // invent meaning for data we can't confirm a purpose for.
+            2 or 6 => true,
             _ => false
         };
     }
