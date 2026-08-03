@@ -60,4 +60,9 @@ public interface IQuestManager
     // battle instance (EncounterComplete) activates its next goal there, where the next goal's NPC
     // isn't spawned — so the update is skipped and the arrow stays on the stale pre-dungeon target.
     void RefreshObjectiveTarget(Player player);
+
+    // Grants one of definitionId to the player: stacks it in the DB (by definition + tint), mirrors it
+    // into the in-memory inventory, and tells the client. Exposed for reuse by non-quest reward paths
+    // (e.g. gathering nodes).
+    void GrantItem(Player player, int definitionId);
 }

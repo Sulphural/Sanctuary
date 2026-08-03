@@ -1240,7 +1240,25 @@ public sealed class QuestManager : IQuestManager
         // Job/profile XP - grant to the active job (updates the job's level bar).
         var experience = quest.RewardExperience;
         if (experience > 0)
+        {
             player.AwardXp(experience);
+
+            // AwardXp only updates in-memory state and defers DB persistence to the normal
+            // save-on-disconnect path (fine for combat kills, but a one-shot quest reward should be
+            // as durable as the coins/items granted above it - otherwise a crash before logout
+            // silently drops XP the client already showed the player).
+            using (var db = _dbContextFactory.CreateDbContext())
+            {
+                var dbCharacter = db.Characters.Include(c => c.Profiles).FirstOrDefault(c => c.Id == player.CharacterId);
+                var dbProfile = dbCharacter?.Profiles.FirstOrDefault(p => p.Id == player.ActiveProfile.Id);
+                if (dbProfile is not null)
+                {
+                    dbProfile.Level = player.ActiveProfile.Rank;
+                    dbProfile.LevelXP = player.ActiveProfile.LevelXpRaw;
+                    db.SaveChanges();
+                }
+            }
+        }
 
         // Reward-earned celebration (coins + XP fly-in with sound).
         if (coins > 0 || experience > 0)
@@ -1259,7 +1277,7 @@ public sealed class QuestManager : IQuestManager
     // Grants one of definitionId to the player: stacks it in the DB (by definition +
     // tint), mirrors it into the in-memory inventory, and tells the client (ItemAdd for a new item, or
     // ItemUpdate for an incremented stack). Mirrors the coin-store grant path.
-    private void GrantItem(Player player, int definitionId)
+    public void GrantItem(Player player, int definitionId)
     {
         if (!_resourceManager.ClientItemDefinitions.TryGetValue(definitionId, out var itemDef))
             return;
