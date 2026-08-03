@@ -27,6 +27,7 @@ public sealed partial class StartingZone : BaseZone
     private readonly IResourceManager _resourceManager;
     private readonly StartingZoneDefinition _zoneDefinition;
     private readonly Sanctuary.Game.Quests.IQuestManager _questManager;
+    private readonly Sanctuary.Game.Gathering.IGatheringManager _gatheringManager;
     private readonly Sanctuary.Game.Party.IPartyManager _partyManager;
     private readonly Microsoft.EntityFrameworkCore.IDbContextFactory<Sanctuary.Database.DatabaseContext> _dbContextFactory;
 
@@ -55,6 +56,7 @@ public sealed partial class StartingZone : BaseZone
         _zoneManager = serviceProvider.GetRequiredService<IZoneManager>();
         _resourceManager = serviceProvider.GetRequiredService<IResourceManager>();
         _questManager = serviceProvider.GetRequiredService<Sanctuary.Game.Quests.IQuestManager>();
+        _gatheringManager = serviceProvider.GetRequiredService<Sanctuary.Game.Gathering.IGatheringManager>();
         _partyManager = serviceProvider.GetRequiredService<Sanctuary.Game.Party.IPartyManager>();
         _dbContextFactory = serviceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Sanctuary.Database.DatabaseContext>>();
 
@@ -73,6 +75,7 @@ public sealed partial class StartingZone : BaseZone
         // after construction finishes. Collect-goal pickups aren't part of that roster (they come from
         // Quests.json), so they still spawn directly here.
         SpawnQuestCollectibles();
+        SpawnMiningNodes();
     }
 
     // Scans GcnkAssetsDirectory for every "FabledRealms_*.gcnk"/".gcnk.z" tile file, parses each with
@@ -353,6 +356,56 @@ public sealed partial class StartingZone : BaseZone
 
             npc.UpdatePosition(collectible.Position, System.Numerics.Quaternion.Identity);
             GetTileFromPosition(collectible.Position).Entities.TryAdd(npc.Guid, npc);
+        }
+    }
+
+    // Miner job pass 1: a handful of hand-placed ore veins near world spawn (real "sanctuary"-themed
+    // mining node models, Models.txt ids 612-616), each granting a real ore item (ClientItemDefinitions
+    // CategoryId 16). Shared world resource nodes - gather state/respawn timer owned by GatheringManager.
+    // Not the real "Singing Crystal Mines" location (that interior zone isn't stood up in this repo yet);
+    // positions here are a starter placement, to be tuned against the live client like other spawns.
+    // Comment is the world nameplate shown on the node itself - "Vein" (the deposit you're mining), not
+    // "Ore" (the item it grants once mined - that name stays as-is in ClientItemDefinitions.json).
+    // Hand-picked in-game via /pos: a spot closer to where players actually land than the raw
+    // SpawnPosition offsets were putting them.
+    private static readonly Vector4 MiningNodesCenter = new(-1888.94f, 43.54f, 385.11f, 0f);
+
+    private static readonly (int ModelId, int ItemDefinitionId, string Comment, Vector4 Offset)[] MiningNodeSpawns =
+    [
+        (612, 2739, "Copper Vein", new Vector4(3f, 0f, 0f, 0f)),
+        (616, 2740, "Tin Vein", new Vector4(-3f, 0f, 0f, 0f)),
+        (614, 2741, "Iron Vein", new Vector4(0f, 0f, 3f, 0f)),
+        (615, 2742, "Silver Vein", new Vector4(0f, 0f, -3f, 0f)),
+        (613, 2743, "Gold Vein", new Vector4(2f, 0f, 2f, 0f)),
+    ];
+
+    private void SpawnMiningNodes()
+    {
+        foreach (var (modelId, itemDefinitionId, comment, offset) in MiningNodeSpawns)
+        {
+            if (!TryCreateNpc(out var node))
+                continue;
+
+            node.ModelId = modelId;
+            node.Name = comment;
+            // Nameplate rendered as an ugly filled "unresolved name" pill in-game: this project's other
+            // clickable static props (quest collectibles, the daily-wheel kiosk) all label themselves via
+            // a real NameId (a real localized Global.Text id resolved client-side), never a bare Name
+            // string with NameId left 0. We don't have a real localized "X Vein" string id to point at, so
+            // hide the nameplate entirely rather than ship the broken-looking fallback.
+            node.HideNamePlate = true;
+            node.Static = true;
+            node.Scale = _resourceManager.Models.TryGetValue(modelId, out var model) && model.Scale != 0f
+                ? model.Scale
+                : 1f;
+            node.Visible = true;
+            node.CursorId = 17; // hand cursor so it's clickable
+
+            var pos = new Vector4(MiningNodesCenter.X + offset.X, MiningNodesCenter.Y + offset.Y, MiningNodesCenter.Z + offset.Z, SpawnPosition.W);
+            node.UpdatePosition(pos, SpawnRotation);
+            GetTileFromPosition(pos).Entities.TryAdd(node.Guid, node);
+
+            _gatheringManager.RegisterNode(node, itemDefinitionId);
         }
     }
 

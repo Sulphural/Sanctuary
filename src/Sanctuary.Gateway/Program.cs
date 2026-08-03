@@ -105,6 +105,7 @@ builder.ConfigureServices((hostBuilderContext, serviceCollection) =>
     serviceCollection.AddSingleton<IScriptManager, ScriptManager>();
     serviceCollection.AddSingleton<IInteractionManager, InteractionManager>();
     serviceCollection.AddSingleton<Sanctuary.Game.Quests.IQuestManager, Sanctuary.Game.Quests.QuestManager>();
+    serviceCollection.AddSingleton<Sanctuary.Game.Gathering.IGatheringManager, Sanctuary.Game.Gathering.GatheringManager>();
     serviceCollection.AddSingleton<Sanctuary.Game.Party.IPartyManager, Sanctuary.Game.Party.PartyManager>();
 });
 
