@@ -1,0 +1,66 @@
+[
+  {
+    "Comment": "Spin For The Win! - the daily prize wheel (ClientActivityDefinitions id 8, game_wheel.gfx). Slices run through the widget's art in its own order (categories 1-10); each prize matches the picture on its slice, and ItemIds slices roll one of six items of that kind. See DailyWheelDefinition for the full art catalogue and an alternate table.",
+    "Id": 1,
+    "Type": 1,
+    "NameStringId": 409962,
+    "MsgStringId": 409969,
+    "SpinsPerDay": 1,
+    "RewardMsgStringId": 408045,
+    "Slots": [
+      {
+        "Comment": "ring + gem -> a fishing ring (Backwater / Algae / Rollcast sets)",
+        "Category": 1, "Weight": 8, "Quantity": 1,
+        "ItemIds": [2101, 2102, 2103, 2110, 2111, 2113]
+      },
+      {
+        "Comment": "clothing -> a t-shirt",
+        "Category": 2, "Weight": 10, "Quantity": 1,
+        "ItemIds": [248, 340, 398, 1192, 1193, 2703]
+      },
+      {
+        "Comment": "pet + potions -> pet supplies x2",
+        "Category": 3, "Weight": 10, "Quantity": 2,
+        "ItemIds": [1835, 37061, 37062, 1836, 10531, 10521]
+      },
+      { "Comment": "extra spins medallion -> 1 more spin", "Category": 4, "Spins": 1, "Weight": 10 },
+      {
+        "Comment": "TCG card pack -> a booster pack",
+        "Category": 5, "Weight": 6, "Quantity": 1,
+        "ItemIds": [55340, 32044, 17765, 68945, 76882, 78318]
+      },
+      {
+        "Comment": "money bag -> a pile of coins",
+        "Category": 6, "Weight": 16,
+        "CoinAmounts": [
+          { "Coins": 250, "NameStringId": 435924 },
+          { "Coins": 1000, "NameStringId": 433744 },
+          { "Coins": 5000, "NameStringId": 4773 },
+          { "Coins": 7500, "NameStringId": 6875 },
+          { "Coins": 10000, "NameStringId": 5146 },
+          { "Coins": 20000, "NameStringId": 4941 }
+        ]
+      },
+      {
+        "Comment": "rod / kart / ball -> a fishing rod",
+        "Category": 7, "Weight": 8, "Quantity": 1,
+        "ItemIds": [68185, 68220, 68255, 68290, 68325, 76562]
+      },
+      {
+        "Comment": "potion + scrolls -> a battle sphere x3",
+        "Category": 8, "Weight": 12, "Quantity": 3,
+        "ItemIds": [3011, 3013, 3015, 3025, 3074, 3089]
+      },
+      {
+        "Comment": "exchange ticket -> a ticket or voucher",
+        "Category": 9, "Weight": 10, "Quantity": 1,
+        "ItemIds": [378, 379, 380, 70455, 70456, 70457]
+      },
+      {
+        "Comment": "tools -> a crafting/gathering tool",
+        "Category": 10, "Weight": 10, "Quantity": 1,
+        "ItemIds": [1170, 1184, 1910, 4108, 23687, 23688]
+      }
+    ]
+  }
+]

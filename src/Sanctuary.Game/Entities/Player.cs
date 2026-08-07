@@ -66,6 +66,12 @@ public sealed class Player : ClientPcData, IEntity
     // WinEncounter + BaseMiniGamePacketHandler.HandleLootWheelStopped.
     public int PendingWheelXp { get; set; }
 
+    // DAILY WHEEL ("Spin For The Win!", the game_wheel.gfx widget - unrelated to the loot wheel above):
+    // the slice the wheel was told to stop on when the player pressed spin, paid out when the widget
+    // reports the wheel stopped. -1 = no spin in flight. See DailyWheelGame.
+    public int PendingDailyWheelSlot { get; set; } = -1;
+    public int PendingDailyWheelId { get; set; }
+
     // Where the exit door returns the player after a combat instance: the overworld spot
     // they stood on when GO! teleported them out (set by the entrance handler, consumed + cleared by
     // the arena's ReturnHome). Null = fall back to the zone spawn.

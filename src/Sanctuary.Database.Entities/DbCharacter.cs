@@ -62,6 +62,10 @@ public class DbCharacter
     // allowed once its UTC calendar day differs from LastDailyWheelSpinUtc's.
     public DateTimeOffset? LastDailyWheelSpinUtc { get; set; }
 
+    // Extra wheel spins on top of the free daily one (granted by "/wheel give"). Spent only after the
+    // day's free spin has been used, and unlike it these carry over between days and logins.
+    public int DailyWheelBonusSpins { get; set; }
+
     public ICollection<DbItem> Items { get; set; } = new HashSet<DbItem>();
     public ICollection<DbTitle> Titles { get; set; } = new HashSet<DbTitle>();
     public ICollection<DbMount> Mounts { get; set; } = new HashSet<DbMount>();

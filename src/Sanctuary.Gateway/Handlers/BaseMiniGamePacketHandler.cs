@@ -217,11 +217,12 @@ public static class BaseMiniGamePacketHandler
         [3089] = "Confusion Sphere",
     };
 
-    private sealed record GrantedItem(int ItemGuid, ClientItemDefinition? Definition);
+    internal sealed record GrantedItem(int ItemGuid, ClientItemDefinition? Definition);
 
     // Add an item to the player's persistent inventory + live client state (same DB/packet
     // flow as the coin-store buy handler, minus the cost). Returns the inventory item guid.
-    private static GrantedItem? GrantItem(GatewayConnection connection, int definitionId, int quantity)
+    // Shared with DailyWheelGame, which pays out the same way.
+    internal static GrantedItem? GrantItem(GatewayConnection connection, int definitionId, int quantity)
     {
         if (!_resourceManager.ClientItemDefinitions.TryGetValue(definitionId, out var definition))
         {
@@ -305,7 +306,7 @@ public static class BaseMiniGamePacketHandler
         return new GrantedItem(clientItem.Id, definition);
     }
 
-    private static void GrantCoins(GatewayConnection connection, int coins)
+    internal static void GrantCoins(GatewayConnection connection, int coins)
     {
         using var dbContext = _dbContextFactory.CreateDbContext();
 
@@ -340,14 +341,15 @@ public static class BaseMiniGamePacketHandler
         _logger.LogInformation("MiniGameStartGame (GO! pressed): GameId={game} GroupId={group} StateId={state}",
             gameId, groupId, stateId);
 
-        // GO! pressed on the daily wheel's launch panel - ack the start (same S2C GameStart every other
-        // minigame GO! gets) and let the client actually load/run the embedded game_wheel.swf content, so
-        // the player sees and plays the real wheel instead of the server short-circuiting straight to a
-        // reward. We don't yet know what the client reports back once the player finishes spinning inside
-        // it - that's the next thing to observe live (watch the server log after spinning in the panel).
+        // GO! pressed on the daily wheel's launch panel: ack the start, then name the movie - the ack alone
+        // loads nothing (that was the earlier "start screen appears, then a blank screen" behaviour). Same
+        // pair Mining Practice sends, see MiniGameStartGamePacketHandler. Normally the wheel skips this
+        // panel entirely and opens straight from 26/11 - see BaseCommandPacketHandler.HandleStartWheel.
         if (gameId == SpinForTheWinActivityId)
         {
             connection.SendTunneled(new MiniGameGameStartPacket(0, -1, -1));
+            connection.SendTunneled(DailyWheelGame.CreateStartPacket());
+
             return true;
         }
 

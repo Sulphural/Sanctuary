@@ -93,6 +93,8 @@ public static class CommandRouter
                 return HandleLuaSpawn(conn, parts);
             case "spinwheel":
                 return HandleSpinWheel(conn);
+            case "wheel":
+                return HandleWheel(conn, parts);
             case "waypoints":
                 return HandleWaypoints(conn, parts);
             case "luareload":
@@ -1173,7 +1175,16 @@ public static class CommandRouter
             "/lua [code] - Run a client Lua snippet\n" +
             "/luaspawn [NpcId] - Spawn an NPC on top of you via the server's zone-script spawn API (default: boombox)\n" +
             "/luareload - Reload your zone's .lua script from disk and re-run it, no server restart needed\n" +
-            "/spinwheel - Trigger the Spin For The Win offer panel directly, bypassing the minigames Browser";
+            "/spinwheel - Roll the Spin For The Win daily reward directly, with no wheel UI (fallback path)\n" +
+            "/wheel give [count] [PlayerName] - Give a player extra daily wheel spins (yourself if no name; negative takes them away)\n" +
+            "/wheel rig [slot] - Force every spin to land on one slice, 0-based in DailyWheel.json order (no arg = random again)\n" +
+            "/wheel go - Grant a spin and put the wheel on screen (op143/1 + 26/12 StartFlashGame)\n" +
+            "/wheel flash [swf] - Send just the Flash-game start, optionally with a different movie name\n" +
+            "/wheel add [count] - Grant the \"wheel\" repeating activity (op143/1) - this is what un-greys Spin For The Win's Play button\n" +
+            "/wheel state [count] - Same but the update-only packet (op143/2)\n" +
+            "/wheel [a] [b] - Tell the client a coin spin is available (op171; a/b are its two body ints, default 1 0)\n" +
+            "/wheel reset - Clear today's daily-spin lock so the wheel can be spun again\n" +
+            "/wheel slots [cat cat ...] - Repaint the wheel's slices with the given category art ids (1-25)";
 
         if (IsEnforcer(conn))
         {
@@ -1427,6 +1438,222 @@ public static class CommandRouter
         startingZone.SpinDailyWheel(conn.Player);
 
         SendSystem(conn, "/spinwheel -> rolled the Spin For The Win daily reward directly.");
+        return true;
+    }
+
+    // /wheel - opens the real "Spin For The Win!" wheel widget (game_wheel.gfx), same as clicking the
+    // kiosk near spawn or pressing Play on the activity in the minigames Browser.
+    //   /wheel reset            - clear today's spin lock so it can be spun again
+    //   /wheel slots 1 2 3 ...  - append a preview wheel painted with those category art ids (1-25),
+    //                             for mapping slice art to numbers; needs the wheel already open
+    private static bool HandleWheel(GatewayConnection conn, string[] parts)
+    {
+        if (!RequireAdmin(conn))
+            return true;
+
+        var sub = parts.Length > 1 ? parts[1].ToLowerInvariant() : "";
+
+        // /wheel give [count] [PlayerName] - hand out extra spins (persistent, on top of the free daily
+        // one; negative takes them away). No name = yourself.
+        if (sub == "give")
+        {
+            var count = parts.Length > 2 && int.TryParse(parts[2], out var n) ? n : 1;
+
+            var target = conn.Player;
+
+            if (parts.Length > 3)
+            {
+                var pattern = string.Join(' ', parts, 3, parts.Length - 3);
+
+                if (!TryResolvePlayerNamePattern(pattern, out var resolvedName, out var error))
+                {
+                    SendSystem(conn, error);
+                    return true;
+                }
+
+                if (!_zoneManager.TryGetPlayer(resolvedName, out var resolved))
+                {
+                    SendSystem(conn, $"Player '{resolvedName}' not found.");
+                    return true;
+                }
+
+                target = resolved;
+            }
+
+            var total = DailyWheelGame.GrantSpins(target.Guid, count);
+
+            // Push the new count so their Play button updates without a relog.
+            DailyWheelGame.SendSpinAvailability(target);
+
+            SendSystem(conn, $"/wheel give -> {target.Name.FullName} now has {total} bonus spin(s) " +
+                             "on top of today's free one.");
+
+            if (!ReferenceEquals(target, conn.Player))
+                target.SendTunneled(new ChatPacketDebugChat
+                {
+                    PrintToChat = true,
+                    Message = $"You've been given {count} daily wheel spin(s)!",
+                });
+
+            return true;
+        }
+
+        // /wheel rig [slot] - force every spin onto one slice (no argument / -1 = back to random), for
+        // checking that the slice the wheel stops on matches the prize that slot pays out.
+        if (sub == "rig")
+        {
+            DailyWheelGame.RiggedSlot = parts.Length > 2 && int.TryParse(parts[2], out var slot) ? slot : -1;
+
+            if (DailyWheelGame.RiggedSlot < 0)
+            {
+                SendSystem(conn, "/wheel rig -> back to the weighted random roll.");
+                return true;
+            }
+
+            var def = _resourceManager.DailyWheels.Values.OrderBy(x => x.Id).FirstOrDefault();
+            var rigged = def is not null && DailyWheelGame.RiggedSlot < def.Slots.Count
+                ? def.Slots[DailyWheelGame.RiggedSlot]
+                : null;
+
+            SendSystem(conn, $"/wheel rig -> every spin lands on slot {DailyWheelGame.RiggedSlot}" +
+                             (rigged is null ? "." : $": art {rigged.Category}, pays {rigged.Comment}.") +
+                             " Spin and check the slice it stops on against that.");
+            return true;
+        }
+
+        if (sub == "reset")
+        {
+            DailyWheelGame.ResetDailySpin(conn.Player.Guid);
+            DailyWheelGame.SendSpinAvailability(conn);
+
+            SendSystem(conn, "/wheel reset -> daily spin lock cleared, Play button re-enabled.");
+            return true;
+        }
+
+        if (sub == "slots")
+        {
+            var categories = parts.Skip(2)
+                .Select(x => int.TryParse(x, out var value) ? value : 0)
+                .Where(x => x > 0)
+                .ToArray();
+
+            if (categories.Length == 0)
+                categories = Enumerable.Range(1, 10).ToArray();
+
+            DailyWheelGame.SendPreviewWheel(conn, 1, categories);
+
+            SendSystem(conn, $"/wheel slots -> preview wheel added with categories [{string.Join(' ', categories)}]. " +
+                             "Use the arrows beside the wheel to page to it.");
+            return true;
+        }
+
+        if (sub == "minigame")
+        {
+            // Just the minigame launch (activity 8, Type=22), without the spin notify - useful for seeing
+            // which half of the pair does what.
+            if (conn.Player.Zone is not Sanctuary.Game.Zones.StartingZone startingZone)
+            {
+                SendSystem(conn, "You must be in the starting zone to use /wheel minigame.");
+                return true;
+            }
+
+            if (!_resourceManager.ClientActivityDefinitions.TryGetValue(8, out var clientActivityDefinition))
+            {
+                SendSystem(conn, "No ClientActivityDefinitions entry for ActivityId 8 (Spin For The Win!).");
+                return true;
+            }
+
+            startingZone.LaunchSpinForTheWinGame(conn.Player, clientActivityDefinition);
+
+            SendSystem(conn, "/wheel minigame -> sent the (dead-end) minigame launch for activity 8.");
+            return true;
+        }
+
+        // â˜… The gate the minigames-menu Play button reads: give the player a repeating activity named
+        // "wheel" with a count. Args: /wheel add [count] [id] [consecutive] [nextTime] [unknown] [name]
+        if (sub == "add" || sub == "state")
+        {
+            int Arg(int i, int fallback) =>
+                parts.Length > i && int.TryParse(parts[i], out var v) ? v : fallback;
+
+            var count = Arg(2, 1);
+            var id = Arg(3, 1);
+            var consecutive = Arg(4, 0);
+            var nextTime = Arg(5, 0);
+            var unknown = Arg(6, 0);
+            var name = parts.Length > 7 ? parts[7] : "wheel";
+
+            if (sub == "add")
+                conn.SendTunneled(new RepeatingActivityAddPacket
+                {
+                    ActivityId = id,
+                    Count = count,
+                    Consecutive = consecutive,
+                    NextTime = nextTime,
+                    Unknown = unknown,
+                    Name = name,
+                });
+            else
+                conn.SendTunneled(new RepeatingActivityStatePacket
+                {
+                    ActivityId = id,
+                    Count = count,
+                    Consecutive = consecutive,
+                    NextTime = nextTime,
+                    Unknown = unknown,
+                });
+
+            SendSystem(conn, $"/wheel {sub} -> op143/{(sub == "add" ? 1 : 2)} \"{name}\" id={id} " +
+                             $"count={count} consecutive={consecutive} nextTime={nextTime} unknown={unknown}. " +
+                             "Now open the minigames menu and press Play on Spin For The Win.");
+            return true;
+        }
+
+        // Grant a spin, then tell the client to put the wheel on screen.
+        if (sub == "go")
+        {
+            conn.SendTunneled(new RepeatingActivityAddPacket { ActivityId = 1, Count = 1, Name = "wheel" });
+
+            DailyWheelGame.OpenWheel(conn);
+
+            SendSystem(conn, "/wheel go -> spin granted + wheel launched (press GO! on the panel).");
+            return true;
+        }
+
+        // Just the minigame state (info + game-start), no start packet - so the two halves can be tested
+        // separately.
+        if (sub == "state2")
+        {
+            DailyWheelGame.SendWheelState(conn);
+
+            SendSystem(conn, "/wheel state2 -> MiniGameInfo(Type=22, game 8) + GameStart.");
+            return true;
+        }
+
+        // Fire just the Flash-game start, with a custom movie / Lua window class / flag if given:
+        //   /wheel flash [swf] [luaClass] [0|1]
+        if (sub == "flash")
+        {
+            var packet = DailyWheelGame.CreateStartPacket();
+
+            if (parts.Length > 2) packet.Swf = parts[2];
+            if (parts.Length > 3) packet.LuaClass = parts[3];
+            packet.Unknown = parts.Length > 4 && parts[4] != "0";
+
+            conn.SendTunneled(packet);
+
+            SendSystem(conn, $"/wheel flash -> 26/12 StartFlashGame(\"{packet.LuaClass}\", \"{packet.Swf}\", {packet.Unknown}).");
+            return true;
+        }
+
+        // The other trigger: tell the client a coin spin is available and let it open its own wheel.
+        // Both body fields can be given explicitly while their meaning is still being pinned down.
+        var arg1 = parts.Length > 1 && int.TryParse(parts[1], out var a) ? a : 1;
+        var arg2 = parts.Length > 2 && int.TryParse(parts[2], out var b) ? b : 0;
+
+        conn.SendTunneled(new PacketClientNotifyCoinSpinAvailable { Unknown1 = arg1, Unknown2 = arg2 });
+
+        SendSystem(conn, $"/wheel -> sent PacketClientNotifyCoinSpinAvailable (op171, {arg1}, {arg2}).");
         return true;
     }
 

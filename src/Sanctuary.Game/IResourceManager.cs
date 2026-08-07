@@ -43,5 +43,8 @@ public interface IResourceManager
 
     QuestDefinitionCollection Quests { get; }
 
+    // "Spin For The Win!" daily prize wheels (game_wheel.gfx), keyed by wheel id.
+    DailyWheelDefinitionCollection DailyWheels { get; }
+
     bool Load();
 }

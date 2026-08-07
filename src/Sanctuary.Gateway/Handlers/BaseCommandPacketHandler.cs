@@ -46,6 +46,7 @@ public static class BaseCommandPacketHandler
             CommandPacketChatChannelOff.OpCode => CommandPacketChatChannelOffHandler.HandlePacket(connection, reader.Span),
             23 => CommandPacketQuestAbandonHandler.HandlePacket(connection, reader.Span), // "Drop Quest" (journal)
             6 => HandleDialogResponse(connection),                                        // 26/6 PacketDialogResponse
+            11 => HandleStartWheel(connection),                                           // 26/11 InteractionStartWheel
             _ => LogUnhandled(opCode, reader)
         };
     }
@@ -59,6 +60,20 @@ public static class BaseCommandPacketHandler
     private static bool HandleDialogResponse(GatewayConnection connection)
     {
         connection.Player.SendTunneled(new CommandPacketEndDialog());
+        return true;
+    }
+
+    // ★ 26/11 CommandPacketInteractionStartWheel (empty body) — the client's own "open the daily wheel"
+    // request, sent by the native MiniGameFlashC:StartWheel once the player holds a "wheel" repeating
+    // activity spin. Answer with the Flash-game start naming the widget (same packet Mining Practice uses,
+    // just a different movie); the wheel then talks to us over the minigame payload channel — see
+    // DailyWheelGame.
+    private static bool HandleStartWheel(GatewayConnection connection)
+    {
+        _logger.LogInformation("Daily wheel: client asked to start the wheel (26/11) — sending game_wheel.gfx.");
+
+        DailyWheelGame.OpenWheel(connection);
+
         return true;
     }
 

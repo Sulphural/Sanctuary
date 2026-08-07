@@ -52,6 +52,8 @@ public class ResourceManager : IResourceManager
 
     public static readonly string QuestsFile = Path.Combine(BaseDirectory, "Quests.json");
 
+    public static readonly string DailyWheelFile = Path.Combine(BaseDirectory, "DailyWheel.json");
+
     public IdToStringLookup HairMappings { get; }
     public IdToStringLookup HeadMappings { get; }
     public IdToStringLookup SkinToneMappings { get; }
@@ -90,6 +92,8 @@ public class ResourceManager : IResourceManager
     public ConsumableCollection Consumables { get; }
 
     public QuestDefinitionCollection Quests { get; }
+
+    public DailyWheelDefinitionCollection DailyWheels { get; }
 
     public ResourceManager(ILogger<ResourceManager> logger)
     {
@@ -134,6 +138,7 @@ public class ResourceManager : IResourceManager
         Npcs = new(_logger);
         Consumables = new(_logger);
         Quests = new(_logger);
+        DailyWheels = new(_logger);
     }
 
     public bool Load()
@@ -223,6 +228,9 @@ public class ResourceManager : IResourceManager
         if (!Quests.Load(QuestsFile))
             return false;
 
+        if (!DailyWheels.Load(DailyWheelFile))
+            return false;
+
         return true;
     }
 
@@ -285,6 +293,8 @@ public class ResourceManager : IResourceManager
                 loaded = PointOfInterests.Load(PointOfInterestsFile);
             else if (e.FullPath == ConsumablesFile)
                 loaded = Consumables.Load(ConsumablesFile);
+            else if (e.FullPath == DailyWheelFile)
+                loaded = DailyWheels.Load(DailyWheelFile);
             else
                 _logger.LogWarning("Unknown file changed. File: {filepath}", e.FullPath);
 

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Diagnostics;
+using System;
 using System.Text;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +9,10 @@ using Sanctuary.Packet.Common.Attributes;
 
 namespace Sanctuary.Gateway.Handlers;
 
+// op39/sub14 - the minigame PAYLOAD channel: the text pipe between the server and whatever Flash
+// microgame the client currently has open. The body is one tab-delimited, null-terminated message
+// ("<MsgName>\t<arg>\t<arg>..."), which the game's SoeNetworkTypeFreeRealms splits back apart and
+// dispatches to the handler of that name. StateId carries the game the message belongs to.
 [PacketHandler]
 public static class MiniGamePayloadPacketHandler
 {
@@ -29,38 +32,26 @@ public static class MiniGamePayloadPacketHandler
             return false;
         }
 
-        _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(MiniGamePayloadPacket), packet);
+        var message = Encoding.UTF8.GetString(packet.Payload).TrimEnd('\0');
+
+        _logger.LogInformation("MiniGame payload C2S (state {state}): {message}", packet.StateId, message);
 
         // Mining Practice
         if (packet.StateId == 1113)
         {
-            var message = Encoding.UTF8.GetString(packet.Payload).TrimEnd('\0');
-
-            Debug.WriteLine(message);
-
-            var args = message.Split('\t');
-
-            if (args.Length > 0)
-            {
-                switch (args[0])
+            if (message.Split('\t')[0] == "OnConnectMsg")
+                connection.SendTunneled(new MiniGamePayloadPacket
                 {
-                    case "OnConnectMsg":
-                        {
-                            var miniGamePayloadPacket2 = new MiniGamePayloadPacket
-                            {
-                                Payload = Encoding.UTF8.GetBytes("OnServerReadyMsg\0")
-                            };
+                    StateId = packet.StateId,
+                    Payload = Encoding.UTF8.GetBytes("OnServerReadyMsg\0")
+                });
 
-                            connection.SendTunneled(miniGamePayloadPacket2);
-                        }
-                        break;
-
-                    default:
-                        Debug.WriteLine(message);
-                        break;
-                }
-            }
+            return true;
         }
+
+        // "Spin For The Win!" - the daily prize wheel (game_wheel.gfx).
+        if (DailyWheelGame.HandleMessage(connection, message, packet.StateId))
+            return true;
 
         return true;
     }

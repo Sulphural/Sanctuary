@@ -137,8 +137,6 @@ public sealed partial class StartingZone : BaseZone
         // Place a wandering "Battle Starter" creature for each small combat encounter, among its own kind.
         SpawnEncounterEntryNpcs();
 
-        // Place a clickable "Spin For The Win!" kiosk near spawn — see SpawnDailyWheelKiosk for why.
-        SpawnDailyWheelKiosk();
     }
 
     // NPCs come from the community-contributed Npcs.json (fixed scale/rotation, static-marked). The guid
@@ -1025,8 +1023,7 @@ public sealed partial class StartingZone : BaseZone
     //
     // Lives here (not in the Gateway handler) so it can be called both from
     // ActivityPacketJoinActivityRequestHandler (a real client JoinActivityRequest, should the Browser's
-    // Play button for it ever work) AND from SpawnDailyWheelKiosk's InteractAction below (Sanctuary.Game
-    // can't reference Sanctuary.Gateway) - same split SendDungeonOffer already uses.
+    // Play button for it ever work) - same split SendDungeonOffer already uses.
     public void SpinDailyWheel(Player player)
     {
         using var dbContext = _dbContextFactory.CreateDbContext();
@@ -1071,35 +1068,54 @@ public sealed partial class StartingZone : BaseZone
     private const int SpinForTheWinMinCoins = 50;
     private const int SpinForTheWinMaxCoins = 500;
 
-    // EXPERIMENTAL launch attempt, kept SEPARATE from SpinDailyWheel (which stays the guaranteed-working
-    // fallback - see /spinwheel in CommandRouter). game_wheel.lst.z (extracted asset manifest) resolves to
-    // srcfilename=C:\dev\FreeRealms\Live\Runtime\Client\UI\game_wheel.swf - a NATIVE Client\UI Scaleform/
-    // GFx widget (bundled with its own DDS textures), NOT an externally-hosted Flash game. That rules out
-    // the Type=3 "Client Flash" (Awesomium-hosted web browser) attempt this replaces - BeginLoad succeeded
-    // and OnGameStarted/ShowMiniGameHud fired, but the panel stayed blank because Client Flash content
-    // navigates an embedded web browser to a URL, which is the wrong pipeline entirely for a native gfx
-    // asset. Back to Type=22 ("Wheel", the type that originally soft-locked the client 2026-07-24) but
-    // this time with the CORRECT background asset name (game_wheel.gfx, not the dungeon-win
-    // LootWheelOfAwesomeness widget or the game_hidden.gfx blank placeholder). If this hangs the client
-    // again: Escape / "!home" / relog to recover.
+    // Tells the client it has a wheel spin waiting, which is what makes it open its own coin-wheel widget
+    // (game_wheel.swf) - the ONLY working way in, see PacketClientNotifyCoinSpinAvailable. The wheel then
+    // drives itself against DailyWheelGame over the minigame payload channel.
+    public void NotifyCoinSpinAvailable(Player player)
+    {
+        player.SendTunneled(new PacketClientNotifyCoinSpinAvailable());
+
+        _logger.LogInformation("Spin For The Win: coin-spin-available notify sent to {name}.", player.Name);
+    }
+
+    // Sends the wheel's minigame definition + launch (activity 8, Type=22 "Wheel", IS_MICRO in the
+    // client's own MiniGameTypeData.txt). This is where the SWF NAME comes from: the client ships
+    // MiniGameData.txt/MiniGameGroupData.txt with the wheel's row present (8^22^409962^409969^20985^1...)
+    // but every asset column blank - retail filled those in from the server, and MiniGameFlash:ShowMicro
+    // takes the file as its first argument. So the widget can only ever load if we name it here.
+    //
+    // On its own this is NOT enough: the client also refuses to start the wheel unless the player holds
+    // the "wheel" repeating activity (native StartWheel @0x009BDBD6 bails when
+    // GetRepeatingActivityCount("wheel") <= 0) - see BaseRepeatingActivityPacket.
+    //
+    // The client's native Client\UI\game_wheel.gfx (game_wheel.lst.z
+    // resolves it to srcfilename=C:\dev\FreeRealms\Live\Runtime\Client\UI\game_wheel.swf, bundled with its
+    // own DDS art), driven from here on via the minigame payload channel - see DailyWheelGame for the
+    // protocol and the payout.
+    //
+    // The 2026-07-24 "it soft-locks" verdict was also wrong about the cause: that run left MiniGameInfo's
+    // SWF-name field (Unknown13) null, and the "asset not in manifest: undefined" line it blamed actually
+    // came from the minigames Browser's thumbnail, 20 seconds earlier. With the field filled in the launch
+    // no longer hangs at all - it just does nothing visible.
     public void LaunchSpinForTheWinGame(Player player, ClientActivityDefinition clientActivityDefinition)
     {
         const int ActivityId = 8;
+        const string WheelSwf = "game_wheel.gfx";
+        const int WheelIconId = 20985; // the client's own MiniGameData.txt row for game 8
 
+        // Ids match the client's own MiniGameData.txt row for game 8 (name 409962 "Spin For The Win!",
+        // description 409969, icon 20985) so its local data and ours agree.
         var miniGameInfo = new MiniGameInfo()
         {
             NameId = clientActivityDefinition.DisplayNameId,
-            IconId = clientActivityDefinition.ImageSetId,
+            IconId = WheelIconId,
             DescriptionId = clientActivityDefinition.DisplayDescriptionId,
             Difficulty = clientActivityDefinition.Difficulty,
             ProfileType = 0,
             Type = 22, // Wheel - native Client\UI\game_wheel.swf widget, not a hosted Flash game
             PreselectedGameId = ActivityId,
-            // Ground-truthed (RewardBundle.cs, real 04-01 capture): the wheel widget reads its
-            // slice/coin data from the preview bundle's coins/xp columns - an empty bundle gives it
-            // nothing to render, which is the likely reason the panel showed blank after BeginLoad
-            // succeeded cleanly. Placeholder amount (actual roll still happens in SpinDailyWheel).
-            PreviewCoins = (SpinForTheWinMinCoins + SpinForTheWinMaxCoins) / 2
+            Unknown11 = true,
+            Unknown13 = WheelSwf
         };
 
         var miniGameGroupInfo = new MiniGameGroupInfo()
@@ -1107,8 +1123,8 @@ public sealed partial class StartingZone : BaseZone
             Id = 69,
             NameId = clientActivityDefinition.DisplayNameId,
             DescriptionId = clientActivityDefinition.DisplayDescriptionId,
-            IconId = clientActivityDefinition.ImageSetId,
-            BackgroundSwf = "game_wheel.gfx"
+            IconId = WheelIconId,
+            BackgroundSwf = WheelSwf
         };
 
         using var writer = new PacketWriter();
@@ -1166,43 +1182,9 @@ public sealed partial class StartingZone : BaseZone
         _logger.LogInformation("Spin For The Win: launch attempt (Type=22, game_wheel.gfx) sent to {name}.", player.Name);
     }
 
-    // World-clickable entry point for the daily wheel, mirroring the dungeon entrance widget below -
-    // ADDED 2026-07-24 because the minigames Browser's own Play button was observed staying permanently
-    // greyed out for this activity (selecting it never sent a JoinActivityRequest at all), so this gives
-    // it a second, proven-reliable entry point independent of that click chain.
-    private void SpawnDailyWheelKiosk()
-    {
-        if (!_resourceManager.ClientActivityDefinitions.TryGetValue(8, out var clientActivityDefinition))
-        {
-            _logger.LogWarning("SpawnDailyWheelKiosk: no ClientActivityDefinitions entry for ActivityId 8.");
-            return;
-        }
-
-        if (!TryCreateNpc(out var kiosk))
-            return;
-
-        kiosk.ModelId = AtlasEntranceModelId;
-        kiosk.NameId = clientActivityDefinition.DisplayNameId; // floating nameplate = "Spin For The Win!"
-        kiosk.Name = "Spin For The Win!";
-        kiosk.Static = true;
-        kiosk.Scale = 1f;
-        kiosk.Visible = true;
-        kiosk.HideNamePlate = false;
-        kiosk.CursorId = 11;
-        kiosk.InteractRange = 18;
-
-        // A few units off the world spawn point so it stands near the training dummy/Growler wolf.
-        var pos = new Vector4(SpawnPosition.X, SpawnPosition.Y, SpawnPosition.Z - 5f, SpawnPosition.W);
-
-        // Direct grant, no visual wheel widget - see SpinDailyWheel for why. LaunchSpinForTheWinGame
-        // (the game_wheel.gfx launch attempt) is kept for reference/future revisiting but is NOT wired up
-        // here: every attempt at it either rendered nothing or, in its two live-debugging attempts,
-        // crashed the client outright (2026-07-24) with zero useful diagnostic data either time.
-        kiosk.InteractAction = player => SpinDailyWheel(player);
-
-        kiosk.UpdatePosition(pos, SpawnRotation);
-        GetTileFromPosition(pos).Entities.TryAdd(kiosk.Guid, kiosk);
-    }
+    // (The world "Spin For The Win!" kiosk that used to stand at spawn is gone: it existed only as a way
+    // around the minigames Browser's greyed-out Play button, which is fixed now that the server grants the
+    // "wheel" repeating activity - see DailyWheelGame.SendSpinAvailability.)
 
     // ---- Wandering combat-encounter entries ("Battle Starters") ----
     //

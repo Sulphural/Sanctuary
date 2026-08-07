@@ -190,11 +190,16 @@ public static class ActivityPacketJoinActivityRequestHandler
 
             connection.SendTunneled(miniGameInfoPacket);
         }
-        // "Spin For The Win!" daily reward roll (no visual wheel - see StartingZone.SpinDailyWheel for why).
+        // "Spin For The Win!" - the wheel isn't a Browser minigame: notify the client that a spin is
+        // available and it opens its own wheel widget (see PacketClientNotifyCoinSpinAvailable), which
+        // then drives itself against DailyWheelGame over the minigame payload channel.
         else if (packet.ActivityId == 8)
         {
-            if (connection.Player.Zone is Sanctuary.Game.Zones.StartingZone startingZone)
-                startingZone.SpinDailyWheel(connection.Player);
+            _logger.LogInformation("Daily wheel: JoinActivityRequest for activity 8 (the Browser's Play button).");
+
+            // Launch + answer the start ourselves, so the wheel appears without the player having to press
+            // GO! on a start panel it isn't supposed to have. See DailyWheelGame.OpenWheel.
+            DailyWheelGame.OpenWheel(connection);
         }
         // ★ COMBAT DUNGEONS: pressing Play on a dungeon in the minigames menu's "Battles" section (and
         // clicking its marker on the atlas) sends JoinActivityRequest with its activity id. Don't drop the
