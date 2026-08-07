@@ -7,38 +7,47 @@ using Microsoft.Extensions.Logging;
 
 using Sanctuary.Database;
 using Sanctuary.Game;
+using Sanctuary.Game.ChatCommands;
 using Sanctuary.Game.Entities;
+using Sanctuary.Game.Helpers;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common.Chat;
 
-namespace Sanctuary.Gateway.Handlers;
+namespace Sanctuary.Gateway.ChatCommands;
 
-public enum ChatCommandRole
+// Moderation: ban/mute/promote and friends. These were their own little command registry with their own
+// dispatcher and role enum; now the subcommand table is just data behind one IChatCommand.
+public delegate void AdminSubCommandHandler(GatewayConnection connection, string[] args);
+
+public sealed record AdminSubCommand(ChatCommandRole RequiredRole, string Usage, AdminSubCommandHandler Handler);
+
+public class AdminChatCommand : GatewayChatCommand
 {
-    Player = 0,
-    Mod = 1,
-    Admin = 2
-}
+    public AdminChatCommand(GatewayServer server, IZoneManager zoneManager,
+        IDbContextFactory<DatabaseContext> dbContextFactory, ILoggerFactory loggerFactory) : base(server)
+    {
+        Initialize(zoneManager, dbContextFactory, loggerFactory.CreateLogger("Admin"));
+    }
 
-public delegate void ChatCommandHandler(GatewayConnection connection, string[] args);
+    public override string KeyWord => "admin";
+    public override string Usage => "<ban|unban|mute|unmute|promote|demote|help> ...";
+    public override string Description => "Moderation commands.";
+    public override ChatCommandRole RequiredRole => ChatCommandRole.Mod;
 
-public sealed record ChatCommandDefinition(ChatCommandRole RequiredRole, string Usage, ChatCommandHandler Handler);
 
-public static class ChatCommandRegistry
-{
     private static IZoneManager _zoneManager = null!;
     private static IDbContextFactory<DatabaseContext> _dbContextFactory = null!;
     private static ILogger _adminLogger = null!;
 
-    private static readonly Dictionary<string, ChatCommandDefinition> Commands = new Dictionary<string, ChatCommandDefinition>
+    private static readonly Dictionary<string, AdminSubCommand> Commands = new Dictionary<string, AdminSubCommand>
     {
-        ["ban"] = new ChatCommandDefinition(ChatCommandRole.Mod, "!admin ban [player] [minutes]", Ban),
-        ["unban"] = new ChatCommandDefinition(ChatCommandRole.Mod, "!admin unban [player]", Unban),
-        ["mute"] = new ChatCommandDefinition(ChatCommandRole.Mod, "!admin mute [player] [minutes]", Mute),
-        ["unmute"] = new ChatCommandDefinition(ChatCommandRole.Mod, "!admin unmute [player]", Unmute),
-        ["promote"] = new ChatCommandDefinition(ChatCommandRole.Admin, "!admin promote [player]", Promote),
-        ["demote"] = new ChatCommandDefinition(ChatCommandRole.Admin, "!admin demote [player]", Demote),
-        ["help"] = new ChatCommandDefinition(ChatCommandRole.Mod, "!admin help", Help),
+        ["ban"] = new AdminSubCommand(ChatCommandRole.Mod, "!admin ban [player] [minutes]", Ban),
+        ["unban"] = new AdminSubCommand(ChatCommandRole.Mod, "!admin unban [player]", Unban),
+        ["mute"] = new AdminSubCommand(ChatCommandRole.Mod, "!admin mute [player] [minutes]", Mute),
+        ["unmute"] = new AdminSubCommand(ChatCommandRole.Mod, "!admin unmute [player]", Unmute),
+        ["promote"] = new AdminSubCommand(ChatCommandRole.Admin, "!admin promote [player]", Promote),
+        ["demote"] = new AdminSubCommand(ChatCommandRole.Admin, "!admin demote [player]", Demote),
+        ["help"] = new AdminSubCommand(ChatCommandRole.Mod, "!admin help", Help),
     };
 
     public static void Initialize(IZoneManager zoneManager, IDbContextFactory<DatabaseContext> dbContextFactory, ILogger adminLogger)
@@ -53,16 +62,8 @@ public static class ChatCommandRegistry
         return GetRoleFromFlags(player.IsAdmin, player.IsMod);
     }
 
-    private static ChatCommandRole GetRoleFromFlags(bool isAdmin, bool isMod)
-    {
-        if (isAdmin)
-            return ChatCommandRole.Admin;
-
-        if (isMod)
-            return ChatCommandRole.Mod;
-
-        return ChatCommandRole.Player;
-    }
+    private static ChatCommandRole GetRoleFromFlags(bool isAdmin, bool isMod) =>
+        ChatHelper.GetRoleFromFlags(isAdmin, isMod);
 
     private static bool TryParseTarget(string[] args, out string parsedTargetName, out DateTimeOffset? parsedUntilValue, out string? error)
     {
@@ -129,33 +130,32 @@ public static class ChatCommandRegistry
         return true;
     }
 
-    public static void HandleCommand(GatewayConnection connection, string message)
+    public override bool Handle(Player invoker, string[] args)
     {
-        string[] tokens = message.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var connection = GetConnection(invoker);
+        if (connection is null)
+            return true;
 
-        if (tokens.Length < 2)
-        {
-            SendSystemMessage(connection, $"Invalid command format. Type !admin help for a list of commands.");
-            return;
-        }
+        if (args.Length == 0)
+            return false;
 
-        string name = tokens[1];
-        string[] args = tokens[2..];
+        var name = args[0];
+        var rest = args[1..];
 
         if (!Commands.TryGetValue(name, out var command))
         {
-            SendSystemMessage(connection, $"Unknown command: {message}. Type !admin help for a list of commands.");
-            return;
+            SendSystemMessage(connection, $"Unknown command: {name}. Type !admin help for a list of commands.");
+            return true;
         }
 
-        ChatCommandRole playerRole = GetPlayerRole(connection.Player);
-        if (playerRole < command.RequiredRole)
+        if (invoker.ChatCommandRole < command.RequiredRole)
         {
             SendSystemMessage(connection, "You don't have permission to use this command.");
-            return;
+            return true;
         }
 
-        command.Handler(connection, args);
+        command.Handler(connection, rest);
+        return true;
     }
 
     private static void Ban(GatewayConnection connection, string[] args)

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -16,11 +17,18 @@ public class GatewayServer : UdpManager<GatewayConnection>
 {
     private readonly ILogger _logger;
     private readonly IResourceManager _resourceManager;
+    private readonly IChatCommandManager _chatCommandManager;
 
-    public GatewayServer(ILogger<GatewayServer> logger, IResourceManager resourceManager, UdpParams udpParams, IServiceProvider serviceProvider) : base(udpParams, serviceProvider)
+    // Connected clients, so code holding only a Player can find its connection (chat commands do this -
+    // IChatCommand.Handle is handed a Player, but plenty of them need the connection). Mirrors
+    // LoginClient.Connections.
+    public IReadOnlyCollection<GatewayConnection> Connections => ConnectionList;
+
+    public GatewayServer(ILogger<GatewayServer> logger, IResourceManager resourceManager, IChatCommandManager chatCommandManager, UdpParams udpParams, IServiceProvider serviceProvider) : base(udpParams, serviceProvider)
     {
         _logger = logger;
         _resourceManager = resourceManager;
+        _chatCommandManager = chatCommandManager;
     }
 
     public override bool OnConnectRequest(UdpConnection udpConnection)
@@ -119,7 +127,14 @@ public class GatewayServer : UdpManager<GatewayConnection>
         }
 
         _logger.LogInformation("Dev command (file) for {name}: {command}", conn.Player.Name, command);
-        try { Commands.CommandRouter.TryHandle(conn, command); }
+
+        try
+        {
+            var normalised = command[0] == '/' ? _chatCommandManager.Prefix + command[1..] : command;
+
+            if (!_chatCommandManager.TryHandle(conn.Player, normalised))
+                _logger.LogWarning("Dev command '{command}': no such command.", command);
+        }
         catch (Exception ex) { _logger.LogError(ex, "Dev command '{command}' threw.", command); }
     }
 

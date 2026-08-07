@@ -13,7 +13,6 @@ using Sanctuary.Database.Entities;
 using Sanctuary.Game;
 using Sanctuary.Game.Combat;
 using Sanctuary.Game.Entities;
-using Sanctuary.Gateway.Commands;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
 using Sanctuary.Packet.Common.Attributes;
@@ -27,8 +26,8 @@ public static class PacketChatHandler
     private static ILogger _logger = null!;
     private static ILogger _chatLogger = null!;
     private static IZoneManager _zoneManager = null!;
-    private static bool _commandRouterInitialized = false;
     private static IResourceManager _resourceManager = null!;
+    private static IChatCommandManager _chatCommandManager = null!;
     private static IDbContextFactory<DatabaseContext> _dbContextFactory = null!;
 
     public static void ConfigureServices(IServiceProvider serviceProvider)
@@ -39,18 +38,17 @@ public static class PacketChatHandler
 
         _zoneManager = serviceProvider.GetRequiredService<IZoneManager>();
         _resourceManager = serviceProvider.GetRequiredService<IResourceManager>();
+        _chatCommandManager = serviceProvider.GetRequiredService<IChatCommandManager>();
         _dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<DatabaseContext>>();
 
-        // Initialize CommandRouter
-        if (!_commandRouterInitialized)
-        {
-            CommandRouter.Initialize(serviceProvider);
-            _commandRouterInitialized = true;
-        }
+        // Shared plumbing for the ported chat commands (same database path the router uses).
+        Sanctuary.Gateway.ChatCommands.CommandSupport.Initialize(
+            serviceProvider,
+            loggerFactory.CreateLogger("Commands"),
+            _zoneManager,
+            _resourceManager,
+            $"Data Source={System.IO.Path.Combine(AppContext.BaseDirectory, "sanctuary.db")}");
 
-        var adminLogger = loggerFactory.CreateLogger("Admin");
-
-        ChatCommandRegistry.Initialize(_zoneManager, _dbContextFactory, adminLogger);
     }
 
     private static void SendMuteNotice(GatewayConnection connection)
@@ -79,11 +77,18 @@ public static class PacketChatHandler
         _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(PacketChat), packet);
         _logger.LogInformation("Chat message from {Player}: {Message}", connection.Player.Name, packet.Message);
 
-        // Check if this is a command
-        if (CommandRouter.TryHandle(connection, packet.Message))
+        // Chat commands go through the ChatCommandManager (IChatCommand implementations, role gated,
+        // self-documenting). "/" is accepted as an alias for the manager's "!" prefix because half the
+        // commands here were written with it.
+        if (packet.Message is { Length: > 1 } message && (message[0] == '!' || message[0] == '/'))
         {
-            _logger.LogInformation("Command was handled by CommandRouter");
-            return true; // Command was handled
+            var command = message[0] == '/' ? _chatCommandManager.Prefix + message[1..] : message;
+
+            if (_chatCommandManager.TryHandle(connection.Player, command))
+            {
+                _logger.LogInformation("Command was handled by ChatCommandManager");
+                return true;
+            }
         }
 
         // COMBAT WIP: live trial tool. Type "!cast [Unknown Unknown2 CompositeEffectId Animation
@@ -263,12 +268,6 @@ public static class PacketChatHandler
             return false;
         }
         
-        if (packet.Message.StartsWith("!admin"))
-        {
-            ChatCommandRegistry.HandleCommand(connection, packet.Message);
-            return true;
-        }
-
         if (connection.Player.IsMuted())
         {
             SendMuteNotice(connection);

@@ -27,6 +27,7 @@ public class GatewayService : BackgroundService
     private readonly IResourceManager _resourceManager;
     private readonly IScriptManager _scriptManager;
     private readonly IInteractionManager _interactionManager;
+    private readonly IChatCommandManager _chatCommandManager;
     private readonly IHostApplicationLifetime _hostApplicationLifetime;
     private readonly IDbContextFactory<DatabaseContext> _dbContextFactory;
 
@@ -40,6 +41,7 @@ public class GatewayService : BackgroundService
         IResourceManager resourceManager,
         IScriptManager scriptManager,
         IInteractionManager interactionManager,
+        IChatCommandManager chatCommandManager,
         IDbContextFactory<DatabaseContext> dbContextFactory,
         IHostApplicationLifetime hostApplicationLifetime)
     {
@@ -52,6 +54,7 @@ public class GatewayService : BackgroundService
         _resourceManager = resourceManager;
         _scriptManager = scriptManager;
         _interactionManager = interactionManager;
+        _chatCommandManager = chatCommandManager;
         _dbContextFactory = dbContextFactory;
         _hostApplicationLifetime = hostApplicationLifetime;
     }
@@ -105,6 +108,16 @@ public class GatewayService : BackgroundService
         if (!_zoneManager.Load())
         {
             _logger.LogCritical("Cannot start {server}, failed to load zones.", nameof(GatewayServer));
+
+            _hostApplicationLifetime.StopApplication();
+
+            return Task.CompletedTask;
+        }
+
+        // Load chat commands.
+        if (!_chatCommandManager.Load())
+        {
+            _logger.LogCritical("Cannot start {server}, failed to load chat commands.", nameof(GatewayServer));
 
             _hostApplicationLifetime.StopApplication();
 

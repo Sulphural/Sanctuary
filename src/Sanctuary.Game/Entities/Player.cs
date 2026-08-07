@@ -98,6 +98,10 @@ public sealed class Player : ClientPcData, IEntity
 
     public bool IsAdmin { get; set; }
     public bool IsMod { get; set; }
+
+    // What chat commands this player may run - see ChatCommandManager.
+    public Sanctuary.Game.ChatCommands.ChatCommandRole ChatCommandRole =>
+        Sanctuary.Game.Helpers.ChatHelper.GetRoleFromFlags(IsAdmin, IsMod);
     public DateTimeOffset? MutedUntil { get; set; }
 
     public ClientPcProfile ActiveProfile =>
