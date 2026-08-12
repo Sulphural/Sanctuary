@@ -442,6 +442,11 @@ public class GatewayConnection : UdpConnection
                 Player.QuestGoalProgress[dbQuest.QuestId] = dbQuest.GoalProgress;
             if (dbQuest.GoalCount > 0)
                 Player.QuestCollectProgress[dbQuest.QuestId] = dbQuest.GoalCount;
+            // Completing the tracked quest leaves its IsActive flag set, so only restore it while the
+            // quest is still in progress - otherwise the tracker would come back pointing at a quest
+            // the player already finished.
+            if (dbQuest.IsActive && !dbQuest.Completed)
+                Player.ActiveQuestId = dbQuest.QuestId;
         }
 
         _logger.LogInformation("Pets loaded and will be sent via PetListPacket. TotalPetsCount={count}", Player.Pets.Count);

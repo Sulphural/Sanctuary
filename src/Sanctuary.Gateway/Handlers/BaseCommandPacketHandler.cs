@@ -59,6 +59,12 @@ public static class BaseCommandPacketHandler
     // here hid the whole HUD and locked player movement (no end screen was open to dismiss).
     private static bool HandleDialogResponse(GatewayConnection connection)
     {
+        // A quest conversation can run several turns (NPC speaks -> player replies -> NPC speaks again).
+        // While turns remain, the click advances the exchange instead of ending it - tearing the dialog
+        // down here would cut the NPC off mid-conversation.
+        if (Sanctuary.Game.Quests.QuestDialogue.TryAdvance(connection.Player))
+            return true;
+
         connection.Player.SendTunneled(new CommandPacketEndDialog());
         return true;
     }

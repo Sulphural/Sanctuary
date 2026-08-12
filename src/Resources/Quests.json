@@ -17,7 +17,8 @@
     "PrerequisiteQuestId": 0,
     "NextQuestId": 1801,
     "NotificationAvailable": 2,
-    "NotificationActive": 6
+    "NotificationActive": 6,
+    "ExcludesQuestIds": [2564]
   },
   {
     "Comment": "Call the Crew",
@@ -71,7 +72,8 @@
     "PrerequisiteQuestId": 0,
     "NextQuestId": 0,
     "NotificationAvailable": 2,
-    "NotificationActive": 6
+    "NotificationActive": 6,
+    "ExcludesQuestIds": [2563]
   },
   {
     "Comment": "Nomi's Little Brother",
@@ -160,6 +162,7 @@
     "SubGoalId": 90465,
     "TargetDialogueId": 78867,
     "IconId": 43278,
+    "ProfileId": 2,
     "GiverGuid": 100000001557,
     "TargetGuid": 100000001557,
     "RewardCoins": 0,
@@ -193,6 +196,7 @@
     "SubGoalId": 115619,
     "TargetDialogueId": 104148,
     "IconId": 43278,
+    "ProfileId": 43,
     "GiverGuid": 100000002912,
     "TargetGuid": 100000033082,
     "RewardCoins": 15,
@@ -220,6 +224,7 @@
     "SubGoalId": 104176,
     "TargetDialogueId": 104152,
     "IconId": 43278,
+    "ProfileId": 43,
     "GiverGuid": 100000033082,
     "TargetGuid": 100000033082,
     "RewardCoins": 15,
@@ -253,6 +258,7 @@
     "SubGoalId": 104155,
     "TargetDialogueId": 104156,
     "IconId": 43278,
+    "ProfileId": 43,
     "GiverGuid": 100000033082,
     "TargetGuid": 100000033083,
     "RewardCoins": 15,
@@ -780,6 +786,7 @@
     "SubGoalId": 93145,
     "TargetDialogueId": 383047,
     "IconId": 43278,
+    "ProfileId": 35,
     "GiverGuid": 100000002501,
     "TargetGuid": 100000002501,
     "RewardCoins": 40,
@@ -846,6 +853,7 @@
     "SubGoalId": 90440,
     "TargetDialogueId": 139527,
     "IconId": 43278,
+    "ProfileId": 2,
     "GiverGuid": 100000001557,
     "TargetGuid": 100000001557,
     "RewardCoins": 0,
@@ -866,6 +874,245 @@
         "NameId": 388222,
         "DialogueId": 139527,
         "TargetGuid": 100000001557
+      }
+    ]
+  },
+  {
+    "Comment": "Feminine Touch - Yancy Gilbert surveys the girls of Seaside",
+    "QuestId": 3060,
+    "TitleId": 101400,
+    "DescriptionId": 101410,
+    "GiverDialogueId": 101408,
+    "ObjectiveDescriptionId": 101401,
+    "SubGoalId": 101402,
+    "TargetDialogueId": 101411,
+    "IconId": 43278,
+    "GiverGuid": 100000001964,
+    "TargetGuid": 100000001964,
+    "RewardCoins": 30,
+    "RewardExperience": 80,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 0,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 101402,
+        "TargetGuid": 100000001777,
+        "Dialogue": [
+          { "TextId": 101412, "ResponseTextId": 101413 }
+        ]
+      },
+      {
+        "NameId": 101404,
+        "TargetGuid": 100000001758,
+        "Dialogue": [
+          { "TextId": 101414, "ResponseTextId": 101415 },
+          { "TextId": 101416, "ResponseTextId": 103597 }
+        ]
+      },
+      {
+        "NameId": 101406,
+        "DialogueId": 101411,
+        "TargetGuid": 100000001964
+      }
+    ]
+  },
+  {
+    "Comment": "A Booming Problem - mine tin ore for Heddy Heathcliff's boom powder",
+    "QuestId": 3061,
+    "TitleId": 400355,
+    "DescriptionId": 400356,
+    "GiverDialogueId": 400433,
+    "ObjectiveDescriptionId": 400427,
+    "SubGoalId": 400357,
+    "TargetDialogueId": 400436,
+    "IconId": 43278,
+    "GiverGuid": 100000001925,
+    "TargetGuid": 100000001925,
+    "RewardCoins": 40,
+    "RewardExperience": 90,
+    "RewardItems": [15916],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 0,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 400357,
+        "Type": 2,
+        "RequiredCount": 5,
+        "CollectModelId": 611,
+        "CollectNameId": 21936,
+        "CollectSpawns": [
+          [-245.0, -29.09, -1166.0],
+          [-252.0, -30.24, -1173.0],
+          [-268.0, -21.43, -1159.0],
+          [-226.0, -24.65, -1151.0],
+          [-235.0, -30.5, -1183.0]
+        ]
+      },
+      {
+        "NameId": 400426,
+        "DialogueId": 400436,
+        "TargetGuid": 100000001925
+      }
+    ]
+  },
+  {
+    "Comment": "The Party Pooper - cheer up Wugunbump at the Merry Vale chugawug camp",
+    "QuestId": 3070,
+    "TitleId": 385597,
+    "DescriptionId": 385598,
+    "GiverDialogueId": 385596,
+    "ObjectiveDescriptionId": 385601,
+    "SubGoalId": 385602,
+    "TargetDialogueId": 385599,
+    "IconId": 43278,
+    "GiverGuid": 100000002177,
+    "TargetGuid": 100000004355,
+    "RewardCoins": 6,
+    "RewardExperience": 60,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 3071,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 385602,
+        "DescriptionId": 385603,
+        "DialogueId": 385599,
+        "TargetGuid": 100000004355
+      }
+    ]
+  },
+  {
+    "Comment": "Suspicious Serenity - question the families of the missing Merry Vale children",
+    "QuestId": 3071,
+    "TitleId": 74199,
+    "DescriptionId": 74200,
+    "GiverDialogueId": 74198,
+    "ObjectiveDescriptionId": 74228,
+    "SubGoalId": 74204,
+    "TargetDialogueId": 74201,
+    "IconId": 43278,
+    "GiverGuid": 100000004355,
+    "TargetGuid": 100000004355,
+    "RewardCoins": 30,
+    "RewardExperience": 100,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 3070,
+    "NextQuestId": 0,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 74204,
+        "DescriptionId": 74205,
+        "DialogueId": 74217,
+        "TargetGuid": 100000002280
+      },
+      {
+        "NameId": 74206,
+        "DescriptionId": 74207,
+        "DialogueId": 74222,
+        "TargetGuid": 100000002222
+      },
+      {
+        "NameId": 74208,
+        "DescriptionId": 74209,
+        "DialogueId": 74214,
+        "TargetGuid": 100000002187
+      },
+      {
+        "NameId": 74210,
+        "DescriptionId": 74211,
+        "DialogueId": 74226,
+        "TargetGuid": 100000002185
+      },
+      {
+        "NameId": 74212,
+        "DescriptionId": 74213,
+        "DialogueId": 74201,
+        "TargetGuid": 100000004355
+      }
+    ]
+  },
+  {
+    "Comment": "Aiding our Allies - Arch Druid Camellia sends you to Headmaster Merk in Sunstone Valley",
+    "QuestId": 3080,
+    "TitleId": 440466,
+    "DescriptionId": 440467,
+    "GiverDialogueId": 440465,
+    "ObjectiveDescriptionId": 440470,
+    "SubGoalId": 440471,
+    "TargetDialogueId": 440468,
+    "IconId": 43278,
+    "GiverGuid": 100000001454,
+    "TargetGuid": 100000003841,
+    "RewardCoins": 50,
+    "RewardExperience": 120,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 3081,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 440471,
+        "DialogueId": 440468,
+        "TargetGuid": 100000003841
+      }
+    ]
+  },
+  {
+    "Comment": "Sobering Homecoming - regroup the Freewheelers for Dorn Geargrinder (counted talk goal)",
+    "QuestId": 3081,
+    "TitleId": 438840,
+    "DescriptionId": 438841,
+    "GiverDialogueId": 438839,
+    "ObjectiveDescriptionId": 438900,
+    "SubGoalId": 438901,
+    "TargetDialogueId": 438842,
+    "IconId": 43278,
+    "GiverGuid": 100000003840,
+    "TargetGuid": 100000003840,
+    "RewardCoins": 50,
+    "RewardExperience": 140,
+    "RewardItems": [],
+    "PrerequisiteQuestId": 3080,
+    "NextQuestId": 0,
+    "NotificationAvailable": 2,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 438901,
+        "TargetGuid": 100000003842,
+        "Dialogue": [
+          { "TextId": 438967, "ResponseTextId": 423585 }
+        ]
+      },
+      {
+        "NameId": 438499,
+        "TargetGuid": 100000003841,
+        "Dialogue": [
+          { "TextId": 438969, "ResponseTextId": 428407 }
+        ]
+      },
+      {
+        "NameId": 438985,
+        "RequiredCount": 3,
+        "TargetGuid": 100000040032,
+        "TargetGuids": [100000040033, 100000040034],
+        "TargetDialogueIds": [438971, 438973, 438975],
+        "TargetResponseIds": [438972, 438974, 8136]
+      },
+      {
+        "NameId": 437816,
+        "DialogueId": 438842,
+        "TargetGuid": 100000003840
       }
     ]
   }

@@ -100,13 +100,16 @@ public class QuestDefinitionCollection
 
                 // Index every goal's target NPC too, so multi-goal quests can point intermediate goals at
                 // NPCs that aren't the giver/turn-in - otherwise those NPCs wouldn't get a quest interaction
-                // (IsQuestNpc gates the interact action at spawn on ByGiver/ByTarget).
+                // (IsQuestNpc gates the interact action at spawn on ByGiver/ByTarget). A COUNTED talk goal
+                // has SEVERAL targets sharing one row, so index all of them - indexing only TargetGuid would
+                // leave the 2nd/3rd Freewheeler unclickable and the goal impossible to finish.
                 var goalNameIds = new HashSet<int>();
                 foreach (var goal in quest.EffectiveGoals)
                 {
-                    if (goal.TargetGuid != 0 && goal.TargetGuid != quest.TargetGuid
-                        && !ByTarget.GetOrAdd(goal.TargetGuid, _ => new List<int>()).Contains(quest.QuestId))
-                        ByTarget[goal.TargetGuid].Add(quest.QuestId);
+                    foreach (var targetGuid in goal.AllTalkTargetGuids())
+                        if (targetGuid != quest.TargetGuid
+                            && !ByTarget.GetOrAdd(targetGuid, _ => new List<int>()).Contains(quest.QuestId))
+                            ByTarget[targetGuid].Add(quest.QuestId);
 
                     // Goal NameIds double as the client's objective identity (QuestObjectiveAdded body
                     // int0 -> row hash key) - a duplicate makes goals indistinguishable client-side.

@@ -26,6 +26,19 @@ public enum QuestGoalType
     EncounterComplete = 4,
 }
 
+// One turn of an NPC conversation: the NPC speaks, and the player's reply is the caption on the
+// dialog's single response button. Clicking it advances to the next turn, or closes the dialog on the
+// last one - which is how retail plays out exchanges like Emuzz's ("...what are you trying to steal
+// from me?" -> "Yancy Gilbert sent me." -> "Oh, well that is different entirely...").
+public class QuestDialogueLine
+{
+    // What the NPC says (Global.Text id), rendered as the bubble body.
+    public int TextId { get; set; }
+
+    // The player's reply, used as the response button's caption. 0 = the generic "You got it!".
+    public int ResponseTextId { get; set; }
+}
+
 // One goal (checklist row) within a quest. Each goal becomes a client objective row
 // (QuestObjectiveAddedPacket) shown in the quest tracker with a status icon that ticks off when the
 // goal's trigger fires (QuestObjectiveCompletePacket). Goals complete in order; the active goal is
@@ -45,6 +58,15 @@ public class QuestGoal
     // quest's TargetDialogueId.
     public int DialogueId { get; set; }
 
+    // A MULTI-TURN version of DialogueId: the back-and-forth the goal's NPC plays instead of a single
+    // bubble (NPC line -> player reply -> NPC line -> ...). Overrides DialogueId when non-empty; a
+    // one-entry list is just DialogueId with a custom reply caption.
+    public List<QuestDialogueLine> Dialogue { get; set; } = new();
+
+    // For a counted TalkToNpc goal: OPTIONAL player reply captions, index-aligned with TargetDialogueIds
+    // (and so with the goal's target guids). 0 or missing = the generic "You got it!".
+    public List<int> TargetResponseIds { get; set; } = new();
+
     // How this goal completes.
     public QuestGoalType Type { get; set; } = QuestGoalType.TalkToNpc;
 
@@ -52,7 +74,20 @@ public class QuestGoal
     // complete this goal. 0 falls back to the quest's TargetGuid (the turn-in NPC).
     public ulong TargetGuid { get; set; }
 
-    // For count goals (Collect/Kill): how many
+    // For TalkToNpc: OPTIONAL additional NPC guids that also credit this goal — for a COUNTED talk step
+    // where several interchangeable NPCs share ONE tracker row ("Talk to Freewheelers - 0/3") rather than
+    // getting a row each. Combined with TargetGuid; set RequiredCount to how many must be talked to.
+    // Retail authors these as a single plural goal string, so they can't be split into one goal per NPC -
+    // there's only one NameId to give the rows.
+    public List<ulong> TargetGuids { get; set; } = new();
+
+    // For a counted TalkToNpc goal: OPTIONAL per-NPC reply lines, index-aligned with the goal's target
+    // guids in AllTalkTargetGuids() order (TargetGuid first, then TargetGuids). Lets each of the three
+    // Freewheelers speak their own line instead of all sharing DialogueId. Short/empty = fall back to
+    // DialogueId for the targets it doesn't cover.
+    public List<int> TargetDialogueIds { get; set; } = new();
+
+    // For count goals (Collect/Kill, and a counted TalkToNpc): how many
     // of the thing are required. 0 falls back to CollectSpawns.Count (collect them all).
     // The tracker renders "current/required" as the player collects.
     public int RequiredCount { get; set; }
@@ -82,6 +117,44 @@ public class QuestGoal
         foreach (var id in KillNpcNameIds)
             if (id != 0 && id != KillNpcNameId)
                 yield return id;
+    }
+
+    // Every NPC guid that credits this TalkToNpc goal (the single guid + the list), in the order the
+    // per-target dialogue ids are aligned to.
+    public IEnumerable<ulong> AllTalkTargetGuids()
+    {
+        if (TargetGuid != 0)
+            yield return TargetGuid;
+        foreach (var guid in TargetGuids)
+            if (guid != 0 && guid != TargetGuid)
+                yield return guid;
+    }
+
+    // Whether this goal is a counted talk step ("Talk to Freewheelers - 0/3") rather than a plain
+    // talk-to-this-one-NPC goal: a single row that several NPCs tick up.
+    public bool IsCountedTalk => Type == QuestGoalType.TalkToNpc && RequiredCount > 1;
+
+    // The conversation the given NPC plays when this goal completes at them: the authored multi-turn
+    // Dialogue if there is one, otherwise the single line that NPC owns (their own entry in
+    // TargetDialogueIds on a counted talk goal, else the goal's shared DialogueId). Empty = say nothing.
+    public IReadOnlyList<QuestDialogueLine> ConversationFor(ulong npcGuid)
+    {
+        if (Dialogue.Count > 0)
+            return Dialogue;
+
+        int index = 0;
+        foreach (var guid in AllTalkTargetGuids())
+        {
+            if (guid == npcGuid && index < TargetDialogueIds.Count && TargetDialogueIds[index] != 0)
+                return [new QuestDialogueLine
+                {
+                    TextId = TargetDialogueIds[index],
+                    ResponseTextId = index < TargetResponseIds.Count ? TargetResponseIds[index] : 0,
+                }];
+            index++;
+        }
+
+        return DialogueId != 0 ? [new QuestDialogueLine { TextId = DialogueId }] : [];
     }
 
     // For EncounterComplete: the activity/encounter id (e.g. 174 =

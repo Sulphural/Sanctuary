@@ -24,6 +24,12 @@ public class QuestDefinition
     public int TargetDialogueId { get; set; }       // the target's dialogue shown at turn-in
     public int IconId { get; set; }                 // quest icon
 
+    // Job/profile this quest belongs to (Ninja 2, Medic 11, Wizard 12, Warrior 32, Archer 35,
+    // Brawler 43); 0 = a general quest with no job. The client turns this into the job badge,
+    // icon and level shown on the My Quests screen (QuestData_DS JobBackgroundBadgeId /
+    // JobIconId / JobLevel) and it is what that screen's job sort orders by.
+    public int ProfileId { get; set; }
+
     // Ordered checklist of goals shown in the quest tracker (each a client objective row with a
     // tick-off status icon). Empty = the legacy single-goal shape: one goal synthesized from
     // ObjectiveDescriptionId that completes when the player talks to TargetGuid.
@@ -48,6 +54,13 @@ public class QuestDefinition
     // Chain / gating.
     public int PrerequisiteQuestId { get; set; }    // 0 = none; must be completed before this is offered
     public int NextQuestId { get; set; }            // 0 = none; becomes offerable once this completes
+
+    // Other quest ids that block this one from being offered while active OR completed - e.g. the two
+    // race-specific "Introduce Yourself" quests (2563/2564), where a player only ever gets one. List
+    // both ways (each quest excludes the other) so the check is symmetric regardless of which was taken
+    // first. Abandoning the taken quest removes it from player.Quests entirely, so the exclusion clears
+    // and either quest becomes offerable again - no separate "reset" logic needed.
+    public List<int> ExcludesQuestIds { get; set; } = new();
 
     // World notification-badge icon ids.
     public int NotificationAvailable { get; set; } = 2; // "!" exclamation (quest available)
@@ -94,6 +107,12 @@ public class QuestDefinition
     {
         if (playerQuests.ContainsKey(QuestId))
             return false; // already accepted or completed
+
+        // Checked before the prerequisite so a quest that has BOTH still honours its exclusions
+        // (the prerequisite branch returns outright).
+        foreach (var excludedId in ExcludesQuestIds)
+            if (playerQuests.ContainsKey(excludedId))
+                return false; // active or completed - mutually exclusive with this one
 
         if (PrerequisiteQuestId != 0)
             return playerQuests.TryGetValue(PrerequisiteQuestId, out var prerequisiteDone) && prerequisiteDone;

@@ -50547,5 +50547,8 @@
 {"Id": 40028, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1510.0, -40.7,-500.0], "SpawnHeading": 0.2},
 {"Id": 40029, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1550.0, -40.7,-540.0], "SpawnHeading": 5.6},
 {"Id": 40030, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1480.0, -40.7,-580.0], "SpawnHeading": 2.1},
-{"Id": 40031, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1520.0, -40.7,-560.0], "SpawnHeading": 4.8}
+{"Id": 40031, "NameId": 95047, "Name": "Robgoblin Pondblaster", "ModelId": 189, "ModelFileName": "robgoblin_m_bruiser.adr", "SpawnPosition": [-1520.0, -40.7,-560.0], "SpawnHeading": 4.8},
+{"Id": 40032, "NameId": 438962, "Name": "Freewheeler", "ModelId": 3840, "ModelFileName": "dwarf_m_sunstonebikerthuglonghair.adr", "SpawnPosition": [423.5, 71.59, 1846.5], "SpawnHeading": 2.166},
+{"Id": 40033, "NameId": 438963, "Name": "Freewheeler", "ModelId": 1639, "ModelFileName": "dwarf_m_biker.adr", "SpawnPosition": [510.5, 86.4, 1934.0], "SpawnHeading": -3.053},
+{"Id": 40034, "NameId": 438964, "Name": "Freewheeler", "ModelId": 3987, "ModelFileName": "dwarf_f_bikerthug.adr", "SpawnPosition": [628.5, 80.45, 1743.5], "SpawnHeading": -0.101}
 ]

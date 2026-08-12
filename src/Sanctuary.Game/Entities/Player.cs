@@ -162,6 +162,23 @@ public sealed class Player : ClientPcData, IEntity
     // pickup the player hasn't taken yet. Cleared when the pickups are re-spawned (relog / re-accept).
     public HashSet<ulong> CollectedPickups { get; } = new();
 
+    // Guids of the NPCs THIS player has already talked to for an active COUNTED TalkToNpc goal
+    // ("Talk to Freewheelers - 0/3"), so re-talking to the same one can't credit the counter twice and
+    // the objective marker can point at the next one they haven't reached. The talk-goal twin of
+    // CollectedPickups, and in-memory for the same reason: cleared on accept/abandon and when the goal
+    // ticks off. NB: like CollectedPickups this resets on relog while the COUNT itself is restored from
+    // DbCharacterQuest.GoalCount, so a relog mid-step lets an already-credited NPC be re-talked - the
+    // same leniency the collect goals have, never a loss of progress.
+    public HashSet<ulong> TalkedQuestNpcs { get; } = new();
+
+    // Turns of an NPC conversation still to play after the one on screen (see QuestDialogue): each
+    // response-button click pops one. Empty = the bubble currently up is the last, so the click ends the
+    // conversation and restores the camera.
+    public Queue<Resources.Definitions.QuestDialogueLine> PendingDialogue { get; } = new();
+
+    // The NPC doing the talking in that conversation - every turn stays framed on them.
+    public ulong PendingDialogueNpcGuid { get; set; }
+
     // COMBAT TUTORIAL: the index of the tutorial step the player is currently on (-1 = not in the
     // tutorial). Each step arms a client-detected objective (look-at / first-movement / kill / etc.);
     // the client reports completion via op45/7 and the zone advances to the next step. Globe/barrier
