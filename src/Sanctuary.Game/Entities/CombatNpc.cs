@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
 
@@ -71,6 +71,11 @@ public class CombatNpc : Npc
         [1944] = 1099, // Abominable Snowman -> com_swing
     };
 
+    // Cached A* route + stuck detection for obstacle-aware movement — see MoveTowards. Reset whenever
+    // what we're walking to changes (new aggro target, giving up and heading home), so a stale route
+    // planned toward the old destination isn't followed for up to a repath interval.
+    private readonly Pathfinding.PathChaseState _pathState = new();
+
     public CombatNpc(IZone zone) : base(zone)
     {
         Disposition = 0; // Hostile
@@ -136,6 +141,7 @@ public class CombatNpc : Npc
         {
             AggroTarget = closestPlayer;
             State = CombatState.Pursuing;
+            _pathState.ResetPath(); // new destination - don't follow a route planned toward anything else
         }
     }
 
@@ -238,6 +244,7 @@ public class CombatNpc : Npc
             {
                 AggroTarget = closestPlayer;
                 State = CombatState.Pursuing;
+                _pathState.ResetPath(); // was walking home, now chasing - drop the return route
                 return;
             }
         }
@@ -249,6 +256,7 @@ public class CombatNpc : Npc
     {
         AggroTarget = null;
         State = CombatState.Returning;
+        _pathState.ResetPath(); // now walking home, not to the target - drop the chase route
     }
 
     private void PerformAttack(Player target)
@@ -453,24 +461,47 @@ public class CombatNpc : Npc
         if (dist < 0.1f)
             return;
 
+        // Route around real geometry instead of walking through it. This used to be a pure straight-line
+        // vector, so overworld enemies chased (and returned home) straight through cliffs and buildings —
+        // the dungeon encounter AI had obstacle-aware chasing for a while before the overworld did, and
+        // "Take Me There" routed players around geometry these same enemies ignored. All three now steer
+        // through the one ChaseNavigator, over whichever routing source the zone has (Zone.TryFindPath
+        // prefers the native ".map" graph — the overworld has one — and falls back to its WaypointGraph).
+        //
+        // A zone with no data at all returns the plain straight line, so this stays a no-op there —
+        // identical behavior to before.
+        var (dir, stepDist) = Pathfinding.ChaseNavigator.Step(
+            new Vector3(Position.X, Position.Y, Position.Z),
+            new Vector3(target.X, target.Y, target.Z),
+            _pathState,
+            Zone.NavObstacles,
+            Zone.TryFindPath,
+            Environment.TickCount64);
+
+        if (dir == Vector2.Zero)
+            return;
+
         // Tell clients how fast we move so the client interpolates a smooth grounded run to each position
         // update (a PHYSICS actor with no ExpectedSpeed snaps between updates — the "flying" look). Only
         // re-send when the pace actually changes (chase speed vs return speed).
         SendExpectedSpeed(speed);
 
-        // Calculate movement delta (tick rate is ~10 FPS = 0.1s per tick)
+        // Calculate movement delta (tick rate is ~10 FPS = 0.1s per tick). Cap against the distance to the
+        // steering target (the next waypoint when routing, else the final target) so we never overshoot it.
         var moveAmount = speed * 0.1f;
-        if (moveAmount > dist)
-            moveAmount = dist;
+        if (moveAmount > stepDist)
+            moveAmount = stepDist;
 
-        var nx = dx / dist;
-        var nz = dz / dist;
+        var nx = dir.X;
+        var nz = dir.Y;
 
         // Ease Y toward the target proportionally with horizontal progress instead of snapping straight to
         // target.Y — snapping popped the model to spawn height on the first return tick and then let client
         // gravity yank it back down (a vertical stutter every time it evaded). Reaching the target exactly
-        // as we arrive keeps grounded physics NPCs smooth.
-        var frac = moveAmount / dist;
+        // as we arrive keeps grounded physics NPCs smooth. Deliberately paced against the distance to the
+        // FINAL target, not the current waypoint: when routing around an obstacle the waypoints are just
+        // intermediate steering points, and easing Y to each of them in turn would bob the model.
+        var frac = MathF.Min(1f, moveAmount / dist);
         var newPos = new Vector4(
             Position.X + nx * moveAmount,
             Position.Y + (target.Y - Position.Y) * frac,
@@ -478,8 +509,10 @@ public class CombatNpc : Npc
             1f
         );
 
-        // Calculate facing rotation
-        var angle = MathF.Atan2(dx, dz);
+        // Face the way we're actually walking, not straight at the target — matters when a blocked route
+        // steps sideways or around a corner. Identical to the old behavior whenever the straight line is
+        // clear, since dir is then exactly the vector to the target.
+        var angle = MathF.Atan2(nx, nz);
         var halfAngle = angle / 2f;
         var newRot = new Quaternion(0, MathF.Sin(halfAngle), 0, MathF.Cos(halfAngle));
 

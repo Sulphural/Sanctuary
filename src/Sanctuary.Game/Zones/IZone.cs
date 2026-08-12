@@ -15,6 +15,22 @@ public interface IZone : IScriptZone
     Vector4 SpawnPosition { get; }
     Quaternion SpawnRotation { get; }
 
+    // Seconds of simulated time per zone tick - the delta movement code integrates against.
+    float TickDeltaSeconds { get; }
+
+    // Shared navigation data for this zone - see BaseZone's "Navigation (shared)" region. All null on a
+    // zone with no data, which every consumer treats as "straight lines are fine".
+    // Pathfinder is the native ".map" graph (preferred); NavGraph is the hand-rolled fallback.
+    Pathfinding.Pathfinder<Pathfinding.MapNode>? Pathfinder { get; }
+    Pathfinding.ObstacleMap? NavObstacles { get; }
+    Pathfinding.WaypointGraph? NavGraph { get; }
+
+    // True when the straight segment a->b doesn't cross real geometry (no data => true).
+    bool IsLineWalkable(Vector4 a, Vector4 b);
+
+    // Real A* route, or null when there's no graph / the endpoints are disconnected.
+    List<Vector4>? TryFindPath(Vector4 start, Vector4 destination);
+
     #region Events
 
     // Fired once, after the zone has finished constructing — runs the zone's Lua onStart(zone), if any.

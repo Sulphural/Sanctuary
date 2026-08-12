@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Sanctuary.Game.Entities;
+using Sanctuary.Game.Pathfinding;
 using Sanctuary.Game.Resources.Definitions;
 using Sanctuary.Game.Resources.Definitions.Zones;
 using Sanctuary.Packet;
@@ -42,6 +43,8 @@ public abstract class BaseZone : IZone, IDisposable
     private const int FrameRate = 10;
     private const float TickRate = 1000f / FrameRate;
 
+    public float TickDeltaSeconds => 1f / FrameRate;
+
     private readonly PeriodicTimer _updateEveryTickTimer = new(TimeSpan.FromMilliseconds(TickRate));
     private readonly PeriodicTimer _updateEverySecondTimer = new(TimeSpan.FromSeconds(1));
 
@@ -51,6 +54,94 @@ public abstract class BaseZone : IZone, IDisposable
 
     public Vector4 SpawnPosition => _zoneDefinition.SpawnPosition;
     public Quaternion SpawnRotation => _zoneDefinition.SpawnRotation;
+
+    // ── Navigation (shared) ───────────────────────────────────────────────────────────────────────────
+    // Every consumer - "Take Me There" routing, dungeon mob chase, and the overworld enemy AI - goes
+    // through TryFindPath/IsLineWalkable below, so a given zone routes one way for all of them.
+    //
+    // There are TWO routing sources, in preference order:
+    //
+    //  1. Pathfinder - bi-directional A* over the zone's native ".map" waypoint graph (see
+    //     MapGraphLoader). This is REAL shipped navigation data and is by far the better source:
+    //     FabledRealms.map is 2019 nodes in a SINGLE fully-connected component, so any two points on it
+    //     can route to each other.
+    //  2. NavGraph - the hand-rolled WaypointGraph fallback for zones with no .map file (every dungeon
+    //     today). Seeded from sampled walkable ground / curated points, so it's inherently patchier.
+    //
+    // NavObstacles is orthogonal to both: real .gcnk prop + .gzne wall geometry, used for the cheap
+    // "is the straight line already clear?" test so we only pay for A* when something is actually in the
+    // way. The .map graph carries no obstacle information of its own (its own header notes it can't tell
+    // whether something blocks the hop between a position and its nearest node), so keeping this is what
+    // stops a mover from walking into a prop that sits between it and the graph.
+    //
+    // All three stay null for a zone with no data, and every consumer treats that as "straight lines are
+    // fine" rather than an error.
+    public Pathfinder<MapNode>? Pathfinder { get; private set; }
+    public ObstacleMap? NavObstacles { get; protected set; }
+    public WaypointGraph? NavGraph { get; protected set; }
+
+    // REAL per-model collision geometry (see MeshObstacleMap), when the zone has built it. Preferred over
+    // NavObstacles for line-of-walk tests because NavObstacles only ever approximates each prop as a
+    // name-matched circle - measured on Bixie Hive, 15.6% of chase lines cross a wall that the circle
+    // approximation misses completely, which is precisely how a mob ends up walking through one.
+    //
+    // Only dungeon-sized worlds build this: it costs ~15-80ms and a few MB there, but the overworld has
+    // 39k placements / 4.2M triangles, where both would be prohibitive - it stays on NavObstacles.
+    public MeshObstacleMap? NavMesh { get; protected set; }
+
+    // How close a graph node has to be to the real start/destination before we skip anchoring that end
+    // (see TryFindPath) - just far enough to avoid emitting a duplicate point on top of a node.
+    private const float PathAnchorTolerance = 1f;
+
+    // True when the straight segment a->b doesn't cross real geometry. Prefers the real collision mesh
+    // and falls back to the circle approximation. No data at all => "clear" (unchanged straight-line
+    // behavior), never a false "blocked" that would freeze a mover.
+    public bool IsLineWalkable(Vector4 a, Vector4 b)
+    {
+        if (NavMesh is not null)
+            return NavMesh.IsLineWalkable(a, b);
+
+        return NavObstacles is null || NavObstacles.IsLineWalkable(a, b);
+    }
+
+    // Real route between two points, or null when nothing can route them - callers fall back to a
+    // straight line. Prefers the native .map graph and only drops to the hand-rolled WaypointGraph when
+    // this zone has no .map.
+    public List<Vector4>? TryFindPath(Vector4 start, Vector4 destination)
+    {
+        if (Pathfinder is not null)
+        {
+            var nodes = Pathfinder.FindPath(
+                new Vector3(start.X, start.Y, start.Z),
+                new Vector3(destination.X, destination.Y, destination.Z));
+
+            // An empty list means "no route" (see Pathfinder.FindPath); surface that as null so callers
+            // treat it the same as a missing graph rather than as a zero-length path.
+            if (nodes.Count == 0)
+                return null;
+
+            var path = new List<Vector4>(nodes.Count + 2);
+
+            // Anchor the real start. The route begins at the graph node NEAREST the start, which can sit
+            // behind or beside the mover - for "Take Me There" that would draw the green trail starting
+            // off to one side of the player instead of at their feet.
+            if (Vector3.Distance(new Vector3(start.X, start.Y, start.Z), nodes[0].Position) > PathAnchorTolerance)
+                path.Add(start);
+
+            foreach (var node in nodes)
+                path.Add(new Vector4(node.Position, 1f));
+
+            // Anchor the real destination, for the same reason at the far end: without it the path stops
+            // at the nearest node to the target rather than AT the target, so an auto-walk parks the
+            // player short of the NPC they asked to be taken to.
+            if (Vector3.Distance(new Vector3(destination.X, destination.Y, destination.Z), nodes[^1].Position) > PathAnchorTolerance)
+                path.Add(destination);
+
+            return path;
+        }
+
+        return NavGraph?.FindPath(start, destination);
+    }
 
     public IEnumerable<Npc> Npcs => _npcs.Values;
     public IEnumerable<Player> Players => _players.Values;
@@ -81,6 +172,14 @@ public abstract class BaseZone : IZone, IDisposable
 
         Task.Factory.StartNew(UpdateEveryTickAsync, _cancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         Task.Factory.StartNew(UpdateEverySecondAsync, _cancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+
+        // Native ".map" waypoint graph for this zone, if one shipped for it (keyed by zone name, so
+        // "FabledRealms" <- Resources/Maps/FabledRealms.map). Zones without one fall back to NavGraph.
+        if (_resourceManager.Maps.TryGetValue(Name, out var mapGraph))
+        {
+            Pathfinder = new Pathfinder<MapNode>(mapGraph.Nodes, _logger);
+            _logger.LogInformation("Using native .map navigation graph ({nodes} nodes).", mapGraph.Nodes.Count);
+        }
     }
 
     #region Events

@@ -46,5 +46,8 @@ public interface IResourceManager
     // "Spin For The Win!" daily prize wheels (game_wheel.gfx), keyed by wheel id.
     DailyWheelDefinitionCollection DailyWheels { get; }
 
+    // Loaded ".map" waypoint graphs, keyed by zone name - see MapGraphCollection.
+    MapGraphCollection Maps { get; }
+
     bool Load();
 }

@@ -112,23 +112,33 @@ public static class ClientPathBasePacketHandler
         return true;
     }
 
-    // Builds the path the client walks. No true client-facing navmesh exists anywhere in the extracted
-    // assets (the client's Kynapse middleware builds its own at runtime from geometry the server never
-    // sees), so StartingZone seeds a waypoint graph from curated NPC spawn positions instead (see
-    // StartingZone.TryFindPath) and we route through that when available. NOTE each waypoint segment is
-    // sent as a straight line the client's auto-walk follows exactly (no local steering BETWEEN nodes -
-    // packing in a dense but unvalidated path pins the character to bad segments and walks it into walls),
-    // so graph edges are proximity-linked between real walkable points rather than arbitrary dense
-    // sampling. Falls back to the old 2-node straight line for zones without a graph, or if the graph
-    // can't connect start/destination (disconnected components).
+    // Builds the path the client walks, via the zone's shared routing (BaseZone.TryFindPath) - the same
+    // call the enemy AI steers with, so a player's auto-walk and a chasing enemy agree on what's
+    // reachable. That prefers the zone's native ".map" waypoint graph (real shipped navigation data;
+    // FabledRealms.map is one fully-connected component, so it can route between any two points on it)
+    // and falls back to the hand-rolled WaypointGraph for zones that have no .map.
+    //
+    // NOTE each waypoint segment is sent as a straight line the client's auto-walk follows exactly (no
+    // local steering BETWEEN nodes - packing in a dense but unvalidated path pins the character to bad
+    // segments and walks it into walls), so the graph's own edges are what keep segments walkable.
+    // Falls back to a 2-node straight line for a zone with no routing data at all, or if nothing can
+    // connect start to destination.
     private static List<Vector4> BuildPath(Sanctuary.Game.Entities.Player player, Vector4 start, Vector4 destination)
     {
-        if (player.Zone is Sanctuary.Game.Zones.StartingZone startingZone)
-        {
-            var graphPath = startingZone.TryFindPath(start, destination);
-            if (graphPath is not null)
-                return graphPath;
-        }
+        // Straight line when we can PROVE it's clear, exactly like the enemy AI's chase step. The .map
+        // graph is a road/corridor network (average degree ~2.1), not a mesh, so routing through it
+        // ALWAYS snaps to the nearest road node - for a short hop across open ground that's a big
+        // pointless detour when the player could just walk straight there.
+        //
+        // Deliberately requires real obstacle data to exist: with no geometry loaded IsLineWalkable
+        // answers "clear" for everything, and taking that as proof would silently disable routing
+        // entirely rather than falling through to the graph.
+        if (player.Zone.NavObstacles is not null && player.Zone.IsLineWalkable(start, destination))
+            return new List<Vector4> { start, destination };
+
+        var graphPath = player.Zone.TryFindPath(start, destination);
+        if (graphPath is not null)
+            return graphPath;
 
         return new List<Vector4> { start, destination };
     }

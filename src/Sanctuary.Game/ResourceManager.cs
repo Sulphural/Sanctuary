@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 
 using Microsoft.Extensions.Logging;
 
@@ -47,6 +47,7 @@ public class ResourceManager : IResourceManager
     public static readonly string PointOfInterestsFile = Path.Combine(BaseDirectory, "PointOfInterests.json");
     public static readonly string NpcVendorsFile = Path.Combine(BaseDirectory, "NpcVendors.json");
     public static readonly string NpcsFile = Path.Combine(BaseDirectory, "Npcs.json");
+    public static readonly string MapsDirectory = Path.Combine(BaseDirectory, "Maps");
 
     public static readonly string ConsumablesFile = Path.Combine(BaseDirectory, "Consumables.jsonc");
 
@@ -87,6 +88,7 @@ public class ResourceManager : IResourceManager
     public PointOfInterestDefinitionCollection PointOfInterests { get; }
     public NpcVendorCollection NpcVendors { get; }
     public NpcDefinitionCollection Npcs { get; }
+    public MapGraphCollection Maps { get; }
 
 
     public ConsumableCollection Consumables { get; }
@@ -136,6 +138,7 @@ public class ResourceManager : IResourceManager
         PointOfInterests = new(_logger);
         NpcVendors = new(_logger);
         Npcs = new(_logger);
+        Maps = new(_logger);
         Consumables = new(_logger);
         Quests = new(_logger);
         DailyWheels = new(_logger);
@@ -219,6 +222,9 @@ public class ResourceManager : IResourceManager
             return false;
 
         if (!Npcs.Load(NpcsFile))
+            return false;
+
+        if (!Maps.Load(MapsDirectory))
             return false;
 
 

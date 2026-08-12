@@ -106,13 +106,23 @@ public sealed class ObstacleMap
         if (name.Contains("tree_giant")) return 9f;
         if (name.Contains("tree_medium")) return 6f;
         if (name.Contains("tree")) return 4f;
-        // Structural cave-wall/tunnel-boundary pieces (e.g. "cave_01_naturalcool_piece02.agr",
-        // "cave_02_naturalcool_blockade.agr") - a modular kit for building cave interiors, found 2026-07-26
-        // via a properly structured GcnkParser (the earlier ".adr\0"-only string-matching silently missed
-        // every one of these, since they use the ".agr" extension - this was the actual root cause of mobs
-        // still clipping through tunnel walls after the first placement-based obstacle pass). Sized like a
-        // building, not a small prop - these are large modular architecture pieces.
-        if (name.Contains("naturalcool_piece") || name.Contains("blockade")) return 12f;
+        // Structural cave-wall/tunnel-boundary pieces - a modular kit for building cave interiors, found
+        // 2026-07-26 via a properly structured GcnkParser (the earlier ".adr\0"-only string-matching
+        // silently missed every one of these, since they use the ".agr" extension - that was the root cause
+        // of mobs clipping through tunnel walls after the first placement-based obstacle pass). Sized like
+        // a building, not a small prop - these are large modular architecture pieces.
+        //
+        // WIDENED 2026-08-06: the rule only ever matched the "naturalcool" MATERIAL, but the kit's real
+        // naming is cave_<NN>_[qualifier_]<material>_piece<NN>, with four materials (naturalcool,
+        // naturaldirt, manmade, ice) and optional qualifiers (capped, sh). Measured across every dungeon
+        // world: 3121 structural .agr placements exist and the old rule matched just 136 of them (4.4%) -
+        // every naturaldirt/manmade/ice cave wall in the game was falling through to the 4f generic
+        // default, i.e. sized as a small prop rather than architecture. That's the same class of miss as
+        // the original .adr/.agr bug, and it's why e.g. Bixie Hive (whose walls are cave_02_naturaldirt_
+        // piece*) still read as almost-open space: 3x too small to block a chase line.
+        // Excludes "water" - cave_02_piece02water_*.adr is a liquid plane, not a wall.
+        if (name.Contains("blockade")) return 12f;
+        if (name.StartsWith("cave_") && name.Contains("_piece") && !name.Contains("water")) return 12f;
         if (name.Contains("building") || name.Contains("house") || name.Contains("tower") ||
             name.Contains("cabin") || name.Contains("hut") || name.Contains("castle") ||
             name.Contains("shop") || name.Contains("facade") || name.Contains("store") ||
