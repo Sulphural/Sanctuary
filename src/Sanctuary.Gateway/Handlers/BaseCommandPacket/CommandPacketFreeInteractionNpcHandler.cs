@@ -43,7 +43,7 @@ public static class CommandPacketFreeInteractionNpcHandler
         var playerPosition = new Vector3(player.Position.X, player.Position.Y, player.Position.Z);
 
         var target = player.VisibleNpcs.Values
-            .Where(npc => npc.IsInteractable && npc.InteractAction is not null)
+            .Where(npc => npc.IsInteractable && npc.HasInteraction)
             .Select(npc => new
             {
                 Npc = npc,

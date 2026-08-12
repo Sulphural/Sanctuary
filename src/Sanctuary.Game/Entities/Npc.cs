@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
+using Sanctuary.Game.Interactions;
 using Sanctuary.Game.Zones;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
@@ -73,6 +74,20 @@ public class Npc : IEntity
     public int Disposition { get; set; } = 1;
 
     public Action<Player>? InteractAction { get; set; }
+
+    // Contributors to this NPC's radial interaction menu. Each is asked, at interact time, for the
+    // options it can offer THIS player right now - a vendor always has one (open the shop), the quest
+    // manager has one per quest it could start or advance here, and either can have none.
+    //
+    // Registering a provider is how an NPC becomes able to do two things at once; before this, a
+    // second `InteractAction = ...` silently replaced the first (a vendor who also gave a quest lost
+    // its shop). NPCs with a single fixed job keep using InteractAction and are unaffected.
+    public List<Func<Player, IEnumerable<NpcInteractionOption>>> InteractionProviders { get; } = [];
+
+    // Does clicking this NPC do anything at all? Callers that used to test `InteractAction is not null`
+    // must use this instead: a vendor or quest NPC now carries providers and leaves InteractAction null,
+    // and testing the delegate alone would silently drop them.
+    public bool HasInteraction => InteractAction is not null || InteractionProviders.Count > 0;
     public Action? UpdateEverySecondAction { get; set; }
 
     // Non-zero = show a combat-encounter "Battle Starter" badge over this NPC's head (op35/sub10
@@ -203,7 +218,34 @@ public class Npc : IEntity
 
     public void OnInteract(Player player)
     {
-        InteractAction?.Invoke(player);
+        var options = BuildInteractionOptions(player);
+
+        // ONLY a genuine choice gets the menu. One option runs straight away - putting a single-entry
+        // ring on screen would make every vendor and quest giver cost an extra click.
+        switch (options.Count)
+        {
+            case > 1:
+                player.SendInteractionMenu(this, options);
+                return;
+
+            case 1:
+                options[0].Invoke(player);
+                return;
+
+            default:
+                InteractAction?.Invoke(player);
+                return;
+        }
+    }
+
+    public List<NpcInteractionOption> BuildInteractionOptions(Player player)
+    {
+        var options = new List<NpcInteractionOption>();
+
+        foreach (var provider in InteractionProviders)
+            options.AddRange(provider(player));
+
+        return options;
     }
 
     public virtual void OnAddVisibleNpcs(params IEnumerable<Npc> npcs)

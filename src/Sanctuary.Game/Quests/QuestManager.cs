@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -9,6 +9,7 @@ using Sanctuary.Core.IO;
 using Sanctuary.Database;
 using Sanctuary.Database.Entities;
 using Sanctuary.Game.Entities;
+using Sanctuary.Game.Interactions;
 using Sanctuary.Game.Resources.Definitions;
 using Sanctuary.Game.Zones;
 using Sanctuary.Packet;
@@ -33,60 +34,102 @@ public sealed class QuestManager : IQuestManager
     public bool IsQuestNpc(ulong npcGuid)
         => _resourceManager.Quests.ByGiver.ContainsKey(npcGuid) || _resourceManager.Quests.ByTarget.ContainsKey(npcGuid);
 
-    public void OnNpcInteract(Player player, Npc npc)
+    // Every quest this NPC could start or advance for this player right now, as radial-menu options.
+    // OnNpcInteract acts on the FIRST match and returns; this enumerates them all so the player can
+    // pick - e.g. Chloe both takes the turn-in for "Ninja: That's the Spirit" and offers "Ninja: Strike
+    // from the Shadows", and neither should be unreachable because the other happened to be found first.
+    public List<NpcInteractionOption> GetInteractionOptions(Player player, Npc npc)
     {
+        var options = new List<NpcInteractionOption>();
         var quests = _resourceManager.Quests;
 
-        // 1. Goal progression / turn-in: is this NPC the target of the ACTIVE goal of a quest the player
-        // has active (accepted, not yet completed)? Talking to it ticks that goal off; the last goal hands
-        // the quest in (end screen). Multi-goal quests can point intermediate goals at different NPCs, so we
-        // check each active quest's current goal rather than only the quest's turn-in NPC.
+        // Advance/turn in first, matching OnNpcInteract's own precedence.
         foreach (var (questId, completed) in player.Quests)
         {
             if (completed || !quests.TryGet(questId, out var activeQuest))
                 continue;
 
-            var goals = activeQuest.EffectiveGoals;
-            int done = player.QuestGoalProgress.TryGetValue(questId, out var progress) ? progress : 0;
-            if (done >= goals.Count)
-                continue; // all goals already done (turn-in fires on the last goal, so this shouldn't linger)
-
-            // Collect/Kill/EncounterComplete goals advance only by their own events (OnCollectInteract /
-            // OnNpcKilled / OnEncounterComplete). Since they have no NPC target, GoalTargetGuid would fall
-            // back to the quest's turn-in NPC - talking to it must NOT tick the goal off (that would bypass
-            // the objective), so skip them here.
-            if (goals[done].Type is QuestGoalType.Collect or QuestGoalType.Kill or QuestGoalType.EncounterComplete)
+            if (!AdvancesHere(player, activeQuest, npc, out _))
                 continue;
 
-            // A COUNTED talk goal ("Talk to Freewheelers - 0/3") is ticked up by any of several NPCs
-            // instead of completed outright by one, so it takes its own crediting path.
-            if (goals[done].IsCountedTalk)
+            var quest = activeQuest;
+            options.Add(new NpcInteractionOption
             {
-                if (TryCreditCountedTalk(player, activeQuest, done, npc))
-                    return;
-
-                continue; // this NPC isn't one of that goal's targets - it may still serve another quest
-            }
-
-            if (GoalTargetGuid(activeQuest, done) == npc.Guid)
-            {
-                CompleteGoal(player, activeQuest, done);
-                return;
-            }
+                IconId = ContextIcons.QuestTurnIn,
+                ButtonTextId = quest.TitleId,
+                Invoke = interactingPlayer => AdvanceAtNpc(interactingPlayer, quest, npc)
+            });
         }
 
-        // 2. Offer: is this NPC the giver of a quest the player can currently take?
         if (quests.ByGiver.TryGetValue(npc.Guid, out var giverQuestIds))
         {
             foreach (var questId in giverQuestIds)
             {
-                if (quests.TryGet(questId, out var offerableQuest) && offerableQuest.IsOfferableFor(player.Quests))
+                if (!quests.TryGet(questId, out var offerableQuest) || !offerableQuest.IsOfferableFor(player.Quests))
+                    continue;
+
+                var quest = offerableQuest;
+                options.Add(new NpcInteractionOption
                 {
-                    Offer(player, offerableQuest);
-                    return;
-                }
+                    IconId = ContextIcons.QuestOffer,
+                    ButtonTextId = quest.TitleId,
+                    Invoke = interactingPlayer => Offer(interactingPlayer, quest)
+                });
             }
         }
+
+        return options;
+    }
+
+    // Does talking to this NPC advance `quest`'s CURRENT goal? Shared by OnNpcInteract (which acts on
+    // the first hit) and GetInteractionOptions (which lists them all) so the two can never disagree
+    // about what a click on this NPC would do.
+    private bool AdvancesHere(Player player, QuestDefinition quest, Npc npc, out int goalIndex)
+    {
+        goalIndex = player.QuestGoalProgress.TryGetValue(quest.QuestId, out var progress) ? progress : 0;
+
+        var goals = quest.EffectiveGoals;
+        if (goalIndex >= goals.Count)
+            return false;
+
+        // Collect/Kill/EncounterComplete goals advance only through their own events; GoalTargetGuid
+        // would fall back to the quest's turn-in NPC and talking would bypass the objective.
+        if (goals[goalIndex].Type is QuestGoalType.Collect or QuestGoalType.Kill or QuestGoalType.EncounterComplete)
+            return false;
+
+        if (goals[goalIndex].IsCountedTalk)
+            return IsCountedTalkTarget(quest, goalIndex, npc);
+
+        return GoalTargetGuid(quest, goalIndex) == npc.Guid;
+    }
+
+    // Runs the advance that AdvancesHere reported, taking the same two paths OnNpcInteract does.
+    private void AdvanceAtNpc(Player player, QuestDefinition quest, Npc npc)
+    {
+        if (!AdvancesHere(player, quest, npc, out int goalIndex))
+            return; // state moved on between building the menu and the player picking from it
+
+        if (quest.EffectiveGoals[goalIndex].IsCountedTalk)
+            TryCreditCountedTalk(player, quest, goalIndex, npc);
+        else
+            CompleteGoal(player, quest, goalIndex);
+    }
+
+    // A counted talk goal ("Talk to Freewheelers - 0/3") is satisfied by any of several NPCs, so
+    // membership - not a single target guid - decides whether this NPC advances it.
+    private static bool IsCountedTalkTarget(QuestDefinition quest, int goalIndex, Npc npc)
+        => quest.EffectiveGoals[goalIndex].AllTalkTargetGuids().Contains(npc.Guid);
+
+    // Single-action interact: do whatever the NPC's menu would have listed first. GetInteractionOptions
+    // already orders goal progression / turn-in ahead of new offers, which is the precedence this had
+    // when it walked the player's quests itself - talking to an NPC finishes what you are carrying
+    // before it hands you something new.
+    public void OnNpcInteract(Player player, Npc npc)
+    {
+        var options = GetInteractionOptions(player, npc);
+
+        if (options.Count > 0)
+            options[0].Invoke(player);
     }
 
     // Credits one NPC toward a COUNTED TalkToNpc goal - the "talk to N of these interchangeable NPCs"
@@ -664,6 +707,9 @@ public sealed class QuestManager : IQuestManager
     // Sends the quest offer popup (QuestInfoPacket) for the giver NPC.
     private void Offer(Player player, QuestDefinition quest)
     {
+        // The giver gestures as it makes its pitch, same as it does mid-conversation.
+        QuestDialogue.PlayTalkAnimation(player, quest.GiverGuid);
+
         player.SendTunneled(new QuestInfoPacket
         {
             QuestId = quest.QuestId,
@@ -787,6 +833,9 @@ public sealed class QuestManager : IQuestManager
         // below, not QuestData at all, so nothing needs refreshing. Re-sending QuestAdd would APPEND a
         // duplicate journal row (the client never dedupes) that completion then can't fully clear -
         // the bug that left finished quests in the journal.
+        // The NPC handing the quest in speaks over the end screen, so it gestures there too.
+        QuestDialogue.PlayTalkAnimation(player, GoalTargetGuid(quest, quest.EffectiveGoals.Count - 1));
+
         player.SendTunneled(new QuestEndPacket
         {
             // Camera focus = the LAST goal's NPC (where hand-in happens). For single-goal quests this is

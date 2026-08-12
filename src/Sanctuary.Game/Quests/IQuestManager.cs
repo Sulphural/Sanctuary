@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System.Numerics;
 
 using Sanctuary.Game.Entities;
+using Sanctuary.Game.Interactions;
 
 namespace Sanctuary.Game.Quests;
 
@@ -15,6 +17,10 @@ public interface IQuestManager
 
     // Player interacted with a quest NPC: turn in an active objective, or offer an available quest.
     void OnNpcInteract(Player player, Npc npc);
+
+    // Every quest this NPC could start or advance for this player right now, as radial-menu options.
+    // One option is run directly by the NPC; two or more put the interaction ring on screen.
+    List<NpcInteractionOption> GetInteractionOptions(Player player, Npc npc);
 
     // Player interacted with a Collect-goal pickup (a spawned collectible world object): credit the active
     // Collect goal's count and, at the required count, tick the goal off and advance to the return step.

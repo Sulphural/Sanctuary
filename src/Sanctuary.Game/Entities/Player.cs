@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Collections.Generic;
@@ -178,6 +178,16 @@ public sealed class Player : ClientPcData, IEntity
 
     // The NPC doing the talking in that conversation - every turn stays framed on them.
     public ulong PendingDialogueNpcGuid { get; set; }
+
+    // The NPC currently running the talking loop for this player, or 0. Tracked because that loop is a
+    // BASE animation (op35/8 PlayType 1) that runs until it is replaced - see QuestDialogue - so every
+    // path out of a conversation has to know which NPC to put back to idle.
+    public ulong TalkingNpcGuid { get; set; }
+
+    // Bumped by every start/stop of that loop. A delayed reset carries the ticket it was scheduled
+    // under and only fires while it is still current, so a newer gesture is never cut short by an
+    // older one's timer.
+    public int TalkAnimationTicket { get; set; }
 
     // COMBAT TUTORIAL: the index of the tutorial step the player is currently on (-1 = not in the
     // tutorial). Each step arms a client-detected objective (look-at / first-movement / kill / etc.);
@@ -1485,7 +1495,13 @@ public sealed class Player : ClientPcData, IEntity
             if (npc.CursorId == 0)
                 continue;
 
-            var hasCursor = GetNotificationImageId(npc) != 0;
+            // HasCursor is what makes the NPC selectable client-side. Badge-bearing NPCs (quest givers,
+            // vendors) answer on their badge, which already tracks whether they have anything to say.
+            // Everything driven by a plain InteractAction - quest collectibles, gathering nodes, dungeon
+            // entrances - carries NO badge, so keying the cursor purely off the badge left them
+            // permanently un-clickable: a quest's sparkling present rendered, and the tracker pointed
+            // straight at it, but every click was refused.
+            var hasCursor = GetNotificationImageId(npc) != 0 || npc.InteractAction is not null;
 
             playerUpdatePacketNpcRelevance.Entries.Add(new PlayerUpdatePacketNpcRelevance.Entry
             {
@@ -1673,6 +1689,47 @@ public sealed class Player : ClientPcData, IEntity
 
         foreach (var player in players)
             VisiblePlayers.TryRemove(player.Guid, out _);
+    }
+
+    // The NPC radial menu currently on this player's screen. The client answers a menu with the id we
+    // gave the option (op26/10 CommandPacketInteractionSelect), which is meaningless without the list
+    // that produced it, so the actions are held here until the reply arrives or the next menu opens.
+    public sealed record InteractionMenu(ulong Guid, IReadOnlyDictionary<int, Action<Player>> Options);
+
+    public InteractionMenu? OpenInteractionMenu { get; set; }
+
+    // Option ids live well above IInteraction.UniqueId (a small counter over the handful of registered
+    // player-to-player interactions), so a menu id can never be mistaken for a registered one.
+    private const int NpcInteractionIdBase = 1_000_000;
+
+    public void SendInteractionMenu(Npc npc, IReadOnlyList<NpcInteractionOption> options)
+    {
+        var packet = new CommandPacketInteractionList();
+
+        packet.List.Guid = npc.Guid;
+        packet.List.Name = npc.Name ?? string.Empty;
+
+        var actions = new Dictionary<int, Action<Player>>(options.Count);
+
+        for (int i = 0; i < options.Count; i++)
+        {
+            var option = options[i];
+            int id = NpcInteractionIdBase + i;
+
+            packet.List.Interactions.Add(new InteractionData
+            {
+                Id = id,
+                IconId = option.IconId,
+                ButtonText = option.ButtonTextId,
+                TooltipId = option.TooltipId
+            });
+
+            actions[id] = option.Invoke;
+        }
+
+        OpenInteractionMenu = new InteractionMenu(npc.Guid, actions);
+
+        SendTunneled(packet);
     }
 
     public void OnInteract(Player player)

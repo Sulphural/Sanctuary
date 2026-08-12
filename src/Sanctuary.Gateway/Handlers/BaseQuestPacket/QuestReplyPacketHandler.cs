@@ -36,6 +36,9 @@ public static class QuestReplyPacketHandler
 
         var player = connection.Player;
 
+        // Accepted or declined, the offer bubble is gone - stop the giver's talking loop either way.
+        Sanctuary.Game.Quests.QuestDialogue.StopTalkAnimation(player);
+
         if (packet.Accepted)
         {
             _questManager.AcceptQuest(player, packet.QuestId);

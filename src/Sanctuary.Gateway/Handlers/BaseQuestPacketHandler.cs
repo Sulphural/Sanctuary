@@ -46,6 +46,9 @@ public static class BaseQuestPacketHandler
     {
         // Player confirmed on the end screen - finalize the quest (grant reward + celebration, mark
         // complete, clear badges) now, then restore the HUD the end screen hid.
+        // End screen dismissed - the turn-in NPC stops gesturing (QuestManager.TurnIn started it).
+        Sanctuary.Game.Quests.QuestDialogue.StopTalkAnimation(connection.Player);
+
         var pending = connection.Player.PendingQuestEndAction;
         connection.Player.PendingQuestEndAction = null;
         pending?.Invoke();

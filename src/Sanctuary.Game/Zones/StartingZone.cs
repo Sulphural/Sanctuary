@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -12,6 +12,7 @@ using Sanctuary.Core.Helpers;
 using Sanctuary.Core.IO;
 using Sanctuary.Game.Combat;
 using Sanctuary.Game.Entities;
+using Sanctuary.Game.Interactions;
 using Sanctuary.Game.Pathfinding;
 using Sanctuary.Game.Resources.Definitions;
 using Sanctuary.Game.Resources.Definitions.Zones;
@@ -242,7 +243,7 @@ public sealed partial class StartingZone : BaseZone
             if (vendorDef.SubTextNameId != 0)
                 npc.SubTextNameId = vendorDef.SubTextNameId;
             var capturedNpc = npc;
-            npc.InteractAction = (interactingPlayer) =>
+            Action<Player> openShop = (interactingPlayer) =>
             {
                 var itemListPacket = new CoinStoreItemListPacket();
                 foreach (var itemDefId in capturedNpc.VendorItems)
@@ -277,6 +278,15 @@ public sealed partial class StartingZone : BaseZone
                 interactingPlayer.ActiveMerchantGuid = capturedNpc.Guid;
                 interactingPlayer.SendTunneled(merchantPacket);
             };
+
+            // Registered as an option rather than assigned to InteractAction so a vendor who ALSO gives
+            // a quest keeps its shop - the quest wiring below used to overwrite the delegate outright.
+            npc.InteractionProviders.Add(_ => [new NpcInteractionOption
+            {
+                IconId = ContextIcons.Merchant,
+                ButtonTextId = MerchantInteractionTextId,
+                Invoke = openShop
+            }]);
         }
 
         // Quest givers/targets (from Quests.json) route their interaction through the quest manager,
@@ -285,7 +295,7 @@ public sealed partial class StartingZone : BaseZone
         {
             npc.CursorId = 17;
             var questNpc = npc;
-            npc.InteractAction = interactingPlayer => _questManager.OnNpcInteract(interactingPlayer, questNpc);
+            npc.InteractionProviders.Add(interactingPlayer => _questManager.GetInteractionOptions(interactingPlayer, questNpc));
         }
 
         // Kill-goal targets (Quests.json goals of Type=Kill, matched by NameId): spawn as attackable
@@ -517,6 +527,10 @@ public sealed partial class StartingZone : BaseZone
     // full (which made it look like only the last couple hits registered). Bumped to 50000 because the real
     // ninja ability damage (from the wiki: 2609 melee .. 10674 special) would otherwise one-shot a 5000 dummy.
     private const int TrainingDummyMaxHealth = 50000;
+
+    // Label on the vendor's radial-menu entry: the client's own "Merchant" string
+    // (Resources/CodeStringMappings.txt `Merchant^3227^`).
+    private const int MerchantInteractionTextId = 3227;
 
     private void SpawnTrainingDummy(Player player)
     {

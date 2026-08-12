@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 using Sanctuary.Game.Entities;
 using Sanctuary.Game.Resources.Definitions;
@@ -36,6 +37,89 @@ public static class QuestDialogue
     // for both icons.
     private const int GreenButtonImageSet = 17;
 
+    // The NPC gestures while it speaks instead of standing frozen behind its own speech bubble.
+    // emo_talk_neutral_med, live-confirmed present in NPC animation sets (emo_talk_* also carries
+    // inquire/exclaim 3102/3103 and neutral/happy/angry in short/med/long 3104-3112, if lines ever
+    // gain a mood). NOTE the amb_* family, which looked like the obvious NPC choice, does NOT play.
+    public const int TalkAnimationId = 3105;
+
+    // StopDancing's idle id - the proven way to put an entity back to its default animation.
+    private const int IdleAnimationId = 1;
+
+    // ★ This MUST be PlayType 1. The op35/8 handler (0x009315C7) forks on bit0 of PlayType:
+    //   bit0 set   -> writes the entity's BASE animation at [entity+0x51C] directly. No gate.
+    //   bit0 clear -> "play now", which calls 0x0096C780 - and that returns immediately unless
+    //                 [entity+0x1870] is non-null, which it never is for an NPC. Live-confirmed:
+    //                 PlayType 2 does nothing on NPCs no matter the animation id.
+    // Because it sets a BASE animation it LOOPS until replaced, so every path that ends a conversation
+    // has to call StopTalkAnimation or the NPC gestures at nobody forever.
+    private const byte SetBaseAnimation = 1;
+
+    // How long the gesture is left running before it's reset to idle - i.e. how we fake a single play
+    // out of a looping base animation. An ESTIMATE of emo_talk_neutral_med's real length: too long and
+    // the clip starts over, too short and it cuts off. Tune against the client;
+    // emo_talk_neutral_short (3104) / _long (3106) are the shorter and longer clips if the pacing is off.
+    private const int TalkAnimationMs = 1500;
+
+    // Plays the talking gesture ONCE on a speaking NPC. Sent only to the player in the conversation: the
+    // bubble is theirs alone, and two players talking to the same NPC would otherwise fight over its
+    // animation.
+    //
+    // "Once" has to be emulated. The client's real one-shot ("play now") path is unreachable on NPCs -
+    // see SetBaseAnimation - leaving only the base-animation write, which LOOPS. So the gesture is
+    // started and then reset to idle a clip-length later.
+    public static void PlayTalkAnimation(Player player, ulong npcGuid)
+    {
+        if (npcGuid == 0)
+            return;
+
+        // Whoever was talking before stops first, so a conversation that hands off between NPCs (or an
+        // offer interrupted by another) can't strand the previous one mid-gesture.
+        if (player.TalkingNpcGuid != 0 && player.TalkingNpcGuid != npcGuid)
+            StopTalkAnimation(player);
+
+        player.TalkingNpcGuid = npcGuid;
+
+        // Every start and stop takes a ticket. The delayed reset below only fires if it still holds the
+        // current one, so the next line of dialogue - or the player closing the conversation - cleanly
+        // supersedes a reset that hasn't come due yet instead of cutting the new gesture short.
+        int ticket = ++player.TalkAnimationTicket;
+
+        player.SendTunneled(new PlayerUpdatePacketSetAnimation
+        {
+            Guid = npcGuid,
+            AnimationId = TalkAnimationId,
+            PlayType = SetBaseAnimation
+        });
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TalkAnimationMs);
+
+            if (player.TalkAnimationTicket == ticket)
+                StopTalkAnimation(player);
+        });
+    }
+
+    // Puts the NPC this player had talking back to its normal idle. Safe to call at any time - it's a
+    // no-op when nobody is mid-sentence, so exit paths can call it unconditionally.
+    public static void StopTalkAnimation(Player player)
+    {
+        if (player.TalkingNpcGuid == 0)
+            return;
+
+        var npcGuid = player.TalkingNpcGuid;
+        player.TalkingNpcGuid = 0;
+        player.TalkAnimationTicket++; // invalidate any reset still pending for this gesture
+
+        player.SendTunneled(new PlayerUpdatePacketSetAnimation
+        {
+            Guid = npcGuid,
+            AnimationId = IdleAnimationId,
+            PlayType = SetBaseAnimation
+        });
+    }
+
     // Starts a conversation at its first turn and parks the rest on the player for TryAdvance to play out.
     // A single-turn conversation behaves exactly as the old one-shot bubble did.
     public static void Begin(Player player, IReadOnlyList<QuestDialogueLine> lines, ulong npcGuid)
@@ -59,6 +143,7 @@ public static class QuestDialogue
         if (player.PendingDialogue.Count == 0)
         {
             player.PendingDialogueNpcGuid = 0;
+            StopTalkAnimation(player); // conversation is over - the caller sends EndDialog next
             return false;
         }
 
@@ -73,6 +158,7 @@ public static class QuestDialogue
     {
         player.PendingDialogue.Clear();
         player.PendingDialogueNpcGuid = 0;
+        StopTalkAnimation(player);
     }
 
     private static void Show(Player player, QuestDialogueLine line, ulong npcGuid, bool isLastTurn)
@@ -94,6 +180,9 @@ public static class QuestDialogue
             Param1 = isLastTurn ? LeaveImageId : PlusImageId,
             Param2 = GreenButtonImageSet, // node+0x18 -> button skin = "dialog green button" imageSet
         });
+
+        // Per turn, not per conversation - the NPC re-gestures each time it takes the floor again.
+        PlayTalkAnimation(player, npcGuid);
 
         player.SendTunneled(dialog);
     }
