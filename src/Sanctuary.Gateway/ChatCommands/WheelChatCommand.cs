@@ -24,7 +24,7 @@ public class WheelChatCommand : GatewayChatCommand
     }
 
     public override string KeyWord => "wheel";
-    public override string Usage => "[go | give <count> [player] | reset | rig <slot> | slots <cat...> | flash [swf] | add <count> | state <count>]";
+    public override string Usage => "[go | give <count> [player] | bg <name|none> | flag <n> <0|1> | welcome [icon] | season all | streak <days> | reset | rig <slot> | slots <cat...> | flash [swf] | add <count> | state <count>]";
     public override string Description => "Opens the daily wheel, or hands out and calibrates its spins.";
     public override ChatCommandRole RequiredRole => ChatCommandRole.Admin;
 
@@ -41,11 +41,64 @@ public class WheelChatCommand : GatewayChatCommand
             case "give":
                 return HandleGive(invoker, args);
 
+            case "season":
+                // Seasonal wheels only ship inside their date window; this shows them anyway.
+                DailyWheelGame.IgnoreSeasons = args.Length > 1 && args[1].ToLowerInvariant() is "all" or "on";
+                Reply(invoker, DailyWheelGame.IgnoreSeasons
+                    ? "Sending every wheel, in season or not. Re-open the wheel and use the arrows beside it."
+                    : "Back to sending only the wheels in season today.");
+                return true;
+
+            case "streak":
+                // Sets the consecutive-day counter, so the 3- and 7-day bonuses can be tested without
+                // waiting a week.
+                var days = args.Length > 1 && int.TryParse(args[1], out var d) ? d : 0;
+                DailyWheelGame.SetStreak(invoker.Guid, days);
+                Reply(invoker, $"Streak set to {days} day(s). The next free spin continues from there.");
+                return true;
+
             case "reset":
                 DailyWheelGame.ResetDailySpin(invoker.Guid);
                 DailyWheelGame.SendSpinAvailability(invoker);
                 Reply(invoker, "Daily spin lock cleared, Play button re-enabled.");
                 return true;
+
+
+            case "flag":
+                return HandleFlag(invoker, args);
+
+            case "bg":
+                // The movie the client draws BEHIND the wheel. Empty = nothing, so it floats over the
+                // world; pass a name (e.g. game_wheel.gfx) to put a backdrop back and compare.
+                if (args.Length > 1)
+                {
+                    var swf = args[1].ToLowerInvariant() is "none" or "off" or "-" ? "" : args[1];
+                    Sanctuary.Game.Zones.StartingZone.WheelBackgroundSwf = swf;
+                }
+
+                Reply(invoker, Sanctuary.Game.Zones.StartingZone.WheelBackgroundSwf.Length == 0
+                    ? "Wheel backdrop off - it will float over the game world. Re-open the wheel to see it."
+                    : $"Wheel backdrop set to '{Sanctuary.Game.Zones.StartingZone.WheelBackgroundSwf}'. Re-open the wheel.");
+                return true;
+
+            case "welcome":
+                // Re-sends the welcome screen's What's New tile for the wheel, optionally with a
+                // different icon id, so the right artwork can be found live.
+                if (invoker.Zone is not Sanctuary.Game.Zones.StartingZone welcomeZone)
+                {
+                    Reply(invoker, "Only in the starting zone - that's where the welcome screen is sent.");
+                    return true;
+                }
+
+                if (args.Length > 1 && int.TryParse(args[1], out var iconId))
+                    Sanctuary.Game.Zones.StartingZone.WelcomeWheelIconId = iconId;
+
+                welcomeZone.SendWelcomeAnnouncements(invoker);
+
+                Reply(invoker, "Sent the wheel's welcome-screen tile with icon "
+                    + $"{Sanctuary.Game.Zones.StartingZone.WelcomeWheelIconId}. Re-open the welcome screen to see it.");
+                return true;
+
 
             case "rig":
                 return HandleRig(invoker, args);
@@ -94,6 +147,33 @@ public class WheelChatCommand : GatewayChatCommand
         }
     }
 
+    // MiniGameInfo flags on the wheel launch, so the start panel/window levers can be tried live.
+    private bool HandleFlag(Player invoker, string[] args)
+    {
+        var on = args.Length > 2 && args[2] is "1" or "on" or "true";
+
+        switch (args.Length > 1 ? args[1].ToLowerInvariant() : "")
+        {
+            case "11": Sanctuary.Game.Zones.StartingZone.WheelUnknown11 = on; break;
+            case "star": Sanctuary.Game.Zones.StartingZone.WheelShowStarCounter = on; break;
+            case "status": Sanctuary.Game.Zones.StartingZone.WheelShowStatusIcon = on; break;
+            case "action": Sanctuary.Game.Zones.StartingZone.WheelShowActionBar = on; break;
+            case "end": Sanctuary.Game.Zones.StartingZone.WheelShowEndDialog = on; break;
+            default:
+                Reply(invoker, "Usage: wheel flag <11|star|status|action|end> <0|1>");
+                return true;
+        }
+
+        Reply(invoker, "Wheel launch flags: "
+            + $"11={(Sanctuary.Game.Zones.StartingZone.WheelUnknown11 ? 1 : 0)} "
+            + $"star={(Sanctuary.Game.Zones.StartingZone.WheelShowStarCounter ? 1 : 0)} "
+            + $"status={(Sanctuary.Game.Zones.StartingZone.WheelShowStatusIcon ? 1 : 0)} "
+            + $"action={(Sanctuary.Game.Zones.StartingZone.WheelShowActionBar ? 1 : 0)} "
+            + $"end={(Sanctuary.Game.Zones.StartingZone.WheelShowEndDialog ? 1 : 0)} - re-open the wheel.");
+
+        return true;
+    }
+
     // Extra spins for a player (negative takes them away). They persist on the character row.
     private bool HandleGive(Player invoker, string[] args)
     {
@@ -114,12 +194,14 @@ public class WheelChatCommand : GatewayChatCommand
             target = resolved;
         }
 
-        var total = DailyWheelGame.GrantSpins(target.Guid, count);
+        // Each wheel has its own spins, so give to all of them.
+        DailyWheelGame.GrantSpinsOnAllWheels(target.Guid, count);
 
         // Push the new count so their Play button updates without a relog.
         DailyWheelGame.SendSpinAvailability(target);
 
-        Reply(invoker, $"{target.Name.FullName} now has {total} bonus spin(s) on top of today's free one.");
+        Reply(invoker, $"{target.Name.FullName} now has {count} more bonus spin(s) on every wheel, "
+            + "on top of each one's free daily spin.");
 
         if (!ReferenceEquals(target, invoker))
             target.SendTunneled(new ChatPacketDebugChat

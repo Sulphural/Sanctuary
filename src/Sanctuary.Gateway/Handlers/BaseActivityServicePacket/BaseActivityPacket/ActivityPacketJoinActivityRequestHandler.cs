@@ -190,9 +190,9 @@ public static class ActivityPacketJoinActivityRequestHandler
 
             connection.SendTunneled(miniGameInfoPacket);
         }
-        // "Spin For The Win!" - the wheel isn't a Browser minigame: notify the client that a spin is
-        // available and it opens its own wheel widget (see PacketClientNotifyCoinSpinAvailable), which
-        // then drives itself against DailyWheelGame over the minigame payload channel.
+        // "Spin For The Win!" - the Browser's Play button. Opens it through the activity launch, which is
+        // the only way in (op171 does NOT open the wheel - see PacketClientNotifyCoinSpinAvailable). The
+        // widget then drives itself against DailyWheelGame over the minigame payload channel.
         else if (packet.ActivityId == 8)
         {
             _logger.LogInformation("Daily wheel: JoinActivityRequest for activity 8 (the Browser's Play button).");

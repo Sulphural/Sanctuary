@@ -58,14 +58,6 @@ public class DbCharacter
     public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? LastLogin { get; set; }
 
-    // "Spin For The Win!" (ClientActivityDefinitions Id=8) - null until the first spin; a spin is
-    // allowed once its UTC calendar day differs from LastDailyWheelSpinUtc's.
-    public DateTimeOffset? LastDailyWheelSpinUtc { get; set; }
-
-    // Extra wheel spins on top of the free daily one (granted by "/wheel give"). Spent only after the
-    // day's free spin has been used, and unlike it these carry over between days and logins.
-    public int DailyWheelBonusSpins { get; set; }
-
     public ICollection<DbItem> Items { get; set; } = new HashSet<DbItem>();
     public ICollection<DbTitle> Titles { get; set; } = new HashSet<DbTitle>();
     public ICollection<DbMount> Mounts { get; set; } = new HashSet<DbMount>();
@@ -73,6 +65,7 @@ public class DbCharacter
     public ICollection<DbFriend> Friends { get; set; } = new HashSet<DbFriend>();
     public ICollection<DbIgnore> Ignores { get; set; } = new HashSet<DbIgnore>();
     public ICollection<DbProfile> Profiles { get; set; } = new HashSet<DbProfile>();
+    public ICollection<DbCharacterDailyWheel> DailyWheels { get; set; } = new HashSet<DbCharacterDailyWheel>();
     public ICollection<DbCharacterQuest> Quests { get; set; } = new HashSet<DbCharacterQuest>();
 
     public ulong UserId { get; set; }

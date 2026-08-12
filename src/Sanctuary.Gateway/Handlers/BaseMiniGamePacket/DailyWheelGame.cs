@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.Logging;
 
 using Sanctuary.Core.Helpers;
 using Sanctuary.Database;
+using Sanctuary.Database.Entities;
 using Sanctuary.Game;
 using Sanctuary.Game.Entities;
 using Sanctuary.Game.Resources.Definitions;
@@ -17,36 +19,19 @@ using Sanctuary.Packet.Common.Attributes;
 
 namespace Sanctuary.Gateway.Handlers;
 
-// ★ "SPIN FOR THE WIN!" — the daily prize wheel, driven end-to-end against the client's own native
-// widget (Client\UI\game_wheel.gfx, launched as minigame Type=22 by StartingZone.LaunchSpinForTheWinGame).
+// "Spin For The Win!" - the daily prize wheel. Drives the client's own game_wheel.gfx widget, which
+// StartingZone.LaunchSpinForTheWinGame opens as minigame Type=22.
 //
-// The widget is a SOE "microgame": it talks to the server over the minigame PAYLOAD channel (op39/sub14,
-// MiniGamePayloadPacket) with tab-delimited text messages, NOT with dedicated opcodes. Full protocol
-// reversed 2026-08-06 out of the .gfx's AS2 (classes GameClientNetwork / GameServerNetwork /
-// Wheel.WheelGameClient / Wheel.WheelGameServer — the last one is SOE's own local-mode reference server,
-// so the sequence below is exactly what the retail server did):
+// It's a SOE "microgame", so it talks over the payload channel (op39/sub14) in tab-delimited text rather
+// than its own opcodes:
+//   S2C  OnWheelDataMsg(id, type, slots, nameId, msgId) | OnWheelUpdateMsg(id, spins, streak, nextSpin)
+//        OnServerReadyMsg() | OnWheelChangedMsg(id) | OnSpinInfoMsg(slot) | OnRewardInfoMsg(icon, tooltip,
+//        quantity, name, msg, tint)
+//   C2S  OnConnectMsg() | OnChangeWheelRequestMsg(id) | OnWheelSpinRequestMsg(id) | OnWheelStopMsg(id)
 //
-//   S2C (client-side handler signature = wire arg order; max 7 args, tab-separated):
-//     OnWheelDataMsg   (id, type, slots, wheelStringID, msgStringID)   slots = SPACE-separated category list
-//     OnWheelUpdateMsg (id, spins, consecutiveTimes, timeUntilNextSpin)
-//     OnServerReadyMsg ()                                              MUST come after the wheel data:
-//                                                                      it moves in the first wheel with spins
-//     OnWheelChangedMsg(wheelID)
-//     OnSpinInfoMsg    (desiredCategory)                               despite the name: the SLOT INDEX to
-//                                                                      land on (0-based, wheel order)
-//     OnRewardInfoMsg  (itemIconID, tooltipID, quantity, itemNameID, rewardMsgStringID, tintId)
-//
-//   C2S (what the widget sends back):
-//     OnConnectMsg ()                       -> reply with the wheel data, then OnServerReadyMsg
-//     OnChangeWheelRequestMsg (wheelID)     -> ack with OnWheelChangedMsg
-//     OnWheelSpinRequestMsg   (wheelID)     -> roll the prize, answer with OnSpinInfoMsg
-//     OnWheelStopMsg          (wheelID)     -> the wheel finished animating: PAY OUT + OnRewardInfoMsg
-//
-// The spin is pure theater — the server decides the slice up front (weighted, from DailyWheel.json) and
-// the widget just animates to it, the same way the dungeon loot wheel works.
-//
-// [PacketHandler] is only here so ConfigureServices gets called - the messages arrive through
-// MiniGamePayloadPacketHandler, not through a dispatcher entry of our own.
+// The spin is theater: we pick the slice up front (weighted, from DailyWheel.json) and the widget animates
+// to it. [PacketHandler] is only here for ConfigureServices - messages arrive via
+// MiniGamePayloadPacketHandler.
 [PacketHandler]
 public static class DailyWheelGame
 {
@@ -54,7 +39,36 @@ public static class DailyWheelGame
     private static IResourceManager _resourceManager = null!;
     private static IDbContextFactory<DatabaseContext> _dbContextFactory = null!;
 
-    private static readonly Random _rng = new();
+    // Random.Shared is thread-safe; a shared `new Random()` isn't, and tearing it pins Next() to 0.
+    private static Random _rng => Random.Shared;
+
+    // What each slice's pool last gave a player, so it can't hand out the same thing twice running.
+    private static readonly Dictionary<(ulong Player, int Wheel, int Slot, PrizePool Kind), int> _lastPrize = [];
+
+    private enum PrizePool
+    {
+        Items,
+        Coins,
+        Spins
+    }
+
+    // Picks from a slice's pool, re-rolling over the other entries if it lands on last time's prize.
+    private static int RollIndex(ulong playerGuid, int wheelId, int slotIndex, PrizePool kind, int count)
+    {
+        if (count <= 1)
+            return 0;
+
+        var pick = _rng.Next(count);
+
+        var key = (playerGuid, wheelId, slotIndex, kind);
+
+        if (_lastPrize.TryGetValue(key, out var previous) && pick == previous)
+            pick = (previous + 1 + _rng.Next(count - 1)) % count;   // uniform over the OTHER entries
+
+        _lastPrize[key] = pick;
+
+        return pick;
+    }
 
     public static void ConfigureServices(IServiceProvider serviceProvider)
     {
@@ -65,8 +79,7 @@ public static class DailyWheelGame
         _dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<DatabaseContext>>();
     }
 
-    // Every message the widget sends arrives here (routed from MiniGamePayloadPacketHandler). Returns
-    // false for messages that aren't ours, so the caller can keep logging them while we reverse the rest.
+    // Routed here from MiniGamePayloadPacketHandler. Returns false for messages we don't handle.
     public static bool HandleMessage(GatewayConnection connection, string message, int stateId)
     {
         var args = message.Split('\t');
@@ -101,9 +114,8 @@ public static class DailyWheelGame
         }
     }
 
-    // The player pressed the green spin button: pick the winning slice now and tell the wheel where to
-    // stop. Nothing is granted yet — the payout waits for OnWheelStopMsg so the banner lands with the
-    // animation (same rule as the dungeon loot wheel).
+    // Pick the winning slice and tell the wheel where to stop. Nothing is granted until OnWheelStopMsg,
+    // so the payout lands with the animation.
     private static bool HandleSpinRequest(GatewayConnection connection, int stateId, int wheelId)
     {
         var player = connection.Player;
@@ -113,7 +125,7 @@ public static class DailyWheelGame
 
         if (GetSpinsLeft(player.Guid, wheel) <= 0)
         {
-            _logger.LogInformation("Daily wheel: {name} asked to spin with no spins left — ignoring.", player.Name);
+            _logger.LogInformation("Daily wheel: {name} asked to spin with no spins left - ignoring.", player.Name);
             return true;
         }
 
@@ -122,14 +134,8 @@ public static class DailyWheelGame
         player.PendingDailyWheelSlot = slot;
         player.PendingDailyWheelId = wheel.Id;
 
-        // OnSpinInfoMsg is the ABSOLUTE slice to stop on. The widget adds TICK_DECAY(10) x this value to
-        // its spin energy and mCostPerDeg = TICK_DECAY x slots / 360, so it buys exactly this many slices
-        // of travel - and Spin() zeroes both mTotalRotation and mcSpinner._rotation first, so every spin
-        // starts from slice 0 rather than carrying the last landing over. (Sending it as a relative
-        // advance instead was tried live and is wrong: the first spin after opening the widget matches,
-        // because the wheel really is at 0 then, and every spin after it drifts.) The Random(2,8) energy
-        // Spin() adds is sub-slice jitter, ~7-29 of the 36 degrees a slice spans, which just stops the
-        // pointer off-centre.
+        // Absolute slice index, not a relative advance - Spin() zeroes the rotation first, so every spin
+        // starts from slice 0.
         _logger.LogInformation("Daily wheel: {name} spins wheel {wheel} -> slot {slot} (art {cat}, {prize}).",
             player.Name, wheel.Id, slot, wheel.Slots[slot].Category, wheel.Slots[slot].Comment);
 
@@ -138,8 +144,7 @@ public static class DailyWheelGame
         return true;
     }
 
-    // The wheel finished spinning on the slice we chose: consume the daily spin, grant the prize and fill
-    // in the "Congratulations! You won" window.
+    // Spin finished: consume the daily spin and pay out. PayOut is separate so the grab bag can repeat it.
     private static bool HandleSpinStopped(GatewayConnection connection, int stateId, int wheelId)
     {
         var player = connection.Player;
@@ -151,13 +156,76 @@ public static class DailyWheelGame
 
         if (slotIndex < 0 || !TryGetWheel(wheelId, out var wheel) || slotIndex >= wheel.Slots.Count)
         {
-            _logger.LogInformation("Daily wheel: stop with no pending spin — ignoring.");
+            _logger.LogInformation("Daily wheel: stop with no pending spin - ignoring.");
             return true;
         }
 
         var slot = wheel.Slots[slotIndex];
 
-        ConsumeDailySpin(player.Guid);
+        ConsumeDailySpin(connection, wheel.Id);
+
+        PayOut(connection, stateId, wheel, slotIndex);
+
+        // The grab bag: this many further slices are rolled and paid alongside it, each with its own
+        // reward window (the widget shows them one after another as the player dismisses each).
+        for (var i = 0; i < slot.GrabBagPrizes; i++)
+        {
+            var extraIndex = RollSlot(wheel);
+
+            if (extraIndex == slotIndex)
+                extraIndex = (extraIndex + 1) % wheel.Slots.Count;
+
+            _logger.LogInformation("Daily wheel: grab bag also paying slot {slot} ({prize}).",
+                extraIndex, wheel.Slots[extraIndex].Comment);
+
+            PayOut(connection, stateId, wheel, extraIndex);
+        }
+
+        // Grey the wheel out for the rest of the day, in the widget and in the minigames menu.
+        SendWheelUpdate(connection, stateId, wheel, player.Guid);
+        SendSpinAvailability(connection);
+
+        _logger.LogInformation("Daily wheel: {name} won {prize} (slot {slot}).", player.Name, slot.Comment, slotIndex);
+
+        MoveToNextSpinnableWheel(connection, stateId, wheel);
+
+        return true;
+    }
+
+    // This wheel is spent, so page the widget on to the next one the player can still spin. Without this
+    // they'd be left looking at a dead wheel and have to find the arrows themselves.
+    private static void MoveToNextSpinnableWheel(GatewayConnection connection, int stateId,
+        DailyWheelDefinition current)
+    {
+        if (GetSpinsLeft(connection.Player.Guid, current) > 0)
+            return;
+
+        var wheels = InSeasonWheels().ToList();
+
+        var from = wheels.FindIndex(x => x.Id == current.Id);
+
+        // Walk forward from the current wheel so it wraps round to the ones before it.
+        for (var i = 1; i < wheels.Count; i++)
+        {
+            var next = wheels[(from + i) % wheels.Count];
+
+            if (GetSpinsLeft(connection.Player.Guid, next) <= 0)
+                continue;
+
+            Send(connection, stateId, "OnWheelChangedMsg", next.Id);
+
+            _logger.LogInformation("Daily wheel: {name} is out of spins on wheel {from}, moving to {to}.",
+                connection.Player.Name, current.Id, next.Id);
+
+            return;
+        }
+    }
+
+    // Grants one slice's prize and shows its "Congratulations! You won" window.
+    private static void PayOut(GatewayConnection connection, int stateId, DailyWheelDefinition wheel, int index)
+    {
+        var player = connection.Player;
+        var slot = wheel.Slots[index];
 
         var iconId = slot.IconId;
         var nameId = slot.NameStringId;
@@ -167,10 +235,16 @@ public static class DailyWheelGame
             : slot.Coins > 0 ? slot.Coins
             : slot.Quantity;
 
-        if (slot.Spins > 0)
+        if (slot.Spins > 0 || slot.SpinAmounts.Count > 0)
         {
             // The wheel's own "extra spins" medallion: hand back more spins instead of an item.
-            GrantSpins(player.Guid, slot.Spins);
+            var spins = slot.SpinAmounts.Count > 0
+                ? slot.SpinAmounts[RollIndex(player.Guid, wheel.Id, index, PrizePool.Spins, slot.SpinAmounts.Count)]
+                : slot.Spins;
+
+            GrantSpins(player.Guid, wheel.Id, spins);
+
+            quantity = spins;
 
             if (iconId == 0)
                 iconId = ExtraSpinIconId;
@@ -185,7 +259,8 @@ public static class DailyWheelGame
 
             if (slot.CoinAmounts.Count > 0)
             {
-                var rolled = slot.CoinAmounts[_rng.Next(slot.CoinAmounts.Count)];
+                var rolled = slot.CoinAmounts[
+                    RollIndex(player.Guid, wheel.Id, index, PrizePool.Coins, slot.CoinAmounts.Count)];
 
                 coins = rolled.Coins;
 
@@ -193,7 +268,7 @@ public static class DailyWheelGame
                     nameId = rolled.NameStringId;
 
                 _logger.LogInformation("Daily wheel: slot {slot} rolled {coins} coins from {count} amount(s).",
-                    slotIndex, coins, slot.CoinAmounts.Count);
+                    index, coins, slot.CoinAmounts.Count);
             }
 
             quantity = coins;
@@ -214,7 +289,7 @@ public static class DailyWheelGame
         {
             // A slice can carry a POOL of items of the kind its picture shows - roll one.
             var itemId = slot.ItemIds.Count > 0
-                ? slot.ItemIds[_rng.Next(slot.ItemIds.Count)]
+                ? slot.ItemIds[RollIndex(player.Guid, wheel.Id, index, PrizePool.Items, slot.ItemIds.Count)]
                 : slot.ItemId;
 
             var granted = BaseMiniGamePacketHandler.GrantItem(connection, itemId, slot.Quantity);
@@ -234,7 +309,7 @@ public static class DailyWheelGame
                 tooltipId = itemId;
 
             _logger.LogInformation("Daily wheel: slot {slot} rolled item {item} from {count} candidate(s).",
-                slotIndex, itemId, Math.Max(1, slot.ItemIds.Count));
+                index, itemId, Math.Max(1, slot.ItemIds.Count));
         }
 
         // A zero message id leaves the movie's authored placeholder text ("test") in the reward window, so
@@ -243,20 +318,14 @@ public static class DailyWheelGame
 
         Send(connection, stateId, "OnRewardInfoMsg",
             iconId, tooltipId, quantity, nameId, rewardMsgStringId, tintId);
-
-        // Grey the wheel out for the rest of the day, in the widget and in the minigames menu.
-        SendWheelUpdate(connection, stateId, wheel, player.Guid);
-        SendSpinAvailability(connection);
-
-        _logger.LogInformation("Daily wheel: {name} won {prize} (slot {slot}).", player.Name, slot.Comment, slotIndex);
-
-        return true;
     }
 
     // One OnWheelDataMsg + OnWheelUpdateMsg per wheel, sent before OnServerReadyMsg.
     private static void SendWheels(GatewayConnection connection, int stateId)
     {
-        foreach (var wheel in _resourceManager.DailyWheels.Values.OrderBy(x => x.Id))
+        // Only the wheels running today: the everyday one plus whatever seasonal wheels are in their
+        // window. The widget pages between however many it is sent, with the arrows either side.
+        foreach (var wheel in InSeasonWheels())
         {
             var slots = string.Join(' ', wheel.Slots.Select(x => x.Category));
 
@@ -273,8 +342,19 @@ public static class DailyWheelGame
 
         var secondsUntilTomorrow = (int)(DateTime.UtcNow.Date.AddDays(1) - DateTime.UtcNow).TotalSeconds;
 
-        Send(connection, stateId, "OnWheelUpdateMsg", wheel.Id, spins, 1, spins > 0 ? 0 : secondsUntilTomorrow);
+        Send(connection, stateId, "OnWheelUpdateMsg", wheel.Id, spins, GetStreak(playerGuid, wheel.Id),
+            spins > 0 ? 0 : secondsUntilTomorrow);
     }
+
+    // Wheels whose season covers today, everyday ones first. "/wheel season all" lifts the date check so
+    // the seasonal wheels can be looked at out of season.
+    private static IEnumerable<DailyWheelDefinition> InSeasonWheels() =>
+        _resourceManager.DailyWheels.Values
+            .Where(x => IgnoreSeasons || x.IsInSeason(DateTime.UtcNow))
+            .OrderBy(x => x.Id);
+
+    // Set by "/wheel season all": send every wheel whatever the date.
+    public static bool IgnoreSeasons;
 
     private static bool TryGetWheel(int wheelId, out DailyWheelDefinition wheel)
     {
@@ -306,63 +386,164 @@ public static class DailyWheelGame
         return wheel.Slots.Count - 1;
     }
 
-    // One free spin per UTC calendar day, plus any bonus spins granted by "/wheel give" - both live on the
-    // character row (the daily part is shared with the no-UI /spinwheel path).
+    // One free spin per wheel per UTC day, plus that wheel's bonus spins. Each wheel keeps its own row,
+    // so spinning one doesn't use up another.
     public static int GetSpinsLeft(ulong playerGuid, DailyWheelDefinition wheel)
     {
         using var dbContext = _dbContextFactory.CreateDbContext();
 
-        var row = dbContext.Characters
-            .Where(x => x.Id == GuidHelper.GetPlayerId(playerGuid))
-            .Select(x => new { x.LastDailyWheelSpinUtc, x.DailyWheelBonusSpins })
-            .SingleOrDefault();
+        var row = FindRow(dbContext, playerGuid, wheel.Id);
 
         if (row is null)
-            return 0;
+            return wheel.SpinsPerDay;
 
-        var usedToday = row.LastDailyWheelSpinUtc is { } last &&
+        var usedToday = row.LastSpinUtc is { } last &&
                         last.UtcDateTime.Date == DateTimeOffset.UtcNow.UtcDateTime.Date;
 
-        return (usedToday ? 0 : wheel.SpinsPerDay) + Math.Max(0, row.DailyWheelBonusSpins);
+        return (usedToday ? 0 : wheel.SpinsPerDay) + Math.Max(0, row.BonusSpins);
     }
 
-    // Spends the free daily spin first, then a bonus spin.
-    private static void ConsumeDailySpin(ulong playerGuid)
+    private static DbCharacterDailyWheel? FindRow(DatabaseContext dbContext, ulong playerGuid, int wheelId)
+    {
+        var characterId = GuidHelper.GetPlayerId(playerGuid);
+
+        return dbContext.CharacterDailyWheels
+            .SingleOrDefault(x => x.CharacterId == characterId && x.WheelId == wheelId);
+    }
+
+    // The row for this wheel, created on first use.
+    private static DbCharacterDailyWheel GetOrAddRow(DatabaseContext dbContext, ulong playerGuid, int wheelId)
+    {
+        var row = FindRow(dbContext, playerGuid, wheelId);
+
+        if (row is null)
+        {
+            row = new DbCharacterDailyWheel
+            {
+                CharacterId = GuidHelper.GetPlayerId(playerGuid),
+                WheelId = wheelId
+            };
+
+            dbContext.CharacterDailyWheels.Add(row);
+        }
+
+        return row;
+    }
+
+    // Spends this wheel's free spin first, then one of its bonus spins. Taking the free one moves that
+    // wheel's streak on and pays its milestones.
+    private static void ConsumeDailySpin(GatewayConnection connection, int wheelId)
     {
         using var dbContext = _dbContextFactory.CreateDbContext();
 
-        var dbCharacter = dbContext.Characters.SingleOrDefault(x => x.Id == GuidHelper.GetPlayerId(playerGuid));
-        if (dbCharacter is null)
+        var row = GetOrAddRow(dbContext, connection.Player.Guid, wheelId);
+
+        var today = DateTimeOffset.UtcNow.UtcDateTime.Date;
+        var lastSpinDay = row.LastSpinUtc?.UtcDateTime.Date;
+
+        if (lastSpinDay == today)
+        {
+            // The day's free spin is gone, so this was a bonus spin - the streak doesn't move.
+            row.BonusSpins = Math.Max(0, row.BonusSpins - 1);
+            dbContext.SaveChanges();
             return;
+        }
 
-        var usedToday = dbCharacter.LastDailyWheelSpinUtc is { } last &&
-                        last.UtcDateTime.Date == DateTimeOffset.UtcNow.UtcDateTime.Date;
+        row.LastSpinUtc = DateTimeOffset.UtcNow;
 
-        if (usedToday)
-            dbCharacter.DailyWheelBonusSpins = Math.Max(0, dbCharacter.DailyWheelBonusSpins - 1);
-        else
-            dbCharacter.LastDailyWheelSpinUtc = DateTimeOffset.UtcNow;
+        // Spinning on consecutive days builds the streak; any gap starts it over.
+        row.Streak = lastSpinDay == today.AddDays(-1) ? row.Streak + 1 : 1;
+
+        // Retail's milestones: a bonus spin on the third day running, two on the seventh. After the
+        // seventh the streak restarts, so the run of bonuses repeats week on week.
+        var bonus = row.Streak switch
+        {
+            StreakSmallBonusDay => 1,
+            StreakLargeBonusDay => 2,
+            _ => 0
+        };
+
+        if (bonus > 0)
+        {
+            row.BonusSpins += bonus;
+
+            connection.SendTunneled(new ChatPacketDebugChat
+            {
+                PrintToChat = true,
+                Message = $"{row.Streak} days in a row - here " +
+                          (bonus == 1 ? "is an extra wheel spin!" : $"are {bonus} extra wheel spins!"),
+            });
+
+            _logger.LogInformation("Daily wheel: {name} hit a {days}-day streak on wheel {wheel}, +{bonus} spin(s).",
+                connection.Player.Name, row.Streak, wheelId, bonus);
+        }
+
+        if (row.Streak >= StreakLargeBonusDay)
+            row.Streak = 0;
 
         dbContext.SaveChanges();
     }
+
+    // How many days running this wheel has been spun, which the widget is told about.
+    private static int GetStreak(ulong playerGuid, int wheelId)
+    {
+        using var dbContext = _dbContextFactory.CreateDbContext();
+
+        return FindRow(dbContext, playerGuid, wheelId)?.Streak ?? 0;
+    }
+
+    // "/wheel streak": sets the counter on every wheel so the 3- and 7-day bonuses can be tested without
+    // waiting a week.
+    public static void SetStreak(ulong playerGuid, int days)
+    {
+        using var dbContext = _dbContextFactory.CreateDbContext();
+
+        foreach (var wheel in InSeasonWheels())
+        {
+            var row = GetOrAddRow(dbContext, playerGuid, wheel.Id);
+
+            row.Streak = Math.Max(0, days);
+
+            // The streak only advances when the day's FREE spin is taken, so push the last spin back a
+            // day - otherwise a streak set today can't be continued until tomorrow.
+            row.LastSpinUtc = days > 0 ? DateTimeOffset.UtcNow.AddDays(-1) : null;
+        }
+
+        dbContext.SaveChanges();
+    }
+
+    private const int StreakSmallBonusDay = 3;
+    private const int StreakLargeBonusDay = 7;
 
     // "/wheel rig <slot>": force every spin to land on one slice (-1 = back to the weighted roll), so the
     // slice the wheel visually stops on can be checked against the prize that slot is supposed to pay.
     public static int RiggedSlot = -1;
 
-    // "/wheel give": hand a player extra spins (negative to take them away). Returns their new total.
-    public static int GrantSpins(ulong playerGuid, int count)
+    // Extra spins on one wheel (negative takes them away). Returns the new bonus total for that wheel.
+    public static int GrantSpins(ulong playerGuid, int wheelId, int count)
     {
         using var dbContext = _dbContextFactory.CreateDbContext();
 
-        var dbCharacter = dbContext.Characters.SingleOrDefault(x => x.Id == GuidHelper.GetPlayerId(playerGuid));
-        if (dbCharacter is null)
-            return 0;
+        var row = GetOrAddRow(dbContext, playerGuid, wheelId);
 
-        dbCharacter.DailyWheelBonusSpins = Math.Max(0, dbCharacter.DailyWheelBonusSpins + count);
+        row.BonusSpins = Math.Max(0, row.BonusSpins + count);
         dbContext.SaveChanges();
 
-        return dbCharacter.DailyWheelBonusSpins;
+        return row.BonusSpins;
+    }
+
+    // "/wheel give": the same, across every wheel running today.
+    public static void GrantSpinsOnAllWheels(ulong playerGuid, int count)
+    {
+        using var dbContext = _dbContextFactory.CreateDbContext();
+
+        foreach (var wheel in InSeasonWheels())
+        {
+            var row = GetOrAddRow(dbContext, playerGuid, wheel.Id);
+            row.BonusSpins = Math.Max(0, row.BonusSpins + count);
+        }
+
+        dbContext.SaveChanges();
     }
 
     // The coin icon the widget uses for its own coin prize, and the client's "Coins" string.
@@ -421,11 +602,12 @@ public static class DailyWheelGame
 
     public static void SendSpinAvailability(Player player)
     {
-        var wheel = _resourceManager.DailyWheels.Values.OrderBy(x => x.Id).FirstOrDefault();
+        var wheel = InSeasonWheels().FirstOrDefault();
         if (wheel is null)
             return;
 
-        var spins = GetSpinsLeft(player.Guid, wheel);
+        // Every wheel has its own spins, but this one count drives the Play button - so it's the total.
+        var spins = InSeasonWheels().Sum(x => GetSpinsLeft(player.Guid, x));
 
         player.SendTunneled(new RepeatingActivityAddPacket
         {
@@ -435,25 +617,21 @@ public static class DailyWheelGame
             NextTime = spins > 0 ? 0 : (int)(DateTime.UtcNow.Date.AddDays(1) - DateTime.UtcNow).TotalSeconds,
         });
 
-        _logger.LogInformation("Daily wheel: {name} has {spins} spin(s) available.", player.Name, spins);
+        _logger.LogInformation("Daily wheel: {name} has {spins} spin(s) available across all wheels.",
+            player.Name, spins);
     }
 
     // The key the client's Lua looks the activity up by - Ui.GetRepeatingActivityCount("wheel").
     public const string WheelActivityName = "wheel";
 
-    // ★ Opens the wheel — the sequence that is live-confirmed to work (2026-08-06):
-    //
-    //   1. this: the activity launch, which puts up the start panel AND is what makes the widget loadable
-    //      at all (StartFlashGame's ShowMicro path needs the minigame state the launch creates),
-    //   2. the player presses GO!, so the client runs its own load sequence and asks us to start
-    //      (op39/sub5), and
-    //   3. BaseMiniGamePacketHandler answers with the game-start ack + op26/sub12 StartFlashGame, the
-    //      movie loads and connects itself (OnConnectMsg) to the payload conversation below.
-    //
-    // Sending step 3 ourselves does NOT skip the panel: fired immediately it lands before the client
-    // reaches BeginLoad, and fired on a timer it consumes the start so the real GO! press does nothing.
-    // Both were tried live and both leave a blank frame. Removing the panel therefore needs a different
-    // lever (a MiniGameInfo/MiniGameGroupInfo flag, most likely) rather than a race against the client.
+    // There's no "open the wheel at login" packet. op171 PacketClientNotifyCoinSpinAvailable looks like
+    // one and isn't: the client builds that packet itself, and sending it does nothing (tested with the
+    // grant in place and spins available). See the packet class for the details. The welcome screen gets
+    // a What's New tile instead - StartingZone.SendWelcomeAnnouncements.
+
+    // Opens the wheel through the minigame launch. That brings the start panel and framed window with it,
+    // which retail's wheel didn't have, but it's the only way in - the client's own StartWheel path needs
+    // state only the launch creates.
     public static void OpenWheel(GatewayConnection connection)
     {
         if (connection.Player.Zone is not Sanctuary.Game.Zones.StartingZone startingZone ||
@@ -463,6 +641,9 @@ public static class DailyWheelGame
                 WheelGameId);
             return;
         }
+
+        // Keep the client's spin count current first - the widget reads it as soon as it loads.
+        SendSpinAvailability(connection.Player);
 
         startingZone.LaunchSpinForTheWinGame(connection.Player, activityDefinition);
     }
@@ -475,16 +656,17 @@ public static class DailyWheelGame
 
     // ---- Dev helpers (/wheel) ----
 
-    // Clears today's spin lock so the wheel can be spun again without waiting for UTC midnight.
+    // Clears today's spin lock on every wheel, so they can be spun again without waiting for UTC midnight.
     public static void ResetDailySpin(ulong playerGuid)
     {
         using var dbContext = _dbContextFactory.CreateDbContext();
 
-        var dbCharacter = dbContext.Characters.SingleOrDefault(x => x.Id == GuidHelper.GetPlayerId(playerGuid));
-        if (dbCharacter is null)
-            return;
+        foreach (var row in dbContext.CharacterDailyWheels
+                     .Where(x => x.CharacterId == GuidHelper.GetPlayerId(playerGuid)))
+        {
+            row.LastSpinUtc = null;
+        }
 
-        dbCharacter.LastDailyWheelSpinUtc = null;
         dbContext.SaveChanges();
     }
 
@@ -494,7 +676,7 @@ public static class DailyWheelGame
     // have. Each call appends another page (use the arrows either side of the wheel to reach it).
     public static void SendPreviewWheel(GatewayConnection connection, int type, int[] categories)
     {
-        var wheel = _resourceManager.DailyWheels.Values.OrderBy(x => x.Id).FirstOrDefault();
+        var wheel = InSeasonWheels().FirstOrDefault();
 
         Send(connection, PreviewStateId, "OnWheelDataMsg",
             PreviewWheelId, type, string.Join(' ', categories),

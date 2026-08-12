@@ -1,65 +1,680 @@
 [
   {
-    "Comment": "Spin For The Win! - the daily prize wheel (ClientActivityDefinitions id 8, game_wheel.gfx). Slices run through the widget's art in its own order (categories 1-10); each prize matches the picture on its slice, and ItemIds slices roll one of six items of that kind. See DailyWheelDefinition for the full art catalogue and an alternate table.",
+    "Comment": "Daily Wheel - the everyday one (ClientActivityDefinitions id 8, game_wheel.gfx). Slices follow retail's nine prize categories plus the grab bag, each drawn with the matching art. See DailyWheelDefinition for the art catalogue.",
     "Id": 1,
     "Type": 1,
-    "NameStringId": 409962,
+    "NameStringId": 408046,
     "MsgStringId": 409969,
     "SpinsPerDay": 1,
     "RewardMsgStringId": 408045,
     "Slots": [
       {
-        "Comment": "ring + gem -> a fishing ring (Backwater / Algae / Rollcast sets)",
-        "Category": 1, "Weight": 8, "Quantity": 1,
-        "ItemIds": [2101, 2102, 2103, 2110, 2111, 2113]
+        "Comment": "grab bag -> this prize plus two more",
+        "Category": 6,
+        "Weight": 6,
+        "GrabBagPrizes": 2,
+        "Coins": 1000,
+        "NameStringId": 433744
       },
       {
-        "Comment": "clothing -> a t-shirt",
-        "Category": 2, "Weight": 10, "Quantity": 1,
-        "ItemIds": [248, 340, 398, 1192, 1193, 2703]
-      },
-      {
-        "Comment": "pet + potions -> pet supplies x2",
-        "Category": 3, "Weight": 10, "Quantity": 2,
-        "ItemIds": [1835, 37061, 37062, 1836, 10531, 10521]
-      },
-      { "Comment": "extra spins medallion -> 1 more spin", "Category": 4, "Spins": 1, "Weight": 10 },
-      {
-        "Comment": "TCG card pack -> a booster pack",
-        "Category": 5, "Weight": 6, "Quantity": 1,
-        "ItemIds": [55340, 32044, 17765, 68945, 76882, 78318]
-      },
-      {
-        "Comment": "money bag -> a pile of coins",
-        "Category": 6, "Weight": 16,
-        "CoinAmounts": [
-          { "Coins": 250, "NameStringId": 435924 },
-          { "Coins": 1000, "NameStringId": 433744 },
-          { "Coins": 5000, "NameStringId": 4773 },
-          { "Coins": 7500, "NameStringId": 6875 },
-          { "Coins": 10000, "NameStringId": 5146 },
-          { "Coins": 20000, "NameStringId": 4941 }
+        "Comment": "accessories -> a tempered circle shard (the seven retail listed, incl. Battle)",
+        "Category": 1,
+        "Weight": 10,
+        "Quantity": 1,
+        "ItemIds": [
+          2207,
+          2208,
+          2209,
+          2210,
+          2211,
+          2212,
+          65817
         ]
       },
       {
-        "Comment": "rod / kart / ball -> a fishing rod",
-        "Category": 7, "Weight": 8, "Quantity": 1,
-        "ItemIds": [68185, 68220, 68255, 68290, 68325, 76562]
+        "Comment": "clothing -> one of the pieces retail actually put on the wheel",
+        "Category": 2,
+        "Weight": 12,
+        "Quantity": 1,
+        "ItemIds": [
+          427,
+          194,
+          393,
+          188,
+          197,
+          395,
+          396,
+          193,
+          391,
+          51402,
+          394,
+          203
+        ]
       },
       {
-        "Comment": "potion + scrolls -> a battle sphere x3",
-        "Category": 8, "Weight": 12, "Quantity": 3,
-        "ItemIds": [3011, 3013, 3015, 3025, 3074, 3089]
+        "Comment": "pet accessories -> Horizon Sweater or Island Lei, dog and cat",
+        "Category": 3,
+        "Weight": 10,
+        "Quantity": 1,
+        "ItemIds": [
+          2203,
+          2204,
+          2205,
+          2206
+        ]
       },
       {
-        "Comment": "exchange ticket -> a ticket or voucher",
-        "Category": 9, "Weight": 10, "Quantity": 1,
-        "ItemIds": [378, 379, 380, 70455, 70456, 70457]
+        "Comment": "extra spins -> 1, 2, 3 or 5 more spins",
+        "Category": 4,
+        "Weight": 10,
+        "SpinAmounts": [
+          1,
+          1,
+          2,
+          3,
+          5
+        ]
       },
       {
-        "Comment": "tools -> a crafting/gathering tool",
-        "Category": 10, "Weight": 10, "Quantity": 1,
-        "ItemIds": [1170, 1184, 1910, 4108, 23687, 23688]
+        "Comment": "trading card game -> a booster pack",
+        "Category": 5,
+        "Weight": 8,
+        "Quantity": 1,
+        "ItemIds": [
+          55340,
+          32044,
+          17765,
+          68945,
+          76882,
+          78318
+        ]
+      },
+      {
+        "Comment": "kart / racing gear -> a racing decal",
+        "Category": 7,
+        "Weight": 10,
+        "Quantity": 1,
+        "ItemIds": [
+          9240,
+          9241,
+          9242,
+          9243,
+          9244,
+          9246
+        ]
+      },
+      {
+        "Comment": "consumables -> the Wheeler line: Truffle, on the Cob, Energy/Health Potion, Frag Orb, Coin/Star Booster Scroll",
+        "Category": 8,
+        "Weight": 12,
+        "Quantity": 3,
+        "ItemIds": [
+          1194,
+          1195,
+          1196,
+          1197,
+          65820,
+          65821,
+          65822
+        ]
+      },
+      {
+        "Comment": "wieldables -> all seven Elitist's tools or the Hammer of the Wheel",
+        "Category": 10,
+        "Weight": 10,
+        "Quantity": 1,
+        "ItemIds": [
+          1430,
+          1431,
+          1432,
+          1433,
+          1434,
+          68111,
+          68112,
+          207
+        ]
+      },
+      {
+        "Comment": "housing -> square blocks x3",
+        "Category": 13,
+        "Weight": 12,
+        "Quantity": 3,
+        "ItemIds": [
+          218,
+          2705,
+          7452,
+          7453,
+          7455,
+          7456
+        ]
+      }
+    ]
+  },
+  {
+    "Comment": "Coin Wheel - the all-coins wheel, type 5: ten-wedge disc, gold-tree centre, blue base, orange pointer, which is exactly what the surviving screenshot shows. Its slice art is the ORIGINAL coin denominations (250/500/1000/5000) recovered from the 2011/2013 client builds - this build shipped 2/5/10/20/30/40/50 instead - so game_wheel.gfx repoints categories 15-18 at the recovered textures, which ride along loose in Client/custom. Only this wheel uses categories 15-21, so nothing else is touched. Slice mix: 250 x3, 500 x2, 1000, 2000, 5000, and two robgoblins. The reward window draws no quantity, only a name, so each amount uses its exact string - except 2000, for which this client has none, so that one falls back to the generic \"Coins\" while still paying 2000.",
+    "Id": 6,
+    "Type": 5,
+    "NameStringId": 427102,
+    "MsgStringId": 409969,
+    "SpinsPerDay": 1,
+    "RewardMsgStringId": 408045,
+    "Slots": [
+      {
+        "Comment": "coins -> 250",
+        "Category": 15,
+        "Weight": 16,
+        "Coins": 250,
+        "NameStringId": 435924
+      },
+      {
+        "Comment": "coins -> 500",
+        "Category": 16,
+        "Weight": 12,
+        "Coins": 500,
+        "NameStringId": 433735
+      },
+      {
+        "Comment": "robgoblin -> a Robgoblin T-Shirt",
+        "Category": 22,
+        "Weight": 5,
+        "Quantity": 1,
+        "ItemIds": [
+          340
+        ]
+      },
+      {
+        "Comment": "coins -> 1000",
+        "Category": 17,
+        "Weight": 10,
+        "Coins": 1000,
+        "NameStringId": 433744
+      },
+      {
+        "Comment": "coins -> 250",
+        "Category": 15,
+        "Weight": 16,
+        "Coins": 250,
+        "NameStringId": 435924
+      },
+      {
+        "Comment": "coins -> 2000. No \"2,000 coins\" string exists in this client, so the window shows the generic \"Coins\" - it still pays 2000",
+        "Category": 19,
+        "Weight": 6,
+        "Coins": 2000,
+        "NameStringId": 4923
+      },
+      {
+        "Comment": "coins -> 500",
+        "Category": 16,
+        "Weight": 12,
+        "Coins": 500,
+        "NameStringId": 433735
+      },
+      {
+        "Comment": "robgoblin -> a Robgoblin T-Shirt",
+        "Category": 22,
+        "Weight": 5,
+        "Quantity": 1,
+        "ItemIds": [
+          340
+        ]
+      },
+      {
+        "Comment": "coins -> 250",
+        "Category": 15,
+        "Weight": 16,
+        "Coins": 250,
+        "NameStringId": 435924
+      },
+      {
+        "Comment": "coins -> 5000, the jackpot",
+        "Category": 18,
+        "Weight": 2,
+        "Coins": 5000,
+        "NameStringId": 4773
+      }
+    ]
+  },
+  {
+    "Comment": "Halloween Wheel (retail: Super Spooktacular, from 15 Oct 2009). Type 3 is retail's 8-slice layout with the candy-corn pointer - confirmed 8 by overlaying sector guides on the surviving screenshot. It ships GUTTED in this client: frame 2 strips the disc, emblem and plate and frames 3/4 never restore them, so stock it draws only a pointer over empty space. NOTHING IS SUBSTITUTED FOR THE MISSING ART - this frame ships exactly as the client has it, so the wheel draws its candy-corn pointer and eight slice icons over empty space. Retail's disc, base and pumpkin emblem for this wheel are not recoverable: the pumpkin exists nowhere at all (not in the movie, any of the 3 build variants, 8 archived clients 2011-2014, Images.txt's 40,064 names, or a 127,958-file mirror of the live asset CDN), and while the movie's 8-wedge disc and blue base DO overlay retail's screenshot exactly, putting them back counts as adding art this frame no longer places, so they stay out. The only seasonal Halloween art this build still has is the candy-corn pointer and the pail slice icon (category 11).",
+    "Id": 2,
+    "Type": 3,
+    "NameStringId": 416502,
+    "MsgStringId": 409969,
+    "SeasonStart": "10-15",
+    "SeasonEnd": "11-02",
+    "Slots": [
+      {
+        "Comment": "halloween pails -> a candy pail",
+        "Category": 11,
+        "Weight": 16,
+        "Quantity": 1,
+        "ItemIds": [
+          69666,
+          69561,
+          17709,
+          17596
+        ]
+      },
+      {
+        "Comment": "extra spins",
+        "Category": 4,
+        "Weight": 12,
+        "SpinAmounts": [
+          1,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "Comment": "clothing -> a costume",
+        "Category": 2,
+        "Weight": 14,
+        "Quantity": 1,
+        "ItemIds": [
+          69107,
+          69108,
+          11405,
+          69833,
+          69235,
+          33097
+        ]
+      },
+      {
+        "Comment": "consumables -> Wheeler scrolls and potions",
+        "Category": 8,
+        "Weight": 14,
+        "Quantity": 1,
+        "ItemIds": [
+          65821,
+          65822,
+          65820
+        ]
+      },
+      {
+        "Comment": "candy -> sweets x3",
+        "Category": 12,
+        "Weight": 14,
+        "Quantity": 3,
+        "ItemIds": [
+          69818,
+          30589,
+          76621
+        ]
+      },
+      {
+        "Comment": "grab bag -> this prize plus one more",
+        "Category": 6,
+        "Weight": 9,
+        "GrabBagPrizes": 1,
+        "Quantity": 1,
+        "ItemIds": [
+          386,
+          387,
+          388
+        ]
+      },
+      {
+        "Comment": "housing -> square blocks x3",
+        "Category": 13,
+        "Weight": 12,
+        "Quantity": 3,
+        "ItemIds": [
+          218,
+          2705,
+          7452,
+          7453
+        ]
+      },
+      {
+        "Comment": "trading card game -> a booster pack",
+        "Category": 5,
+        "Weight": 9,
+        "Quantity": 1,
+        "ItemIds": [
+          55340,
+          32044,
+          17765,
+          68945
+        ]
+      }
+    ]
+  },
+  {
+    "Comment": "Snow Days Wheel (retail: from 14 Dec 2009). Type 4 is retail's 8-slice layout with the candy-cane pointer, stripped exactly like the Halloween wheel above and left that way for the same reason: nothing is substituted, so it draws its candy-cane pointer and eight slice icons over empty space. The only seasonal Snow Days art this build still has is that pointer and the candy-cane slice icon (category 12); no screenshot of the whole retail wheel survives either, only its centre scene.",
+    "Id": 3,
+    "Type": 4,
+    "NameStringId": 426650,
+    "MsgStringId": 409969,
+    "SeasonStart": "12-14",
+    "SeasonEnd": "01-06",
+    "Slots": [
+      {
+        "Comment": "candy canes -> festive sweets x3",
+        "Category": 12,
+        "Weight": 16,
+        "Quantity": 3,
+        "ItemIds": [
+          76621,
+          76801,
+          76802
+        ]
+      },
+      {
+        "Comment": "consumables -> cut-out cookies x3",
+        "Category": 8,
+        "Weight": 16,
+        "Quantity": 3,
+        "ItemIds": [
+          76620,
+          76625,
+          76626,
+          76624,
+          76627
+        ]
+      },
+      {
+        "Comment": "extra spins",
+        "Category": 4,
+        "Weight": 12,
+        "SpinAmounts": [
+          1,
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "Comment": "clothing -> winterwear",
+        "Category": 2,
+        "Weight": 14,
+        "Quantity": 1,
+        "ItemIds": [
+          76600,
+          76599,
+          76596,
+          76595
+        ]
+      },
+      {
+        "Comment": "grab bag -> this prize plus one more",
+        "Category": 6,
+        "Weight": 9,
+        "GrabBagPrizes": 1,
+        "Quantity": 1,
+        "ItemIds": [
+          386,
+          387,
+          388
+        ]
+      },
+      {
+        "Comment": "housing -> square blocks x3",
+        "Category": 13,
+        "Weight": 12,
+        "Quantity": 3,
+        "ItemIds": [
+          218,
+          2705,
+          7452,
+          7453
+        ]
+      },
+      {
+        "Comment": "trading card game -> a booster pack",
+        "Category": 5,
+        "Weight": 9,
+        "Quantity": 1,
+        "ItemIds": [
+          55340,
+          32044,
+          76882,
+          78318
+        ]
+      },
+      {
+        "Comment": "wieldables -> one of the seven Elitist's tools",
+        "Category": 10,
+        "Weight": 12,
+        "Quantity": 1,
+        "ItemIds": [
+          1430,
+          1431,
+          1432,
+          1433,
+          1434,
+          68111,
+          68112
+        ]
+      }
+    ]
+  },
+  {
+    "Comment": "Festival of Hearts Wheel (retail: from 12 Feb 2010). Type 6 is the one seasonal skin this build really has - hearts centre, red base, pink heart pointer, on its own disc. EIGHT slices, not ten (live-confirmed 2026-08-07): a ninth or tenth slot here spins but never draws.",
+    "Id": 4,
+    "Type": 6,
+    "NameStringId": 400039,
+    "MsgStringId": 409969,
+    "SeasonStart": "02-12",
+    "SeasonEnd": "02-28",
+    "Slots": [
+      {
+        "Comment": "valentine -> candy hearts x5",
+        "Category": 23,
+        "Weight": 18,
+        "Quantity": 5,
+        "ItemIds": [
+          76801,
+          76802
+        ]
+      },
+      {
+        "Comment": "housing -> a Be-Mine arrangement or heart wall stickers",
+        "Category": 13,
+        "Weight": 14,
+        "Quantity": 1,
+        "ItemIds": [
+          76822,
+          76823,
+          76824,
+          76820,
+          76618,
+          76617
+        ]
+      },
+      {
+        "Comment": "extra spins",
+        "Category": 4,
+        "Weight": 12,
+        "SpinAmounts": [
+          1,
+          1,
+          2,
+          3,
+          5
+        ]
+      },
+      {
+        "Comment": "consumables -> party poppers x5",
+        "Category": 8,
+        "Weight": 14,
+        "Quantity": 5,
+        "ItemIds": [
+          76804,
+          76805
+        ]
+      },
+      {
+        "Comment": "grab bag -> this prize plus two more",
+        "Category": 6,
+        "Weight": 8,
+        "GrabBagPrizes": 2,
+        "Quantity": 1,
+        "ItemIds": [
+          386,
+          387,
+          388
+        ]
+      },
+      {
+        "Comment": "clothing -> one of the pieces retail actually put on the wheel",
+        "Category": 2,
+        "Weight": 12,
+        "Quantity": 1,
+        "ItemIds": [
+          427,
+          194,
+          393,
+          188,
+          197,
+          395,
+          396,
+          193,
+          391,
+          51402,
+          394,
+          203
+        ]
+      },
+      {
+        "Comment": "accessories -> a tempered circle shard (the seven retail listed, incl. Battle)",
+        "Category": 1,
+        "Weight": 10,
+        "Quantity": 1,
+        "ItemIds": [
+          2207,
+          2208,
+          2209,
+          2210,
+          2211,
+          2212,
+          65817
+        ]
+      },
+      {
+        "Comment": "trading card game -> a booster pack",
+        "Category": 5,
+        "Weight": 12,
+        "Quantity": 1,
+        "ItemIds": [
+          55340,
+          32044,
+          17765,
+          68945
+        ]
+      }
+    ]
+  },
+  {
+    "Comment": "Bonus Wheel - retail ran this for the 5,000,000 registered players milestone (16 Sep - 2 Oct 2009). TYPE 7, NOT 5: the surviving screenshot of the real wheel is EIGHT slices with an orange pointer (eight sector guides land exactly on its dividers, ten do not), and frame 7 is the eight-slice orange-pointer layout - frame 5 is a ten-slice wheel and was the wrong home for it. The one edit in game_wheel.gfx is on this frame, and it only takes something AWAY: frame 7 inherits the everyday orange-tree emblem, which was never on retail's Bonus wheel, so it is removed and the middle renders as nothing. Its real centre, the '5,000,000 Registered Players' medallion, is gone from every surviving asset source. Frame 7's own disc and base are left as the client has them. No 5-million NAME string survives either (the client had moved on to twenty million), so the generic Bonus Wheel title stands. Anniversary window, so it returns each September.",
+    "Id": 5,
+    "Type": 7,
+    "NameStringId": 408047,
+    "MsgStringId": 409969,
+    "SeasonStart": "09-16",
+    "SeasonEnd": "10-02",
+    "Slots": [
+      {
+        "Comment": "wieldables -> all seven Elitist's tools or the Hammer of the Wheel",
+        "Category": 10,
+        "Weight": 16,
+        "Quantity": 1,
+        "ItemIds": [
+          1430,
+          1431,
+          1432,
+          1433,
+          1434,
+          68111,
+          68112,
+          207
+        ]
+      },
+      {
+        "Comment": "kart / racing gear -> a racing decal",
+        "Category": 7,
+        "Weight": 12,
+        "Quantity": 1,
+        "ItemIds": [
+          9240,
+          9241,
+          9242,
+          9243
+        ]
+      },
+      {
+        "Comment": "accessories -> a tempered circle shard (the seven retail listed, incl. Battle)",
+        "Category": 1,
+        "Weight": 12,
+        "Quantity": 1,
+        "ItemIds": [
+          2207,
+          2208,
+          2209,
+          2210,
+          2211,
+          2212,
+          65817
+        ]
+      },
+      {
+        "Comment": "extra spins",
+        "Category": 4,
+        "Weight": 14,
+        "SpinAmounts": [
+          1,
+          1,
+          2,
+          3,
+          5
+        ]
+      },
+      {
+        "Comment": "grab bag party pack -> this prize plus two more",
+        "Category": 6,
+        "Weight": 12,
+        "GrabBagPrizes": 2,
+        "Quantity": 1,
+        "ItemIds": [
+          386,
+          387,
+          388
+        ]
+      },
+      {
+        "Comment": "consumables -> silly string x3",
+        "Category": 8,
+        "Weight": 16,
+        "Quantity": 3,
+        "ItemIds": [
+          62516,
+          67964,
+          67963,
+          67962,
+          67961
+        ]
+      },
+      {
+        "Comment": "trading card game -> a booster pack",
+        "Category": 5,
+        "Weight": 12,
+        "Quantity": 1,
+        "ItemIds": [
+          55340,
+          32044,
+          17765,
+          68945
+        ]
+      },
+      {
+        "Comment": "clothing -> Astronaut Suit (very rare)",
+        "Category": 2,
+        "Weight": 6,
+        "Quantity": 1,
+        "ItemIds": [
+          1177
+        ]
       }
     ]
   }
