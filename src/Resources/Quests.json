@@ -1115,5 +1115,47 @@
         "TargetGuid": 100000003840
       }
     ]
+  },
+  {
+    "Comment": "The Gifting Tree - Snow Days: collect a present from the Gifting Tree for Candi Ivy in Snowhill",
+    "QuestId": 3090,
+    "TitleId": 419835,
+    "DescriptionId": 419836,
+    "GiverDialogueId": 419834,
+    "ObjectiveDescriptionId": 419836,
+    "SubGoalId": 419863,
+    "TargetDialogueId": 419837,
+    "IconId": 43278,
+    "GiverGuid": 100000032813,
+    "TargetGuid": 100000032813,
+    "RewardCoins": 0,
+    "RewardExperience": 0,
+    "RewardItems": [76631],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 0,
+    "NotificationAvailable": 242,
+    "NotificationActive": 242,
+    "Goals": [
+      {
+        "NameId": 419863,
+        "DescriptionId": 419864,
+        "Type": 2,
+        "RequiredCount": 1,
+        "CollectModelId": 268,
+        "CollectNameId": 419839,
+        "CollectSpawns": [
+          [248.77, 27.05, 410.67],
+          [248.79, 26.99, 406.07],
+          [252.72, 27.21, 402.27],
+          [244.70, 26.62, 403.94]
+        ]
+      },
+      {
+        "NameId": 419846,
+        "DescriptionId": 419847,
+        "DialogueId": 419837,
+        "TargetGuid": 100000032813
+      }
+    ]
   }
 ]

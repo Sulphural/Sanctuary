@@ -17,6 +17,24 @@ SRC = os.path.join(ROOT, "Resources", "Npcs.json")
 DST = os.path.join(ROOT, "Scripts", "Zone", "FabledRealms.lua")
 NPC_GUID_BASE = 100000000000
 
+# NPCs that stay DEFINED in Npcs.json but must not spawn into the overworld. Held back rather than
+# deleted so they can be reused later (they are wanted for their own content, not as world dressing).
+# Matched on Name so a re-export of Npcs.json that renumbers ids can't quietly put them back.
+DO_NOT_SPAWN = {
+    "Abominable Snowman",  # Snowhill, next to Candi Ivy / the Gifting Tree
+    "Snowman Invader",
+}
+
+# Comment blocks emitted above a given NPC's spawn. They live here rather than in the .lua because that
+# file is overwritten wholesale on every run - a hand-added note in it was silently lost once.
+NOTES = {
+    40032: [
+        'Sobering Homecoming\'s three scattered Freewheelers (quest 3081, counted "Talk to Freewheelers 0/3").',
+        "Placed beside real Sunstone Valley spawns at their exact ground height, per the doc's descriptions:",
+        "by The Rumbledome, outside Wheelie Pete's Roadhouse, and at the Sandscale Oasis entrance.",
+    ],
+}
+
 with open(SRC, "r", encoding="utf-8-sig") as f:
     npcs = json.load(f)
 
@@ -27,8 +45,19 @@ lines = [
 ]
 
 count = 0
+held = 0
 for npc in npcs:
+    if (npc.get("Name") or "").strip() in DO_NOT_SPAWN:
+        held += 1
+        continue
+
     npc_id = npc["Id"]
+
+    note = NOTES.get(npc_id)
+    if note:
+        lines.append("")
+        lines.extend(f"    -- {text}" for text in note)
+
     guid = NPC_GUID_BASE + npc_id
     x, y, z = npc.get("SpawnPosition", [0.0, 0.0, 0.0])
     heading = npc.get("SpawnHeading", 0.0)
@@ -41,4 +70,4 @@ lines.append("")
 with open(DST, "w", encoding="utf-8", newline="\n") as f:
     f.write("\n".join(lines))
 
-print(f"Wrote {count} spawn calls to {DST}")
+print(f"Wrote {count} spawn calls to {DST} (held back {held} via DO_NOT_SPAWN)")
