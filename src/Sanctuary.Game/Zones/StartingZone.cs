@@ -31,22 +31,22 @@ public sealed partial class StartingZone : BaseZone
     private readonly Sanctuary.Game.Party.IPartyManager _partyManager;
     private readonly Microsoft.EntityFrameworkCore.IDbContextFactory<Sanctuary.Database.DatabaseContext> _dbContextFactory;
 
-    // "Take Me There" real routing — see ClientPathBasePacketHandler.BuildPath. No client-facing navmesh
-    // exists anywhere in the extracted assets, so this is seeded from real walkable ground: every curated
-    // Npcs.json spawn position (the same data StartingZone.TrySpawnNpc places the overworld roster from)
-    // becomes a waypoint node, proximity-linked to its nearest neighbors. Built once at zone construction.
-    private readonly WaypointGraph _waypointGraph;
+    // Real routing for BOTH "Take Me There" (see ClientPathBasePacketHandler.BuildPath) and the overworld
+    // enemy AI (see CombatNpc.MoveTowards) - they read the zone's shared NavGraph/NavObstacles, so a
+    // player's auto-walk route and a chasing enemy respect exactly the same geometry.
+    //
+    // No client-facing navmesh exists anywhere in the extracted assets, so this is seeded from real
+    // walkable ground: every curated Npcs.json spawn position (the same data TrySpawnNpc places the
+    // overworld roster from) becomes a waypoint node, proximity-linked to its nearest neighbors, plus
+    // wall-hug corner nodes (see WaypointGraphBuilder.AddWallHugPoints). Built once at zone construction.
     private const float WaypointMaxEdgeDistance = 30f;
     private const int WaypointMaxNeighborsPerNode = 6;
     // Rejects edges between points on a different floor/elevation despite being close in X/Z (a likely
     // "outside vs. upstairs/inside a building" pair) - see WaypointGraph.BuildFromPoints.
     private const float WaypointMaxYDelta = 10f;
 
-    // Optional real obstacle data (see GcnkParser/ObstacleMap) parsed from the client's per-tile ".gcnk"
-    // placement files - EXTERNAL to this repo (the game's own client assets, not something we ship or
-    // commit), so this is entirely best-effort: if the directory isn't present the zone just falls back
-    // to the pure NPC-proximity graph with no obstacle validation, same as before this existed.
-    private const string GcnkAssetsDirectory = @"C:\Users\nadim\Desktop\sharedVM\everythingFR\FRAssets\Assets";
+    // The world whose .gcnk/.gzne geometry backs this zone - see ObstacleMapLoader.
+    private const string GeometryWorld = "FabledRealms";
 
     public StartingZone(StartingZoneDefinition zoneDefinition, IServiceProvider serviceProvider)
         : base(zoneDefinition, serviceProvider)
@@ -60,15 +60,42 @@ public sealed partial class StartingZone : BaseZone
         _partyManager = serviceProvider.GetRequiredService<Sanctuary.Game.Party.IPartyManager>();
         _dbContextFactory = serviceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Sanctuary.Database.DatabaseContext>>();
 
-        var obstacleMap = BuildObstacleMap();
+        // Props (.gcnk) AND walls (.gzne). The wall half is what this zone was missing for a long time:
+        // it loaded only the placement files, so the overworld obstacle map had zero coverage of the real
+        // terrain/cave boundary that the dungeon zones were already routing around from the same on-disk
+        // data. Take Me There would happily draw a route straight through a cliff.
+        var obstacleMap = ObstacleMapLoader.TryLoad(GeometryWorld, _logger, out var wallStrips);
 
         var waypointPoints = _resourceManager.Npcs.Values
             .Where(d => d.SpawnPosition[0] != 0f || d.SpawnPosition[2] != 0f) // drop origin/placeholder entries
             .Select(d => d.Position)
             .ToList();
-        _waypointGraph = WaypointGraph.BuildFromPoints(waypointPoints, WaypointMaxEdgeDistance, WaypointMaxNeighborsPerNode, WaypointMaxYDelta, obstacleMap);
-        _logger.LogInformation("Built overworld waypoint graph: {n} nodes{obstacleNote}.", _waypointGraph.NodeCount,
-            obstacleMap is null ? " (no obstacle data - .gcnk directory not found)" : $" ({obstacleMap.ObstacleCount} real obstacles)");
+        var npcSeedCount = waypointPoints.Count;
+
+        // Nodes hugging each wall segment, so a route can round a wall's edge instead of the graph
+        // fragmenting against the geometry we just taught it about. Keep each wall point's own real Y:
+        // outdoor terrain isn't a single flat floor the way an arena is.
+        //
+        // MEASURED 2026-08-05: this adds ~581 nodes but does NOT measurably change overworld routing
+        // success (identical hit rate with and without). FabledRealms.gzne only carries ~417 wall
+        // segments for the whole world, so there's very little wall to hug out here - it's kept because
+        // it's correct and costs ~2ms, not because it fixed anything measurable. The real overworld
+        // limitation is seed COVERAGE, not linking: nodes only exist where NPCs happen to stand, so A*
+        // connects only ~52% of pairs even at enemy-chase range (~40u) and ~30% within 200u; the rest
+        // fall back to a straight line. Fixing that needs walkable-ground sampling like the dungeons do
+        // (WaypointGraphBuilder.SampleWalkableGrid), which the current O(n^2) graph build can't absorb at
+        // overworld scale - a separate piece of work, not something more wall nodes can paper over.
+        if (obstacleMap is not null && wallStrips.Count > 0)
+            WaypointGraphBuilder.AddWallHugPoints(waypointPoints, wallStrips, obstacleMap, flattenY: null);
+
+        NavObstacles = obstacleMap;
+        NavGraph = WaypointGraph.BuildFromPoints(waypointPoints, WaypointMaxEdgeDistance, WaypointMaxNeighborsPerNode, WaypointMaxYDelta, obstacleMap);
+
+        if (obstacleMap is null)
+            _logger.LogInformation("Built overworld waypoint graph: {n} nodes (no geometry data - assets directory not found).", NavGraph.NodeCount);
+        else
+            _logger.LogInformation("Built overworld waypoint graph: {n} nodes ({seed} NPC seeds + {hug} wall-hug), {obstacles} props, {walls} wall segments.",
+                NavGraph.NodeCount, npcSeedCount, waypointPoints.Count - npcSeedCount, obstacleMap.ObstacleCount, obstacleMap.WallSegmentCount);
 
         // The Npcs.json roster itself is spawned by the zone's Lua script (Scripts/Zone/FabledRealms.lua,
         // generated 1:1 from Npcs.json) via TrySpawnNpc below — see OnStart, called by ZoneManager right
@@ -78,48 +105,11 @@ public sealed partial class StartingZone : BaseZone
         SpawnMiningNodes();
     }
 
-    // Scans GcnkAssetsDirectory for every "FabledRealms_*.gcnk"/".gcnk.z" tile file, parses each with
-    // GcnkParser, and builds an ObstacleMap from the placements. Returns null (not empty) if the directory
-    // doesn't exist, so the caller can fall back to the pure NPC-proximity graph instead of "successfully"
-    // building an obstacle map with zero obstacles in it.
-    private ObstacleMap? BuildObstacleMap()
-    {
-        if (!System.IO.Directory.Exists(GcnkAssetsDirectory))
-            return null;
-
-        var placements = new List<GcnkParser.Placement>();
-        var tileFiles = System.IO.Directory.EnumerateFiles(GcnkAssetsDirectory, "FabledRealms_*.gcnk*", System.IO.SearchOption.AllDirectories);
-        var fileCount = 0;
-
-        foreach (var file in tileFiles)
-        {
-            fileCount++;
-            try
-            {
-                placements.AddRange(GcnkParser.ParseFile(file));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to parse {file} while building the obstacle map.", file);
-            }
-        }
-
-        _logger.LogInformation("Parsed {fileCount} .gcnk tile files -> {placementCount} object placements.", fileCount, placements.Count);
-        return ObstacleMap.Build(placements);
-    }
-
-    // Real A* routing for "Take Me There" (see ClientPathBasePacketHandler.BuildPath). Returns null if the
-    // graph can't connect start/destination (disconnected components) - caller falls back to a straight line.
-    public List<Vector4>? TryFindPath(Vector4 start, Vector4 destination)
-    {
-        return _waypointGraph.FindPath(start, destination);
-    }
-
     // Debug aid for CommandRouter's /waypoints - nodes near a position, with their edges, so bad
     // connections can be reported back by exact id.
     public List<(int Id, Vector4 Position, IReadOnlyList<int> Neighbors)> GetNearbyWaypoints(Vector4 position, float radius)
     {
-        return _waypointGraph.GetNodesNear(position, radius);
+        return NavGraph?.GetNodesNear(position, radius) ?? [];
     }
 
     public override void OnStart()
@@ -1009,102 +999,16 @@ public sealed partial class StartingZone : BaseZone
         });
     }
 
-    // "Spin For The Win!" (ActivityId 8, Category 17) - a standalone daily reward roll, once per UTC
-    // calendar day per character.
-    //
-    // NO visual wheel widget: the original design (launch the same loot-wheel widget dungeons show at a
-    // win, via ActivityLaunchRequest -> MiniGameGroupInfo -> BeginLoad) was live-tested 2026-07-24 and
-    // found to SOFT-LOCK the client - ClientActivityLaunchRequests.log + FreeRealms.log showed the launch
-    // state machine progressing all the way to BeginLoad, then failing ("AssetDeliveryIndirect::
-    // GetAssetData failed, asset not in manifest: undefined" - a null MiniGameGroupInfo.BackgroundSwf)
-    // and leaving the client in a stuck loading state (no visible panel, input blocked) even after a
-    // BackgroundSwf placeholder fix got further into the sequence. Abandoned in favor of resolving the
-    // spin directly, with no client-side minigame launch involved at all - nothing left that can hang.
-    //
-    // Lives here (not in the Gateway handler) so it can be called both from
-    // ActivityPacketJoinActivityRequestHandler (a real client JoinActivityRequest, should the Browser's
-    // Play button for it ever work) - same split SendDungeonOffer already uses.
-    public void SpinDailyWheel(Player player)
-    {
-        using var dbContext = _dbContextFactory.CreateDbContext();
-
-        var dbCharacter = dbContext.Characters.SingleOrDefault(x => x.Id == GuidHelper.GetPlayerId(player.Guid));
-        if (dbCharacter is null)
-            return;
-
-        var now = DateTimeOffset.UtcNow;
-        if (dbCharacter.LastDailyWheelSpinUtc is { } last && last.UtcDateTime.Date == now.UtcDateTime.Date)
-        {
-            player.SendTunneled(new PacketChat
-            {
-                Channel = ChatChannel.System,
-                Message = "You've already spun the wheel today. Come back tomorrow!"
-            });
-            return;
-        }
-
-        // PLACEHOLDER reward: the real retail prize table for this wheel isn't known (the wheel graphic
-        // shows potion/pet/TCG-card slices, but we have no data on the actual odds or item ids behind
-        // them) - flat random coins for now.
-        var coins = Random.Shared.Next(SpinForTheWinMinCoins, SpinForTheWinMaxCoins + 1);
-
-        dbCharacter.LastDailyWheelSpinUtc = now;
-        dbCharacter.Coins += coins;
-        dbContext.SaveChanges();
-
-        player.Coins = dbCharacter.Coins;
-        player.SendTunneled(new ClientUpdatePacketCoinCount { Coins = player.Coins });
-        player.SendTunneled(new RewardBundlePacket { Coins = coins, Unknown15 = 957 });
-
-        player.SendTunneled(new PacketChat
-        {
-            Channel = ChatChannel.System,
-            Message = $"Spin For The Win! You won {coins} coins!"
-        });
-
-        _logger.LogInformation("Spin For The Win: {name} spun for {coins} coins.", player.Name, coins);
-    }
-
-    private const int SpinForTheWinMinCoins = 50;
-    private const int SpinForTheWinMaxCoins = 500;
-
-    // Tells the client it has a wheel spin waiting, which is what makes it open its own coin-wheel widget
-    // (game_wheel.swf) - the ONLY working way in, see PacketClientNotifyCoinSpinAvailable. The wheel then
-    // drives itself against DailyWheelGame over the minigame payload channel.
-    public void NotifyCoinSpinAvailable(Player player)
-    {
-        player.SendTunneled(new PacketClientNotifyCoinSpinAvailable());
-
-        _logger.LogInformation("Spin For The Win: coin-spin-available notify sent to {name}.", player.Name);
-    }
-
-    // Sends the wheel's minigame definition + launch (activity 8, Type=22 "Wheel", IS_MICRO in the
-    // client's own MiniGameTypeData.txt). This is where the SWF NAME comes from: the client ships
-    // MiniGameData.txt/MiniGameGroupData.txt with the wheel's row present (8^22^409962^409969^20985^1...)
-    // but every asset column blank - retail filled those in from the server, and MiniGameFlash:ShowMicro
-    // takes the file as its first argument. So the widget can only ever load if we name it here.
-    //
-    // On its own this is NOT enough: the client also refuses to start the wheel unless the player holds
-    // the "wheel" repeating activity (native StartWheel @0x009BDBD6 bails when
-    // GetRepeatingActivityCount("wheel") <= 0) - see BaseRepeatingActivityPacket.
-    //
-    // The client's native Client\UI\game_wheel.gfx (game_wheel.lst.z
-    // resolves it to srcfilename=C:\dev\FreeRealms\Live\Runtime\Client\UI\game_wheel.swf, bundled with its
-    // own DDS art), driven from here on via the minigame payload channel - see DailyWheelGame for the
-    // protocol and the payout.
-    //
-    // The 2026-07-24 "it soft-locks" verdict was also wrong about the cause: that run left MiniGameInfo's
-    // SWF-name field (Unknown13) null, and the "asset not in manifest: undefined" line it blamed actually
-    // came from the minigames Browser's thumbnail, 20 seconds earlier. With the field filled in the launch
-    // no longer hangs at all - it just does nothing visible.
+    // Opens the wheel: minigame definition + activity launch for activity 8, Type=22 (the client's only
+    // IS_MICRO type). The SWF name has to come from us - the client's MiniGameData.txt has the wheel's row
+    // but leaves every asset column blank. The player also needs the "wheel" repeating activity or the
+    // client refuses to start it; DailyWheelGame.SendSpinAvailability covers that.
     public void LaunchSpinForTheWinGame(Player player, ClientActivityDefinition clientActivityDefinition)
     {
         const int ActivityId = 8;
         const string WheelSwf = "game_wheel.gfx";
         const int WheelIconId = 20985; // the client's own MiniGameData.txt row for game 8
 
-        // Ids match the client's own MiniGameData.txt row for game 8 (name 409962 "Spin For The Win!",
-        // description 409969, icon 20985) so its local data and ours agree.
         var miniGameInfo = new MiniGameInfo()
         {
             NameId = clientActivityDefinition.DisplayNameId,
@@ -1114,17 +1018,27 @@ public sealed partial class StartingZone : BaseZone
             ProfileType = 0,
             Type = 22, // Wheel - native Client\UI\game_wheel.swf widget, not a hosted Flash game
             PreselectedGameId = ActivityId,
-            Unknown11 = true,
+
+            // The start panel and framed window come with the minigame launch. These flags are the only
+            // levers on it - "/wheel flag <name> <0|1>" toggles them live.
+            Unknown11 = WheelUnknown11,
+            ShowStarCounter = WheelShowStarCounter,
+            ShowStatusIcon = WheelShowStatusIcon,
+            ShowActionBar = WheelShowActionBar,
+            ShowEndDialog = WheelShowEndDialog,
+
             Unknown13 = WheelSwf
         };
 
+        // BackgroundSwf is what the client draws behind the minigame. Empty, like every row in the
+        // client's own MiniGameGroupData.txt - "/wheel bg <name>" puts one back for testing.
         var miniGameGroupInfo = new MiniGameGroupInfo()
         {
             Id = 69,
             NameId = clientActivityDefinition.DisplayNameId,
             DescriptionId = clientActivityDefinition.DisplayDescriptionId,
             IconId = WheelIconId,
-            BackgroundSwf = WheelSwf
+            BackgroundSwf = WheelBackgroundSwf
         };
 
         using var writer = new PacketWriter();
@@ -2385,7 +2299,55 @@ public sealed partial class StartingZone : BaseZone
         ]);
 
         player.SendTunneled(packetLoadWelcomeScreen);
+
+        SendWelcomeAnnouncements(player);
     }
+
+    // The "What's New" tiles on the welcome screen - this is how the wheel gets a tile there.
+    public void SendWelcomeAnnouncements(Player player)
+    {
+        var announcements = new AnnouncementDataSendPacket();
+
+        announcements.Announcements.Add(new AnnouncementInfo
+        {
+            Id = 1,
+            Priority = 1,
+
+            // A raw IMAGE_ID from Images.txt, not an image-set id - the two spaces overlap and neither
+            // errors, so a set id here quietly draws the wrong picture.
+            IconId = WelcomeWheelIconId,
+
+            TitleStringId = 409962,     // "Spin For The Win!"
+            BodyStringId = 409969,      // "Welcome to the Free Realms Daily Rewards wheel! ..."
+            ButtonStringId = 433041,    // "PLAY NOW"
+
+            LuaCall = "Minigame",
+            Param1 = WheelCategoryId
+        });
+
+        player.SendTunneled(announcements);
+    }
+
+    // Param1 for "Minigame" is a CATEGORY id, not an activity id - welcome.lua hands it to
+    // MinigameDetail:Populate, which branches on it to build the wheel's panel. Matches the Category the
+    // client's own ActivityCategories.txt gives activity 8.
+    public const int WheelCategoryId = 17;
+
+    // What the client loads BEHIND the wheel minigame. Empty = nothing, so it floats over the game world.
+    // "/wheel bg <name>" puts a movie back (e.g. game_wheel.gfx, the old behaviour) to compare.
+    public static string WheelBackgroundSwf = "";
+
+    // MiniGameInfo flags for the wheel launch, toggled live with "/wheel flag <name> <0|1>" while hunting
+    // for whichever one drops the start screen and the framed minigame window.
+    public static bool WheelUnknown11 = true;
+    public static bool WheelShowStarCounter;
+    public static bool WheelShowStatusIcon;
+    public static bool WheelShowActionBar;
+    public static bool WheelShowEndDialog;
+
+    // icon_ui_wheelstart_panelgraphic.dds - the icon the client's own MiniGameData.txt gives the wheel.
+    // "/wheel welcome <id>" swaps it live.
+    public static int WelcomeWheelIconId = 20985;
 
     public override void RefreshPlayerCustomizations(Player player)
     {

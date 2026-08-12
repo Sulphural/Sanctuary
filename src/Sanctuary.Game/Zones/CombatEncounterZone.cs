@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -16,7 +16,9 @@ namespace Sanctuary.Game.Zones;
 
 // Shared per-mob combat state for the encounter AI (chase / attack / plant / idle / return-home).
 // Subclasses extend it with their own extras (Frostfang's roamer + charge-delay + howl).
-public class EncounterMobState
+// The A* route cache + stuck detection live in the shared PathChaseState base (see ChaseNavigator) so the
+// overworld enemy AI gets exactly the same routing behavior from the same code.
+public class EncounterMobState : PathChaseState
 {
     public bool Charging;
     public float SlotAngle;
@@ -25,27 +27,6 @@ public class EncounterMobState
     public bool Idling;     // true once parked at Home (broadcast the idle stop only once)
     public bool Planted;    // true once stopped in attack range — stop re-broadcasting position (attack jitter)
     public ulong TargetGuid; // who this mob is currently pursuing — see NearestLivePlayerSticky
-
-    // A* waypoint chase (see CombatEncounterZone.BuildMobPathfinding/TickMobCombat) — only used when the
-    // straight line to the target is blocked by real geometry. Re-planned periodically rather than every
-    // tick (A* isn't free) and whenever the target moves far enough that the cached route is stale.
-    public List<Vector4>? CachedPath;
-    public int PathIndex;
-    public long NextRepathTicks;
-    public Vector4 PathTarget; // the slot position the CachedPath was planned toward, for staleness checks
-
-    // Stuck detection (added 2026-07-29, live feedback: "enemies dont seem to be going the best possible
-    // path... they go down a path that will eventually block them"). The waypoint graph is a uniform grid
-    // sample of the real wall data, not a guaranteed-connected navmesh - CombatEncounterZone.BuildMobPathfinding's
-    // own header comment already documents that a fragmented graph near a wall cluster makes FindPath return
-    // a stale/dead-end route (or nothing, falling back to a straight line INTO the very obstacle that made
-    // the graph search trigger). Rather than trying to make graph construction perfect for every dungeon's
-    // geometry (no live client to iteratively verify against), this detects the SYMPTOM directly: if a mob
-    // that's actively trying to move barely progresses over a full check window, the path it's following
-    // is bad - discard it and force a fresh plan next tick. Self-healing for any mob using ChaseStep, not
-    // just the queen-convergence case that surfaced it.
-    public Vector4 StuckCheckPos;
-    public long NextStuckCheckTicks;
 }
 
 // Shared base for the combat-encounter zones — the generic data-driven EncounterArenaZone
@@ -346,17 +327,18 @@ public abstract class CombatEncounterZone : BaseZone
     // ── Mob pathfinding ──────────────────────────────────────────────────────────────────────────────
     // Mob chase movement used to be a pure straight-line vector toward the player's slot, with no wall/
     // geometry awareness at all — mobs cut straight through cave walls to reach the player. This builds
-    // the same real ObstacleMap/WaypointGraph machinery StartingZone already uses for "Take Me There"
-    // (see WaypointGraph.cs's own header comment: no client-facing navmesh exists in the extracted assets,
-    // so this is a hand-rolled proximity-linked graph over real .gcnk placement data), but seeded from an
-    // auto-generated grid instead of curated NPC points (dungeons have no equivalent curated point set) —
-    // see BuildMobPathfinding. TickMobCombat only consults it when the straight line is actually blocked,
-    // so a dungeon with no .gcnk data (MobObstacleMap null) or genuinely open geometry behaves exactly as
-    // before — zero regression risk for the common case.
-    private const string GcnkAssetsDirectory = @"C:\Users\nadim\Desktop\sharedVM\everythingFR\FRAssets\Assets";
-
-    protected ObstacleMap? MobObstacleMap { get; private set; }
-    protected WaypointGraph? MobWaypointGraph { get; private set; }
+    // the same real ObstacleMap/WaypointGraph machinery the overworld uses for "Take Me There" and its own
+    // enemy AI (see WaypointGraph.cs's own header comment: no client-facing navmesh exists in the
+    // extracted assets, so this is a hand-rolled proximity-linked graph over real placement/wall data),
+    // but seeded from an auto-generated grid instead of curated NPC points (dungeons have no equivalent
+    // curated point set) — see BuildMobPathfinding. The results land in the zone's shared
+    // NavObstacles/NavGraph, so mob chase and any other consumer read one source of truth.
+    //
+    // Chasing only consults the graph when the straight line is actually blocked, so a dungeon with no
+    // geometry data (NavObstacles null) or genuinely open geometry behaves exactly as before — zero
+    // regression risk for the common case.
+    protected ObstacleMap? MobObstacleMap => NavObstacles;
+    protected WaypointGraph? MobWaypointGraph => NavGraph;
     private Vector4 _mobPathCenter;
     private float _mobPathRadius;
 
@@ -378,104 +360,79 @@ public abstract class CombatEncounterZone : BaseZone
         return MobObstacleMap.IsLineWalkable(from, pos);
     }
 
-    // Scans GcnkAssetsDirectory for every "{world}_*.gcnk"/".gcnk.z" tile file (discrete placed props —
-    // trees, buildings, decorative clutter) AND the world's single "{world}.gzne"/".gzne.z" file (the REAL
-    // cave/terrain wall boundary — see GzneParser; .gcnk alone has ZERO wall coverage for a cave like
-    // Cracked Claw Caverns, confirmed 2026-07-26 by dumping its real placement data: only decorative props,
-    // no geometry). Builds an ObstacleMap from both, then grid-samples the dungeon's playable circle
-    // (center/radius) for walkable points and links them into a WaypointGraph. Call once from the subclass
-    // constructor/definition with the dungeon's own world name + center + radius. No-ops (leaves both
-    // properties null, unchanged straight-line behavior) if the world has neither kind of data on disk.
+    // Loads the world's real geometry - props (.gcnk) AND the cave/terrain wall boundary (.gzne) - via
+    // the shared ObstacleMapLoader, then grid-samples the dungeon's playable circle (center/radius) for
+    // walkable points, adds wall-hug corner nodes, and links them into a WaypointGraph. Call once from the
+    // subclass constructor/definition with the dungeon's own world name + center + radius. No-ops (leaves
+    // the zone's NavObstacles/NavGraph null, unchanged straight-line behavior) if the world has neither
+    // kind of data on disk.
     protected void BuildMobPathfinding(string world, Vector4 center, float radius)
     {
         _mobPathCenter = center;
         _mobPathRadius = radius;
 
-        if (!System.IO.Directory.Exists(GcnkAssetsDirectory))
+        var obstacles = ObstacleMapLoader.TryLoad(world, _logger, out var wallStrips);
+        if (obstacles is null)
+            return; // no real geometry data for this world - stay null, straight-line fallback
+
+        var points = WaypointGraphBuilder.SampleWalkableGrid(center, radius, obstacles, out var spacing);
+        var gridCount = points.Count;
+
+        // Wall strips aren't generated relative to this dungeon's bounds, so a strip near the edge can
+        // produce a hug candidate OUTSIDE the playable circle - such a node could get chosen mid-route and
+        // send a chasing mob genuinely off the map. Flatten to the arena's floor height (unlike the
+        // overworld, a dungeon is one tier).
+        WaypointGraphBuilder.AddWallHugPoints(points, wallStrips, obstacles, flattenY: center.Y, inBounds: p =>
+        {
+            var dx = p.X - center.X;
+            var dz = p.Z - center.Z;
+            return dx * dx + dz * dz <= radius * radius;
+        });
+
+        NavObstacles = obstacles;
+        NavGraph = WaypointGraph.BuildFromPoints(points, maxEdgeDistance: spacing * 2.2f, maxNeighborsPerNode: 10, obstacles: obstacles);
+        _logger.LogInformation("{label}: built mob waypoint graph for {world} ({obstacles} props, {walls} wall segments, {nodes} nodes = {grid} grid + {hug} wall-hug).",
+            EncounterLogName, world, obstacles.ObstacleCount, obstacles.WallSegmentCount, NavGraph.NodeCount, gridCount, points.Count - gridCount);
+
+        BuildMobCollisionMesh(world, center.Y);
+    }
+
+    // Real per-model collision geometry for this dungeon (see MeshObstacleMap), replacing the circle
+    // approximation for line-of-walk tests. Dungeon-sized worlds only - this costs ~15-80ms and a few MB
+    // here, but would be prohibitive on the overworld's 39k placements / 4.2M triangles.
+    //
+    // This is what actually stops a mob walking through a wall: the circle approximation genuinely does
+    // not know most walls exist. Measured on Bixie Hive - whose 228 placements ALL have real collision
+    // meshes, 170k triangles between them - 15.6% of chase lines cross a wall that the circles miss
+    // entirely, and the hive reads as almost-open space without this.
+    private void BuildMobCollisionMesh(string world, float groundY)
+    {
+        _collisionLibrary ??= new ModelCollisionLibrary(ObstacleMapLoader.AssetsDirectory);
+        if (!_collisionLibrary.Available)
             return;
 
         var placements = new List<GcnkParser.Placement>();
-        var tileFiles = System.IO.Directory.EnumerateFiles(GcnkAssetsDirectory, $"{world}_*.gcnk*", System.IO.SearchOption.AllDirectories);
-        foreach (var file in tileFiles)
+        foreach (var file in System.IO.Directory.EnumerateFiles(ObstacleMapLoader.AssetsDirectory, $"{world}_*.gcnk*", System.IO.SearchOption.AllDirectories))
         {
             try { placements.AddRange(GcnkParser.ParseFile(file)); }
-            catch (Exception ex) { _logger.LogWarning(ex, "{label}: failed to parse {file} while building the mob obstacle map.", EncounterLogName, file); }
+            catch { /* already reported by the obstacle-map load above */ }
         }
 
-        var wallStrips = new List<GzneParser.WallStrip>();
-        var gzneFiles = System.IO.Directory.EnumerateFiles(GcnkAssetsDirectory, $"{world}.gzne*", System.IO.SearchOption.AllDirectories);
-        foreach (var file in gzneFiles)
-        {
-            try { wallStrips.AddRange(GzneParser.ParseFile(file)); }
-            catch (Exception ex) { _logger.LogWarning(ex, "{label}: failed to parse {file} while building the mob wall map.", EncounterLogName, file); }
-        }
+        if (placements.Count == 0)
+            return;
 
-        if (placements.Count == 0 && wallStrips.Count == 0)
-            return; // no real geometry data for this world — stay null, straight-line fallback
+        var mesh = MeshObstacleMap.Build(placements, _collisionLibrary, groundY);
+        if (mesh.WallEdgeCount == 0)
+            return; // nothing wall-like near this floor - keep the circle approximation
 
-        var obstacles = ObstacleMap.Build(placements, wallStrips);
-
-        // Adaptive grid spacing so node count (and therefore the O(n^2) graph build) stays bounded
-        // regardless of the dungeon's radius (small arenas ~64 up to the big walk-through worlds ~600).
-        // Denser than the first pass (was radius/25, min 4) - live-tested 2026-07-26 with real wall data:
-        // a coarse grid frequently left the graph fragmented right around wall clusters (exactly where
-        // routing matters most), so FindPath silently failed and ChaseStep fell back to the straight line -
-        // reproducing the clipping bug even with fully correct obstacle data. Denser sampling + the corner
-        // nodes below both target that failure mode directly.
-        var spacing = MathF.Max(3f, radius / 35f);
-        var points = new List<Vector4>();
-        for (var x = -radius; x <= radius; x += spacing)
-        {
-            for (var z = -radius; z <= radius; z += spacing)
-            {
-                if (x * x + z * z > radius * radius)
-                    continue; // stay inside the playable circle, not the bounding square
-                var p = new Vector4(center.X + x, center.Y, center.Z + z, 1f);
-                if (!obstacles.IsBlocked(p))
-                    points.Add(p);
-            }
-        }
-
-        // Corner nodes: a uniform grid can easily miss the one clear cell that hugs a wall closely enough
-        // to matter, especially for short/angled strips - so add explicit candidates right along each real
-        // wall segment (both perpendicular sides, just outside WallMargin), the standard navmesh trick for
-        // reliable routing around obstacle edges instead of hoping the grid happens to land nearby.
-        const float hugDistance = 3f;
-        float[] hugSigns = [1f, -1f];
-        foreach (var strip in wallStrips)
-        {
-            for (var i = 0; i < strip.Points.Count; i++)
-            {
-                var p = strip.Points[i];
-                var neighbor = i < strip.Points.Count - 1 ? strip.Points[i + 1] : strip.Points[i - 1];
-                var dir = new Vector2(neighbor.X - p.X, neighbor.Z - p.Z);
-                if (dir.LengthSquared() < 0.0001f)
-                    continue;
-                dir = Vector2.Normalize(dir);
-                var perp = new Vector2(-dir.Y, dir.X);
-                foreach (var sign in hugSigns)
-                {
-                    var candidate = new Vector4(p.X + perp.X * hugDistance * sign, center.Y, p.Z + perp.Y * hugDistance * sign, 1f);
-                    // Unlike the grid loop above, wall-strip points aren't generated relative to `center`/
-                    // `radius` at all - a strip near the edge of the dungeon's nominal bounds can produce a
-                    // hug candidate that lands OUTSIDE the playable circle. Without this check such a node
-                    // could get chosen mid-route, sending a chasing mob genuinely off the map - exactly what
-                    // this bound already protects the regular grid points from.
-                    var dx = candidate.X - center.X;
-                    var dz = candidate.Z - center.Z;
-                    if (dx * dx + dz * dz > radius * radius)
-                        continue;
-                    if (!obstacles.IsBlocked(candidate))
-                        points.Add(candidate);
-                }
-            }
-        }
-
-        MobObstacleMap = obstacles;
-        MobWaypointGraph = WaypointGraph.BuildFromPoints(points, maxEdgeDistance: spacing * 2.2f, maxNeighborsPerNode: 10, obstacles: obstacles);
-        _logger.LogInformation("{label}: built mob waypoint graph for {world} ({obstacles} props, {walls} wall segments, {nodes} nodes).",
-            EncounterLogName, world, obstacles.ObstacleCount, obstacles.WallSegmentCount, MobWaypointGraph.NodeCount);
+        NavMesh = mesh;
+        _logger.LogInformation("{label}: built real collision mesh for {world} ({edges} wall edges from {resolved}/{total} placements).",
+            EncounterLogName, world, mesh.WallEdgeCount, _collisionLibrary.Resolved, placements.Count);
     }
+
+    // Shared across every dungeon zone - the asset filename index behind it takes ~185ms to build and is
+    // identical for all of them.
+    private static ModelCollisionLibrary? _collisionLibrary;
 
     // ── Shared enemy AI ───────────────────────────────────────────────────────────────────────────────
     // Chase to an owned slot around the player, plant + attack in range, disengage to the spawn post and idle
@@ -636,79 +593,13 @@ public abstract class CombatEncounterZone : BaseZone
         }
     }
 
-    // Chase step toward `slot`: the plain straight-line vector when there's no obstacle data or the
-    // straight line is genuinely clear (the common case — identical output to the old code, so open
-    // dungeons/arenas are unaffected), or a step along a cached A* route over MobWaypointGraph when it's
-    // blocked. The route is cached in `state` and only replanned when it runs out, goes stale (the target
-    // slot moved more than 4 units since the last plan), or its refresh timer elapses (1s) — A* every tick
-    // per mob would be wasteful. Falls back to the straight line (not a freeze) if the graph is missing or
-    // disconnected — that reproduces the pre-fix behavior for that one mob/tick rather than getting stuck.
-    // Stuck-detection window - see EncounterMobState.StuckCheckPos's header comment. Long enough that normal
-    // per-tick movement noise (attack pauses, waypoint corners) doesn't false-positive, short enough that a
-    // genuinely bad route gets abandoned quickly rather than grinding into a wall for many seconds.
-    private const float StuckThreshold = 1.2f;
-    private const int StuckCheckIntervalMs = 1200;
-
+    // Chase step toward `slot`, delegated to the shared ChaseNavigator so the dungeon AI, the overworld
+    // enemy AI and "Take Me There" all steer over the same obstacle/graph machinery instead of separately
+    // drifting copies. Behavior is unchanged from when this logic lived here: straight line when there's
+    // no geometry data or the direct line is clear, otherwise a step along a cached A* route, with
+    // stuck-detection dropping a route that stops making progress.
     private (Vector2 Dir, float Dist) ChaseStep(Vector3 here, Vector3 slot, EncounterMobState state, long now)
-    {
-        // Stuck detection: if a cached A* route hasn't actually moved us in the last StuckCheckIntervalMs,
-        // it's leading into a dead end (graph fragmentation near the wall cluster that triggered pathfinding
-        // in the first place - see this class's header comment) - drop it so the repath check below plans a
-        // fresh route instead of faithfully re-walking the same bad one every tick.
-        if (state.NextStuckCheckTicks == 0)
-        {
-            state.StuckCheckPos = new Vector4(here.X, here.Y, here.Z, 1f);
-            state.NextStuckCheckTicks = now + StuckCheckIntervalMs;
-        }
-        else if (now >= state.NextStuckCheckTicks)
-        {
-            var progress = Vector2.Distance(new Vector2(here.X, here.Z), new Vector2(state.StuckCheckPos.X, state.StuckCheckPos.Z));
-            if (progress < StuckThreshold && state.CachedPath is not null)
-            {
-                state.CachedPath = null;
-                state.NextRepathTicks = 0; // force the repath check below to actually replan this tick
-            }
-            state.StuckCheckPos = new Vector4(here.X, here.Y, here.Z, 1f);
-            state.NextStuckCheckTicks = now + StuckCheckIntervalMs;
-        }
-
-        var toSlot = new Vector2(slot.X - here.X, slot.Z - here.Z);
-        var distToSlot = toSlot.Length();
-        if (distToSlot <= 0.01f)
-            return (Vector2.Zero, 0f);
-        var straight = toSlot / distToSlot;
-
-        var hereV4 = new Vector4(here.X, here.Y, here.Z, 1f);
-        var slotV4 = new Vector4(slot.X, slot.Y, slot.Z, 1f);
-
-        if (MobObstacleMap is null || MobObstacleMap.IsLineWalkable(hereV4, slotV4))
-        {
-            state.CachedPath = null;
-            return (straight, distToSlot);
-        }
-
-        var slotMoved = Vector2.DistanceSquared(new Vector2(state.PathTarget.X, state.PathTarget.Z), new Vector2(slot.X, slot.Z)) > 16f;
-        if (state.CachedPath is null || state.PathIndex >= state.CachedPath.Count || now >= state.NextRepathTicks || slotMoved)
-        {
-            state.CachedPath = MobWaypointGraph?.FindPath(hereV4, slotV4);
-            state.PathIndex = 0;
-            state.PathTarget = slotV4;
-            state.NextRepathTicks = now + 1000;
-        }
-
-        if (state.CachedPath is not { Count: > 0 })
-            return (straight, distToSlot); // no graph, or disconnected — straight-line fallback, not a freeze
-
-        var here2 = new Vector2(here.X, here.Z);
-        while (state.PathIndex < state.CachedPath.Count - 1 &&
-               Vector2.DistanceSquared(here2, new Vector2(state.CachedPath[state.PathIndex].X, state.CachedPath[state.PathIndex].Z)) < 1f)
-            state.PathIndex++;
-
-        var waypoint = state.CachedPath[state.PathIndex];
-        var toWaypoint = new Vector2(waypoint.X - here.X, waypoint.Z - here.Z);
-        var distToWaypoint = toWaypoint.Length();
-        return distToWaypoint > 0.01f ? (toWaypoint / distToWaypoint, distToWaypoint) : (straight, distToSlot);
-    }
+        => ChaseNavigator.Step(here, slot, state, NavObstacles, TryFindPath, now);
 
     // Engaged-mob combat tick (player alive): converge on an owned slot around the player, plant
     // once in attack range (re-broadcasting every tick bobbed the model + fought the swing = jitter), and

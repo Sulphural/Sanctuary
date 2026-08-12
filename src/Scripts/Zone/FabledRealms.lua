@@ -4287,4 +4287,11 @@ function onStart(zone)
     zone.spawnNpcWithGuid(40029, 100000040029, -1550.0, -40.7, -540.0, 5.6)
     zone.spawnNpcWithGuid(40030, 100000040030, -1480.0, -40.7, -580.0, 2.1)
     zone.spawnNpcWithGuid(40031, 100000040031, -1520.0, -40.7, -560.0, 4.8)
+
+    -- Sobering Homecoming's three scattered Freewheelers (quest 3081, counted "Talk to Freewheelers 0/3").
+    -- Placed beside real Sunstone Valley spawns at their exact ground height, per the doc's descriptions:
+    -- by The Rumbledome, outside Wheelie Pete's Roadhouse, and at the Sandscale Oasis entrance.
+    zone.spawnNpcWithGuid(40032, 100000040032, 423.5, 71.59, 1846.5, 2.166)
+    zone.spawnNpcWithGuid(40033, 100000040033, 510.5, 86.4, 1934.0, -3.053)
+    zone.spawnNpcWithGuid(40034, 100000040034, 628.5, 80.45, 1743.5, -0.101)
 end

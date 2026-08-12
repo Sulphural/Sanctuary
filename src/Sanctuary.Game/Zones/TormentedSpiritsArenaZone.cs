@@ -194,6 +194,15 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
         _resourceManager = serviceProvider.GetRequiredService<IResourceManager>();
         _questManager = serviceProvider.GetRequiredService<Sanctuary.Game.Quests.IQuestManager>();
         _dbContextFactory = serviceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Sanctuary.Database.DatabaseContext>>();
+
+        // The spirits run the shared TickMobCombat/TickMobReturnHome chase, which routes through
+        // ChaseStep - but without this call NavObstacles/NavGraph stayed null, so every one of those
+        // lookups fell straight back to a plain straight line and the spirits had no wall awareness at
+        // all. The generic EncounterArenaZone has always made this call; the two bespoke arenas never did.
+        // Uses the GroundY guess rather than the runtime-adopted _groundY: the graph is built once here,
+        // before StartEncounter's ground-adoption task runs, and the grid only needs a representative
+        // floor height to sample the arena's walkable circle at.
+        BuildMobPathfinding("bs_random_encounter_01", new Vector4(CenterX, GroundY, CenterZ, 1f), 100f);
     }
 
     private static BaseZoneDefinition CreateDefinition() => new TormentedSpiritsArenaDefinition

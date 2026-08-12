@@ -386,6 +386,13 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
         _resourceManager = serviceProvider.GetRequiredService<IResourceManager>();
         _questManager = serviceProvider.GetRequiredService<Sanctuary.Game.Quests.IQuestManager>();
         _dbContextFactory = serviceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Sanctuary.Database.DatabaseContext>>();
+
+        // This zone's wolves run the shared TickMobCombat/TickMobReturnHome chase, which routes through
+        // ChaseStep - but without this call NavObstacles/NavGraph stayed null, so every one of those
+        // lookups fell straight back to a plain straight line and the wolves had no wall awareness at all.
+        // The generic EncounterArenaZone has always made this call; the two bespoke arenas never did.
+        // One-time cost (the zone is cached per-activity by ZoneManager, not rebuilt per player entry).
+        BuildMobPathfinding("sg_random_encounter_clearing", new Vector4(136f, GroundY, 165f, 1f), 100f);
     }
 
     private static BaseZoneDefinition CreateDefinition() => new FrostfangArenaDefinition
