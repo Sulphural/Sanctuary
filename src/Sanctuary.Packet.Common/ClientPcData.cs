@@ -336,6 +336,13 @@ public class ClientPcData
     // public ClientQuestData Quests = new();
     // public ClientAchievementData Achievements = new();
 
+    // How many quests may be active at once. The client keeps a separate limit for each membership
+    // state and picks between them on the character's member flag (0x00A10890), so both must be set
+    // or non-members get 0. This is the "/N" in the Adventurer's Journal quest counter, and the gate
+    // behind the client's "You can't start any more quests!" message (string ids 2814 / 2815).
+    public int NonMemberQuestLimit = 30;
+    public int MemberQuestLimit = 30;
+
     // public List<Acquaintance> Acquaintances = new();
     // public List<RecipeData> Recipes = new();
 
@@ -508,13 +515,16 @@ public class ClientPcData
 
         writer.Write(Gender);
 
-        // TODO Quests
-        writer.Write(0);
-        writer.Write(0);
-        writer.Write(0);
-        writer.Write(false);
-        writer.Write(0);
-        writer.Write(0);
+        // ClientQuestData. Field order traced from the client's reader at 0x00940AC0 (called by the
+        // cPacketIdSendSelfToClient handler); the per-quest entries go through ClientQuestData::sub_93C840,
+        // the same reader QuestAddPacket feeds. Only the trailing scalars are wired up so far - the quest
+        // list stays empty here because active quests are pushed separately via QuestAddPacket on login.
+        writer.Write(0);                 // quest list count            (entries: sub_93C840)
+        writer.Write(0);                 // quests completed  -> +0x10FC (re-sent by op49/12 in RestoreJournal)
+        writer.Write(0);                 // tracked quest id  -> +0x10F4 (set later by the op49 sub-opcodes)
+        writer.Write(false);             //                   -> +0x10F8
+        writer.Write(NonMemberQuestLimit); // quest limit, non-member -> +0x1100
+        writer.Write(MemberQuestLimit);    // quest limit, member     -> +0x1104
 
         // TODO Achievements
         writer.Write(0);
