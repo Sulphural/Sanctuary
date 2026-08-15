@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Sanctuary.Game;
 using Sanctuary.Game.Combat;
 using Sanctuary.Game.Entities;
+using Sanctuary.Game.Interactions;
 using Sanctuary.Game.Zones;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
@@ -198,14 +199,24 @@ public static partial class AbilityPacketClientRequestStartAbilityHandler
         var player = connection.Player;
         var zone = player.Zone;
 
-        // The "3" key / toolbar slot index 2 = the held power-up (PowerupSystem) - pinned there on top of
-        // the normal 2-slot weapon toolbar (0=basic, 1=special) whenever one is held. Never routes through
-        // the normal weapon-ability resolution below.
+        // The "3" key / toolbar slot index 2 - pinned on top of the normal 2-slot weapon toolbar (0=basic,
+        // 1=special) and never routed through the weapon-ability resolution below. Two things live there,
+        // in the same precedence JobWeaponAbilities.ApplyThirdSlot draws them: a held power-up first, then
+        // the Snowhill snowball tool.
         if (packet.Data.Slot == 2)
         {
-            if (!PowerupSystem.TryUse(player, _resourceManager))
-                return SendFailure(connection);
-            return true;
+            if (PowerupSystem.TryUse(player, _resourceManager))
+                return true;
+
+            // packet.Guid = the client's selected target, so a snowball thrown with an enemy targeted lands
+            // on that enemy instead of on whatever is nearest the facing.
+            if (SnowballTool.TryThrow(player, _resourceManager, packet.Guid))
+                return true;
+
+            _logger.LogInformation("Slot 3 pressed with nothing on it: powerup held={held}, snowball={snowball}.",
+                PowerupSystem.IsHolding(player.Guid), SnowballTool.IsEquipped(player));
+
+            return SendFailure(connection);
         }
 
         // We DON'T enter world-combat just for pressing fire — entry is gated on actually hitting an enemy (see

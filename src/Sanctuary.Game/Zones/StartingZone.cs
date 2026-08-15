@@ -102,8 +102,6 @@ public sealed partial class StartingZone : BaseZone
         // generated 1:1 from Npcs.json) via TrySpawnNpc below — see OnStart, called by ZoneManager right
         // after construction finishes. Collect-goal pickups aren't part of that roster (they come from
         // Quests.json), so they still spawn directly here.
-        SpawnQuestCollectibles();
-        SpawnMiningNodes();
     }
 
     // Debug aid for CommandRouter's /waypoints - nodes near a position, with their edges, so bad
@@ -117,13 +115,13 @@ public sealed partial class StartingZone : BaseZone
     {
         // MUST run before the two calls below: this reserves the deterministic guid range
         // (NpcGuidBase + id, used by Quests.json/NpcVendors.json lookups) and bumps the zone's shared
-        // auto-guid counter past it, so the auto-assigned guids SpawnDungeonEntrances/SpawnEncounterEntryNpcs
+        // auto-guid counter past it, so the auto-assigned guids TrySpawnDungeonEntrance/SpawnEncounterEntryNpcs
         // hand out can't collide with it. (This used to be guaranteed by SpawnNpcs() running first,
         // synchronously, in the constructor — same guarantee, now via the zone script instead.)
         base.OnStart();
 
-        // Place a clickable entrance at each atlas dungeon marker (notif=3 POI) — click -> start panel -> GO!.
-        SpawnDungeonEntrances();
+        // The atlas dungeon entrances (notif=3 POIs — click -> start panel -> GO!) are placed by the zone
+        // script now, via TrySpawnDungeonEntrance, alongside everything else it puts in the world.
 
         // Place a wandering "Battle Starter" creature for each small combat encounter, among its own kind.
         SpawnEncounterEntryNpcs();
@@ -333,78 +331,134 @@ public sealed partial class StartingZone : BaseZone
 
     // Collect-goal pickups (Quests.json goals of Type=Collect): interactable world objects the player clicks
     // to gather. Shared across players; per-player credit + hide are handled in QuestManager.OnCollectInteract.
-    private void SpawnQuestCollectibles()
+    //
+    // PLACEMENT LIVES IN THE ZONE SCRIPT, but the IDENTITY doesn't: the guid was handed out when Quests.json
+    // loaded and is what ties this pickup to its (quest, goal), so an unknown guid means the script has gone
+    // stale against Quests.json and is refused rather than spawned somewhere it can credit nothing.
+    public override bool TrySpawnQuestCollectible(ulong guid, float x, float y, float z)
     {
-        foreach (var collectible in _resourceManager.Quests.CollectibleSpawns)
+        var collectible = _resourceManager.Quests.CollectibleSpawns.FirstOrDefault(c => c.Guid == guid);
+        if (collectible is null)
         {
-            if (!TryCreateNpc(collectible.Guid, out var npc))
-                continue;
-
-            npc.ModelId = collectible.ModelId;
-            npc.NameId = collectible.NameId;
-            npc.Static = true;
-            npc.Scale = _resourceManager.Models.TryGetValue(collectible.ModelId, out var model) && model.Scale != 0f
-                ? model.Scale
-                : 1f;
-            npc.Visible = true;
-            npc.CursorId = 17; // hand cursor so it's clickable
-
-            var questCollectible = npc;
-            npc.InteractAction = interactingPlayer => _questManager.OnCollectInteract(interactingPlayer, questCollectible);
-
-            npc.UpdatePosition(collectible.Position, System.Numerics.Quaternion.Identity);
-            GetTileFromPosition(collectible.Position).Entities.TryAdd(npc.Guid, npc);
+            _logger.LogWarning("Quest collectible {guid} is not in Quests.json - regenerate FabledRealms.lua "
+                               + "(gen_fabledrealms_lua.py) after editing quest collect goals.", guid);
+            return false;
         }
+
+        if (!TryCreateNpc(guid, out var npc))
+            return false;
+
+        npc.ModelId = collectible.ModelId;
+        npc.NameId = collectible.NameId;
+        npc.Static = true;
+        npc.Scale = _resourceManager.Models.TryGetValue(collectible.ModelId, out var model) && model.Scale != 0f
+            ? model.Scale
+            : 1f;
+        npc.Visible = true;
+        npc.CursorId = 17; // hand cursor so it's clickable
+
+        var questCollectible = npc;
+        npc.InteractAction = interactingPlayer => _questManager.OnCollectInteract(interactingPlayer, questCollectible);
+
+        var position = new Vector4(x, y, z, 1f);
+        npc.UpdatePosition(position, Quaternion.Identity);
+        GetTileFromPosition(position).Entities.TryAdd(npc.Guid, npc);
+
+        return true;
     }
 
-    // Miner job pass 1: a handful of hand-placed ore veins near world spawn (real "sanctuary"-themed
-    // mining node models, Models.txt ids 612-616), each granting a real ore item (ClientItemDefinitions
-    // CategoryId 16). Shared world resource nodes - gather state/respawn timer owned by GatheringManager.
-    // Not the real "Singing Crystal Mines" location (that interior zone isn't stood up in this repo yet);
-    // positions here are a starter placement, to be tuned against the live client like other spawns.
-    // Comment is the world nameplate shown on the node itself - "Vein" (the deposit you're mining), not
-    // "Ore" (the item it grants once mined - that name stays as-is in ClientItemDefinitions.json).
-    // Hand-picked in-game via /pos: a spot closer to where players actually land than the raw
-    // SpawnPosition offsets were putting them.
-    private static readonly Vector4 MiningNodesCenter = new(-1888.94f, 43.54f, 385.11f, 0f);
-
-    private static readonly (int ModelId, int ItemDefinitionId, string Comment, Vector4 Offset)[] MiningNodeSpawns =
-    [
-        (612, 2739, "Copper Vein", new Vector4(3f, 0f, 0f, 0f)),
-        (616, 2740, "Tin Vein", new Vector4(-3f, 0f, 0f, 0f)),
-        (614, 2741, "Iron Vein", new Vector4(0f, 0f, 3f, 0f)),
-        (615, 2742, "Silver Vein", new Vector4(0f, 0f, -3f, 0f)),
-        (613, 2743, "Gold Vein", new Vector4(2f, 0f, 2f, 0f)),
-    ];
-
-    private void SpawnMiningNodes()
+    // Miner job pass 1: hand-placed ore veins (real "sanctuary"-themed mining node models, Models.txt ids
+    // 612-616), each granting a real ore item (ClientItemDefinitions CategoryId 16). Shared world resource
+    // nodes - gather state/respawn timer owned by GatheringManager. Not the real "Singing Crystal Mines"
+    // location (that interior zone isn't stood up in this repo yet).
+    //
+    // PLACEMENT LIVES IN THE ZONE SCRIPT (Scripts/Zone/FabledRealms.lua, generated from
+    // Resources/MiningNodes.json) - this only knows how to build one where the script says.
+    public override bool TrySpawnGatheringNode(int modelId, int itemDefinitionId, string name, float x, float y, float z)
     {
-        foreach (var (modelId, itemDefinitionId, comment, offset) in MiningNodeSpawns)
-        {
-            if (!TryCreateNpc(out var node))
-                continue;
+        if (!TryCreateNpc(out var node))
+            return false;
 
-            node.ModelId = modelId;
-            node.Name = comment;
-            // Nameplate rendered as an ugly filled "unresolved name" pill in-game: this project's other
-            // clickable static props (quest collectibles, the daily-wheel kiosk) all label themselves via
-            // a real NameId (a real localized Global.Text id resolved client-side), never a bare Name
-            // string with NameId left 0. We don't have a real localized "X Vein" string id to point at, so
-            // hide the nameplate entirely rather than ship the broken-looking fallback.
-            node.HideNamePlate = true;
-            node.Static = true;
-            node.Scale = _resourceManager.Models.TryGetValue(modelId, out var model) && model.Scale != 0f
-                ? model.Scale
-                : 1f;
-            node.Visible = true;
-            node.CursorId = 17; // hand cursor so it's clickable
+        node.ModelId = modelId;
+        // The name is the deposit you're mining ("Copper Vein"), not the ore it grants - but it's never
+        // drawn: the nameplate renders as an ugly filled "unresolved name" pill in-game, because this
+        // project's other clickable static props (quest collectibles, the daily-wheel kiosk) all label
+        // themselves via a real NameId (a localized Global.Text id resolved client-side), never a bare Name
+        // string with NameId left 0. We have no real localized "X Vein" string to point at, so the
+        // nameplate is hidden rather than shipping the broken-looking fallback. The name stays for logs.
+        node.Name = name;
+        node.HideNamePlate = true;
+        node.Static = true;
+        node.Scale = _resourceManager.Models.TryGetValue(modelId, out var model) && model.Scale != 0f
+            ? model.Scale
+            : 1f;
+        node.Visible = true;
+        node.CursorId = 17; // hand cursor so it's clickable
 
-            var pos = new Vector4(MiningNodesCenter.X + offset.X, MiningNodesCenter.Y + offset.Y, MiningNodesCenter.Z + offset.Z, SpawnPosition.W);
-            node.UpdatePosition(pos, SpawnRotation);
-            GetTileFromPosition(pos).Entities.TryAdd(node.Guid, node);
+        var position = new Vector4(x, y, z, SpawnPosition.W);
+        node.UpdatePosition(position, SpawnRotation);
+        GetTileFromPosition(position).Entities.TryAdd(node.Guid, node);
 
-            _gatheringManager.RegisterNode(node, itemDefinitionId);
-        }
+        _gatheringManager.RegisterNode(node, itemDefinitionId);
+
+        return true;
+    }
+
+    // Snow Days snowball fight: piles of snowballs ringing the Snowhill village around the Gifting Tree.
+    // Clicking one hands the player the snowball tool and drops it on the cosmetic toolbar slot.
+    //
+    // PLACEMENT LIVES IN THE ZONE SCRIPT (generated from Resources/SnowballPiles.json). The shipped
+    // positions are NOT guesses: each was measured in game with !pos, so the heights are real standing
+    // ground; take any new one the same way.
+    public override bool TrySpawnSnowballPile(float x, float y, float z, float heading)
+    {
+        var position = new Vector4(x, y, z, 1f);
+        var rotation = new Quaternion(MathF.Sin(heading), 0f, MathF.Cos(heading), 0f);
+
+        // The year-round pile: its ordinary name, no badge.
+        if (CreateSnowballPile(position, rotation, SnowballTool.PileNameId, 0) is not { } pile)
+            return false;
+
+        // Remember where the piles ended up: the Snowmen Invaders event spawns its wave around them, so it
+        // has to read the same script-driven placement rather than carry a second copy that could drift.
+        SnowballPilePositions.Add(position);
+
+        // ...and the piles themselves, because the Snowmen Invaders event swaps them out for its own while
+        // it runs (see SetSnowballPileEventState).
+        SnowballPiles.Add(pile);
+
+        return true;
+    }
+
+    // One snowball pile. Shared by the permanent placement above and by the Snowmen Invaders event, which
+    // puts up its own set under a different name and with a badge - so the two can never drift apart in
+    // model, scale, cursor, sparkle or what clicking one actually does.
+    internal Npc? CreateSnowballPile(Vector4 position, Quaternion rotation, int nameId, int badgeImageId)
+    {
+        if (!TryCreateNpc(out var pile))
+            return null;
+
+        pile.ModelId = SnowballTool.PileModelId;
+        pile.NameId = nameId;
+        pile.NotificationImageSetId = badgeImageId;
+        pile.Static = true;
+        pile.Scale = _resourceManager.Models.TryGetValue(SnowballTool.PileModelId, out var model) && model.Scale != 0f
+            ? model.Scale
+            : 1f;
+        pile.Visible = true;
+        pile.CursorId = 17; // hand cursor so it's clickable
+
+        pile.InteractAction = player => SnowballTool.Give(player, _resourceManager);
+
+        pile.UpdatePosition(position, rotation);
+        GetTileFromPosition(position).Entities.TryAdd(pile.Guid, pile);
+
+        // The sparkle rides the prop. Attached rather than world-played so it follows the pile and cleans up
+        // with it; sent on every viewer's first sight of it, not just to whoever is standing here at startup.
+        pile.AttachedEffectId = SnowballTool.PileSparkleFxId;
+        pile.AttachedEffectTagId = SnowballTool.PileSparkleTagId;
+
+        return pile;
     }
 
     #region Client Is Ready
@@ -465,6 +519,12 @@ public sealed partial class StartingZone : BaseZone
             _questManager.RestoreJournal(player);
         }
 
+        // Force the combat HUD OFF on every zone-in. op41 sub132/133 are LATCHING client state and their
+        // appliers are edge-guarded, so a client that came up already flagged (a crash, a mid-fight zone
+        // change, a server restart) would otherwise sit there with a health bar over every npc and nothing
+        // able to clear it. SendWorldCombatState(false) drives a guaranteed true->false edge.
+        player.SendWorldCombatState(false);
+
         SpawnTrainingDummy(player);
 
         SpawnGrowlerWolf(player);
@@ -512,7 +572,13 @@ public sealed partial class StartingZone : BaseZone
         // Sends the bar + warms the client's FX cache (first-cast effects are otherwise invisible
         // while the on-demand asset load streams — see JobWeaponAbilities.PreloadAbilityEffects).
         if (!JobWeaponAbilities.SendToolbarWithFxPreload(player, _resourceManager))
-            return; // the active job has no weapon-ability kit
+        {
+            // No weapon-ability kit on the active job - but the third slot (held power-up / snowball tool)
+            // isn't the job's, and a player standing in Snowhill in a non-combat job should still see the
+            // snowball they picked up. This send carries just that.
+            JobWeaponAbilities.SendToolbarWithPowerup(player, _resourceManager);
+            return;
+        }
 
         _logger.LogInformation("Job toolbar on zone-load: profile={profile}, equipped weapon def={def}.",
             player.ActiveProfileId, player.GetEquippedWeaponDefinitionId());
@@ -589,7 +655,7 @@ public sealed partial class StartingZone : BaseZone
     // the real overworld location is still TBD. Neutral + interactable (clicking opens the future offer popup).
     private Npc? _growlerWolf;
 
-    // Every real atlas dungeon's entrance widget, keyed by ActivityId - populated by SpawnDungeonEntrances.
+    // Every real atlas dungeon's entrance widget, keyed by ActivityId - populated by TrySpawnDungeonEntrance.
     // Lets QuestManager.ResolveGoalTargetGuid route an EncounterComplete quest's tracker/breadcrumb at the
     // real dungeon mouth for ANY atlas dungeon generically, not just the two bespoke wandering-NPC
     // encounters (Frostfang/Tormented Spirits) that already had their own dedicated accessor. Live feedback
@@ -901,42 +967,47 @@ public sealed partial class StartingZone : BaseZone
     // this exact spot) doesn't get stuck inside it.
     private const int AtlasEntranceModelId = 511;
 
-    private void SpawnDungeonEntrances()
+    // PLACEMENT LIVES IN THE ZONE SCRIPT, keyed by the atlas POI id - that id is what the dungeon catalog
+    // is indexed by, so the script only has to say "an entrance stands here, for this marker" and the
+    // dungeon, its name and its offer are resolved here. Most POIs are ordinary map markers with no dungeon
+    // behind them; that's expected, so it's a debug line and not a warning.
+    public override bool TrySpawnDungeonEntrance(int poiId, float x, float y, float z, float heading)
     {
-        foreach (var poi in _resourceManager.PointOfInterests.Values)
+        if (!Sanctuary.Game.Dungeons.DungeonCatalog.ByAtlasPoi.TryGetValue(poiId, out var dungeon))
         {
-            if (poi.NotificationType != 3)
-                continue;
-            if (!Sanctuary.Game.Dungeons.DungeonCatalog.ByAtlasPoi.TryGetValue(poi.Id, out var dungeon))
-                continue;
-            if (!TryCreateNpc(out var entrance))
-                continue;
-
-            // The entrance is an INVISIBLE clickable widget (model 69 "widget_01.adr" = "Invisible Block"):
-            // no creature stands at the dungeon mouth, but the actor is still sent to the client (required
-            // to be clickable) with the dungeon's NAME on its floating nameplate as the click cue. Clicking
-            // it opens the start panel. (A truly Visible=false NPC isn't sent to the client at all, so it
-            // couldn't be clicked — hence an invisible-but-present model instead.)
-            entrance.ModelId = AtlasEntranceModelId;
-            entrance.NameId = dungeon.TitleNameId;   // floating nameplate = the dungeon's name (the click cue)
-            entrance.Name = dungeon.Comment;
-            entrance.Static = true;
-            entrance.Scale = 1f;
-            entrance.Visible = true;                 // present/clickable; the model itself renders nothing
-            entrance.HideNamePlate = false;          // keep the nameplate as the visible target
-            entrance.CursorId = 11;                  // crossed-swords / adventure cursor on hover
-            entrance.InteractRange = 18;
-            entrance.ShowCombatBadge = true;         // red crossed-swords badge + red minimap dot
-
-            var pos = poi.SpawnPosition != default ? poi.SpawnPosition : poi.Position;
-            var rot = new Quaternion(MathF.Sin(poi.Heading), 0f, MathF.Cos(poi.Heading), 0f);
-            var capturedDungeon = dungeon;
-            entrance.InteractAction = player => SendDungeonOffer(player, capturedDungeon);
-
-            entrance.UpdatePosition(pos, rot);
-            GetTileFromPosition(pos).Entities.TryAdd(entrance.Guid, entrance);
-            _dungeonEntranceByActivityId[dungeon.ActivityId] = entrance;
+            _logger.LogDebug("POI {poi} has no dungeon behind it - no entrance placed.", poiId);
+            return false;
         }
+
+        if (!TryCreateNpc(out var entrance))
+            return false;
+
+        // The entrance is an INVISIBLE clickable widget (model 69 "widget_01.adr" = "Invisible Block"):
+        // no creature stands at the dungeon mouth, but the actor is still sent to the client (required
+        // to be clickable) with the dungeon's NAME on its floating nameplate as the click cue. Clicking
+        // it opens the start panel. (A truly Visible=false NPC isn't sent to the client at all, so it
+        // couldn't be clicked — hence an invisible-but-present model instead.)
+        entrance.ModelId = AtlasEntranceModelId;
+        entrance.NameId = dungeon.TitleNameId;   // floating nameplate = the dungeon's name (the click cue)
+        entrance.Name = dungeon.Comment;
+        entrance.Static = true;
+        entrance.Scale = 1f;
+        entrance.Visible = true;                 // present/clickable; the model itself renders nothing
+        entrance.HideNamePlate = false;          // keep the nameplate as the visible target
+        entrance.CursorId = 11;                  // crossed-swords / adventure cursor on hover
+        entrance.InteractRange = 18;
+        entrance.ShowCombatBadge = true;         // red crossed-swords badge + red minimap dot
+
+        var pos = new Vector4(x, y, z, 1f);
+        var rot = new Quaternion(MathF.Sin(heading), 0f, MathF.Cos(heading), 0f);
+        var capturedDungeon = dungeon;
+        entrance.InteractAction = player => SendDungeonOffer(player, capturedDungeon);
+
+        entrance.UpdatePosition(pos, rot);
+        GetTileFromPosition(pos).Entities.TryAdd(entrance.Guid, entrance);
+        _dungeonEntranceByActivityId[dungeon.ActivityId] = entrance;
+
+        return true;
     }
 
     // Open the dungeon start panel (adventure offer + auto-ready GO!) for a data-driven dungeon —
@@ -1302,6 +1373,51 @@ public sealed partial class StartingZone : BaseZone
         if (ReferenceEquals(npc, _trainingDummy))
         {
             ResetTrainingDummy();
+            return;
+        }
+
+        // Snowmen Invaders event spawns: the event owns their lifecycle (coal drops, the boss hand-off, the
+        // reward list), and they must NOT go through the respawn-at-post path below - a defeated invader
+        // stays down until the next battle. Checked before the generic world-enemy branch for that reason.
+        if (TryHandleSnowmenKill(killer, npc))
+        {
+            if (npc is Sanctuary.Game.Entities.CombatNpc eventEnemy)
+            {
+                if (eventEnemy.IsDead)
+                    return;
+                eventEnemy.IsDead = true;
+
+                // Quest credit still counts (Snowmen Disassembly is a kill goal), but NO XP for invaders -
+                // they are one-hit, instantly replaced, and endless, so awarding XP would make the event an
+                // XP faucet rather than a snowball fight. The Abominable Snowman still pays out.
+                _questManager.OnNpcKilled(killer, npc);
+
+                if (npc.NameId != SnowmanInvaderNameId)
+                    AwardSharedXp(killer, eventEnemy.XpReward, eventEnemy.Position);
+            }
+
+            BroadcastKillSignal(killer, npc);
+
+            // The full death presentation, same as a world enemy: play the death CLIP, hold the body, then
+            // poof. Animate:true + the hold is what stops a snowman blinking out of existence the instant its
+            // health hits zero.
+            npc.GracefulRemoval = (true, QuestHostileDeathHoldMs, 0, QuestHostileDeathFxId, 1000);
+            npc.Dispose();
+
+            // A snowball can kill something the thrower's client never had in view (targets resolve by range,
+            // not tile visibility), and Dispose only notifies VisiblePlayers - without this that player keeps
+            // the corpse on screen forever.
+            if (!npc.VisiblePlayers.ContainsKey(killer.Guid))
+                killer.SendTunneled(new PlayerUpdatePacketRemovePlayerGracefully
+                {
+                    Guid = npc.Guid,
+                    Animate = true,
+                    Delay = QuestHostileDeathHoldMs,
+                    EffectDelay = 0,
+                    CompositeEffectId = QuestHostileDeathFxId,
+                    Duration = 1000,
+                });
+
             return;
         }
 

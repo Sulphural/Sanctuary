@@ -43,7 +43,7 @@ public sealed class DungeonDefinition
     public required int ActivityId;
 
     // For the BIG walk-through dungeons: the overworld atlas POI id (NotificationType=3 marker) that
-    // this dungeon hangs off, used by StartingZone.SpawnDungeonEntrances to place the clickable entrance.
+    // this dungeon hangs off, used by StartingZone.TrySpawnDungeonEntrance to place the clickable entrance.
     // 0 for the small arena encounters (they have no atlas marker — they're entered via the wandering
     // "Battle Starter" NPCs instead). Non-zero is therefore also the "is an atlas dungeon" discriminator.
     public int PoiId;

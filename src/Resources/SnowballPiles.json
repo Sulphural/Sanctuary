@@ -1,0 +1,20 @@
+[
+  {
+    "Comment": "Snow Days snowball fight - where the piles of snowballs stand around the Snowhill village. Clicking one hands the player the snowball tool; the prop, its nameplate and that behaviour belong to SnowballTool, this file is placement only. Every position here was measured in game with !pos, so the Y values are real standing ground - take new ones the same way rather than eyeballing them. Heading is in radians (the !pos readout is in degrees: radians = degrees * pi / 180), same convention as Npcs.json's SpawnHeading. North of the Gifting Tree, ~35m out.",
+    "Id": 1,
+    "Position": [247.06, 26.34, 441.65],
+    "Heading": 2.409
+  },
+  {
+    "Comment": "South-east of the Gifting Tree, ~54m out, on the approach to the village.",
+    "Id": 2,
+    "Position": [287.21, 26.54, 366.82],
+    "Heading": -0.995
+  },
+  {
+    "Comment": "South-west of the Gifting Tree, ~65m out, at the far corner of the meadow.",
+    "Id": 3,
+    "Position": [192.1, 24.13, 376.41],
+    "Heading": -1.623
+  }
+]

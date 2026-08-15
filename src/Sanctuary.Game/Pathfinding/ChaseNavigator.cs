@@ -65,7 +65,8 @@ public static class ChaseNavigator
         PathChaseState state,
         ObstacleMap? obstacles,
         PathQuery? findPath,
-        long now)
+        long now,
+        bool forceRoute = false)
     {
         // Stuck detection: if a cached route hasn't actually moved us over the last window, it's leading
         // into a dead end - drop it so the repath check below plans fresh instead of faithfully re-walking
@@ -96,7 +97,11 @@ public static class ChaseNavigator
         var hereV4 = new Vector4(here.X, here.Y, here.Z, 1f);
         var targetV4 = new Vector4(target.X, target.Y, target.Z, 1f);
 
-        if (obstacles is null || obstacles.IsLineWalkable(hereV4, targetV4))
+        // forceRoute skips the straight-line shortcut entirely and always plans over the graph. The cheap
+        // test only asks the COARSE circle-approximation obstacle map whether the line is clear, which over a
+        // long walk across real terrain usually says yes - fine for a short chase, but it is why a scripted
+        // cross-map march ended up ignoring the routing graph and ploughing straight ahead.
+        if (!forceRoute && (obstacles is null || obstacles.IsLineWalkable(hereV4, targetV4)))
         {
             state.CachedPath = null;
             return (straight, distToTarget);
@@ -106,7 +111,15 @@ public static class ChaseNavigator
             new Vector2(state.PathTarget.X, state.PathTarget.Z),
             new Vector2(target.X, target.Z)) > TargetMovedThresholdSq;
 
-        if (state.CachedPath is null || state.PathIndex >= state.CachedPath.Count || now >= state.NextRepathTicks || targetMoved)
+        // ★ The timer only forces a replan when the destination MOVED. Re-planning on a fixed schedule toward
+        // a STATIC destination is what made a long scripted walk pace back and forth: TryFindPath anchors the
+        // route at the graph node nearest the mover, and that node is frequently BEHIND it - so the mover
+        // steps backward toward the anchor, the timer fires a second later, the new route anchors behind it
+        // again, and it oscillates forever without ever making progress. For a static goal the cached route
+        // is still valid, so it is kept until it is exhausted or the stuck detector throws it away.
+        var repathDue = targetMoved && now >= state.NextRepathTicks;
+
+        if (state.CachedPath is null || state.PathIndex >= state.CachedPath.Count || repathDue)
         {
             state.CachedPath = findPath?.Invoke(hereV4, targetV4);
             state.PathIndex = 0;
@@ -118,9 +131,30 @@ public static class ChaseNavigator
             return (straight, distToTarget); // no graph, or disconnected - straight-line fallback, not a freeze
 
         var here2 = new Vector2(here.X, here.Z);
-        while (state.PathIndex < state.CachedPath.Count - 1 &&
-               Vector2.DistanceSquared(here2, new Vector2(state.CachedPath[state.PathIndex].X, state.CachedPath[state.PathIndex].Z)) < 1f)
-            state.PathIndex++;
+        var goal2 = new Vector2(target.X, target.Z);
+
+        // Skip waypoints we've reached, AND any leading waypoint that would send us backwards - the route's
+        // first node is the graph node nearest the mover, which is regularly behind it. Walking to it first
+        // is the visible "wanders back the way it came" step at the start of every march.
+        while (state.PathIndex < state.CachedPath.Count - 1)
+        {
+            var wp = new Vector2(state.CachedPath[state.PathIndex].X, state.CachedPath[state.PathIndex].Z);
+
+            if (Vector2.DistanceSquared(here2, wp) < 1f)
+            {
+                state.PathIndex++;
+                continue;
+            }
+
+            // Behind us = stepping to it takes us further from the goal than we already are.
+            if (Vector2.Distance(wp, goal2) > Vector2.Distance(here2, goal2))
+            {
+                state.PathIndex++;
+                continue;
+            }
+
+            break;
+        }
 
         var waypoint = state.CachedPath[state.PathIndex];
         var toWaypoint = new Vector2(waypoint.X - here.X, waypoint.Z - here.Z);

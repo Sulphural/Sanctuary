@@ -29,6 +29,10 @@ internal sealed class ScriptableZone(IScriptZone zone) : ILuaUserData
                 "name" => new LuaValue(_zone.Name),
                 "spawnNpc" => SpawnNpcFunction,
                 "spawnNpcWithGuid" => SpawnNpcWithGuidFunction,
+                "spawnGatheringNode" => SpawnGatheringNodeFunction,
+                "spawnSnowballPile" => SpawnSnowballPileFunction,
+                "spawnQuestCollectible" => SpawnQuestCollectibleFunction,
+                "spawnDungeonEntrance" => SpawnDungeonEntranceFunction,
                 "addSpawnPoint" => AddSpawnPointFunction,
                 "addSpawnArea" => AddSpawnAreaFunction,
                 _ => LuaValue.Nil
@@ -63,6 +67,57 @@ internal sealed class ScriptableZone(IScriptZone zone) : ILuaUserData
         var heading = context.GetArgument<float>(5);
 
         var success = _zone.TrySpawnNpc(npcId, npcGuid, x, y, z, heading);
+
+        return new ValueTask<int>(context.Return(success));
+    });
+
+    private LuaFunction SpawnGatheringNodeFunction => new("spawnGatheringNode", (context, cancellationToken) =>
+    {
+        var modelId = context.GetArgument<int>(0);
+        var itemDefinitionId = context.GetArgument<int>(1);
+        var name = context.GetArgument<string>(2);
+        var x = context.GetArgument<float>(3);
+        var y = context.GetArgument<float>(4);
+        var z = context.GetArgument<float>(5);
+
+        var success = _zone.TrySpawnGatheringNode(modelId, itemDefinitionId, name, x, y, z);
+
+        return new ValueTask<int>(context.Return(success));
+    });
+
+    private LuaFunction SpawnSnowballPileFunction => new("spawnSnowballPile", (context, cancellationToken) =>
+    {
+        var x = context.GetArgument<float>(0);
+        var y = context.GetArgument<float>(1);
+        var z = context.GetArgument<float>(2);
+        var heading = context.GetArgument<float>(3);
+
+        var success = _zone.TrySpawnSnowballPile(x, y, z, heading);
+
+        return new ValueTask<int>(context.Return(success));
+    });
+
+    private LuaFunction SpawnQuestCollectibleFunction => new("spawnQuestCollectible", (context, cancellationToken) =>
+    {
+        var guid = context.GetArgument<ulong>(0);
+        var x = context.GetArgument<float>(1);
+        var y = context.GetArgument<float>(2);
+        var z = context.GetArgument<float>(3);
+
+        var success = _zone.TrySpawnQuestCollectible(guid, x, y, z);
+
+        return new ValueTask<int>(context.Return(success));
+    });
+
+    private LuaFunction SpawnDungeonEntranceFunction => new("spawnDungeonEntrance", (context, cancellationToken) =>
+    {
+        var poiId = context.GetArgument<int>(0);
+        var x = context.GetArgument<float>(1);
+        var y = context.GetArgument<float>(2);
+        var z = context.GetArgument<float>(3);
+        var heading = context.GetArgument<float>(4);
+
+        var success = _zone.TrySpawnDungeonEntrance(poiId, x, y, z, heading);
 
         return new ValueTask<int>(context.Return(success));
     });

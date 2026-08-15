@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -31,6 +32,55 @@ public sealed class QuestManager : IQuestManager
         _dbContextFactory = dbContextFactory;
     }
 
+    // Clears out DAILY quests finished on an earlier UTC day so they can be taken again. Called before
+    // anything asks what an NPC has to offer, and on login, so the reset lands whether the player logs in
+    // fresh or simply plays past midnight. Same calendar-day comparison the daily wheel uses.
+    public void ExpireDailyQuests(Player player)
+    {
+        var today = DateTime.UtcNow.Date;
+        List<int>? expired = null;
+
+        foreach (var (questId, completed) in player.Quests)
+        {
+            if (!completed || !_resourceManager.Quests.TryGet(questId, out var quest) || !quest.IsDaily)
+                continue;
+
+            (expired ??= new List<int>()).Add(questId);
+        }
+
+        if (expired is null)
+            return;
+
+        using var db = _dbContextFactory.CreateDbContext();
+        bool changed = false;
+
+        foreach (var questId in expired)
+        {
+            var row = db.CharacterQuests.FirstOrDefault(x => x.QuestId == questId && x.CharacterId == player.CharacterId);
+
+            // No stamp at all means it predates daily support - treat it as long past and let it come round.
+            if (row?.CompletedUtc is { } stamp && stamp.UtcDateTime.Date >= today)
+                continue;
+
+            if (row is not null)
+            {
+                db.CharacterQuests.Remove(row);
+                changed = true;
+            }
+
+            player.Quests.Remove(questId);
+            player.QuestGoalProgress.Remove(questId);
+            player.QuestCollectProgress.Remove(questId);
+
+            // Swap the greyed "come back tomorrow" badge back to the available one without a relog.
+            if (_resourceManager.Quests.TryGet(questId, out var rolled))
+                RefreshQuestNotification(player, rolled.GiverGuid);
+        }
+
+        if (changed)
+            db.SaveChanges();
+    }
+
     public bool IsQuestNpc(ulong npcGuid)
         => _resourceManager.Quests.ByGiver.ContainsKey(npcGuid) || _resourceManager.Quests.ByTarget.ContainsKey(npcGuid);
 
@@ -40,6 +90,8 @@ public sealed class QuestManager : IQuestManager
     // from the Shadows", and neither should be unreachable because the other happened to be found first.
     public List<NpcInteractionOption> GetInteractionOptions(Player player, Npc npc)
     {
+        ExpireDailyQuests(player);
+
         var options = new List<NpcInteractionOption>();
         var quests = _resourceManager.Quests;
 
@@ -55,7 +107,7 @@ public sealed class QuestManager : IQuestManager
             var quest = activeQuest;
             options.Add(new NpcInteractionOption
             {
-                IconId = ContextIcons.QuestTurnIn,
+                IconId = quest.RadialTurnInIconId != 0 ? quest.RadialTurnInIconId : ContextIcons.QuestTurnIn,
                 ButtonTextId = quest.TitleId,
                 Invoke = interactingPlayer => AdvanceAtNpc(interactingPlayer, quest, npc)
             });
@@ -66,12 +118,27 @@ public sealed class QuestManager : IQuestManager
             foreach (var questId in giverQuestIds)
             {
                 if (!quests.TryGet(questId, out var offerableQuest) || !offerableQuest.IsOfferableFor(player.Quests))
+                {
+                    // A daily already taken today still gets a row - greyed out, doing nothing when picked
+                    // - so it reads as "this exists, come back tomorrow" rather than vanishing.
+                    if (offerableQuest is { IsDaily: true, RadialCompletedIconId: not 0 }
+                        && player.Quests.TryGetValue(questId, out var doneToday) && doneToday)
+                    {
+                        options.Add(new NpcInteractionOption
+                        {
+                            IconId = offerableQuest.RadialCompletedIconId,
+                            ButtonTextId = offerableQuest.TitleId,
+                            Invoke = _ => { }
+                        });
+                    }
+
                     continue;
+                }
 
                 var quest = offerableQuest;
                 options.Add(new NpcInteractionOption
                 {
-                    IconId = ContextIcons.QuestOffer,
+                    IconId = quest.RadialOfferIconId != 0 ? quest.RadialOfferIconId : ContextIcons.QuestOffer,
                     ButtonTextId = quest.TitleId,
                     Invoke = interactingPlayer => Offer(interactingPlayer, quest)
                 });
@@ -132,6 +199,70 @@ public sealed class QuestManager : IQuestManager
             options[0].Invoke(player);
     }
 
+    // /scare's QuickChat id, read straight out of the client's EmoteHandler table
+    // (main/146: SETTABLE cmd="scare" / id=219). Others for reference: cheer 145, wave 143, point 139.
+    public const int ScareQuickChatId = 219;
+
+    // How close the player has to be for a scare to land on an NPC. Generous enough to cover "in front
+    // of them" without letting one emote spook a whole plaza.
+    private const float ScareRange = 8f;
+
+    // The player used an emote. Emotes reach us as QuickChat (the client's EmoteHandler binds each one to
+    // Ui.ProcessQuickChatCommand), so this is called from the quick-chat handler rather than any emote
+    // packet - there isn't one. /scare is id 219.
+    public void OnQuickChatEmote(Player player, int quickChatId)
+    {
+        var playerPosition = new Vector3(player.Position.X, player.Position.Y, player.Position.Z);
+
+        foreach (var (questId, completed) in player.Quests)
+        {
+            if (completed || !_resourceManager.Quests.TryGet(questId, out var quest))
+                continue;
+
+            int done = player.QuestGoalProgress.TryGetValue(questId, out var progress) ? progress : 0;
+            var goals = quest.EffectiveGoals;
+            if (done >= goals.Count)
+                continue;
+
+            var goal = goals[done];
+
+            // "Do <emote> over there": the right emote, close enough to the spot, and the goal ticks off.
+            if (goal.Type == QuestGoalType.UseEmote)
+            {
+                if (goal.EmoteQuickChatId != quickChatId || goal.ReachPosition.Length < 3)
+                    continue;
+
+                var spot = new Vector3(goal.ReachPosition[0], goal.ReachPosition[1], goal.ReachPosition[2]);
+                float radius = goal.ReachRadius > 0f ? goal.ReachRadius : 10f;
+
+                if (Vector3.Distance(playerPosition, spot) <= radius)
+                    CompleteGoal(player, quest, done);
+
+                continue;
+            }
+
+            if (quickChatId != ScareQuickChatId || !goal.IsCountedTalk || !goal.RequiresScare)
+                continue;
+
+            foreach (var targetGuid in goal.AllTalkTargetGuids())
+            {
+                // Already collected from - scaring them again would let one NPC pay out twice.
+                if (player.TalkedQuestNpcs.Contains(targetGuid))
+                    continue;
+
+                if (!player.Zone.TryGetNpc(targetGuid, out var npc))
+                    continue;
+
+                var npcPosition = new Vector3(npc.Position.X, npc.Position.Y, npc.Position.Z);
+                if (Vector3.Distance(playerPosition, npcPosition) > ScareRange)
+                    continue;
+
+                if (player.ScaredNpcs.Add(targetGuid))
+                    QuestDialogue.PlayScareReaction(player, targetGuid);
+            }
+        }
+    }
+
     // Credits one NPC toward a COUNTED TalkToNpc goal - the "talk to N of these interchangeable NPCs"
     // shape retail authors as a single plural tracker row ("Talk to Freewheelers - 0/3"), which can't be
     // modelled as one goal per NPC because there's only one goal string to name the rows with.
@@ -143,6 +274,11 @@ public sealed class QuestManager : IQuestManager
         var goal = quest.EffectiveGoals[goalIndex];
         if (!goal.AllTalkTargetGuids().Contains(npc.Guid))
             return false;
+
+        // Trick-or-treat: nobody hands over candy until they have been scared. Claim the scare here so
+        // one /scare can't be spent on the same NPC twice - they have to be spooked again to give more.
+        if (goal.RequiresScare && !player.ScaredNpcs.Remove(npc.Guid))
+            return true; // this NPC IS a target, so stop scanning - it just isn't ready to pay out yet
 
         // Each NPC counts once: talking to the same Freewheeler three times must not finish the goal.
         // Their line still replays (below) so a re-talk isn't a silent no-op.
@@ -191,7 +327,10 @@ public sealed class QuestManager : IQuestManager
     private static void ClearTalkProgress(Player player, QuestGoal goal)
     {
         foreach (var guid in goal.AllTalkTargetGuids())
+        {
             player.TalkedQuestNpcs.Remove(guid);
+            player.ScaredNpcs.Remove(guid); // an unspent scare must not survive into a re-run
+        }
     }
 
     // Forgets the talked-to NPCs of every counted talk goal in a quest.
@@ -204,6 +343,21 @@ public sealed class QuestManager : IQuestManager
 
     // Composite effect played on a collectible when picked up (PFX_sparkles-swirl_gold_treasure-reward).
     private const int CollectPickupEffect = 5386;
+
+    // Confetti burst that goes off with it - PFX_confetti_red-green_explode_med_short, the red/green
+    // Christmas-coloured one, paired with the gold sparkle swirl above for "confetti and sparkles".
+    private const int CollectConfettiEffect = 16417;
+
+    // The pickup's own one-shot animation (amb_oneshot_01). Prop models carry this - the present's
+    // evnt_winter_holiday_tree_presents_04_loc_amb_oneshot_01.gr2 IS this clip - and it reads as a big
+    // bounce. Sent as PlayType 1, the only animation path that works on a non-player entity; see
+    // QuestDialogue.SetBaseAnimation for why "play now" is unreachable.
+    private const int CollectBounceAnimation = 2001;
+
+    // How long a picked-up collectible is left standing before it's taken away: long enough for the
+    // bounce AND the confetti to play out, not just the animation. Every removal path for that quest's
+    // pickups waits this out, or the goal completing would yank them mid-bounce.
+    private const int CollectBounceMs = 2500;
 
     // A collectible pickup was clicked. Credits the quest's active Collect goal (one per distinct pickup),
     // hides the pickup for this player, animates the tracker counter, and completes the goal - advancing to
@@ -235,19 +389,38 @@ public sealed class QuestManager : IQuestManager
 
         int count = (player.QuestCollectProgress.TryGetValue(questId, out var c) ? c : 0) + 1;
 
-        // Gold sparkle "reward" burst where the pickup is - immediate visual feedback that the collect
-        // registered (plays before the removal so the effect's source actor still exists).
-        player.SendTunneledToVisible(new PlayerUpdatePacketPlayCompositeEffect
+        // The pickup takes a big bounce, then confetti and sparkles go off, and only then does it go -
+        // all three while the source actor still exists, since effects and animations are addressed by
+        // its guid.
+        player.SendTunneledToVisible(new PlayerUpdatePacketSetAnimation
         {
             Guid = npc.Guid,
-            CompositeEffectId = CollectPickupEffect,
-            Position = npc.Position
+            AnimationId = CollectBounceAnimation,
+            PlayType = 1
         }, sendToSelf: true);
 
-        // Hide this pickup for the collecting player so it can't be re-clicked. Collectibles are shared, so
-        // other players still see it; a relog re-adds them all and restarts this goal's (in-memory) count.
-        player.SendTunneled(new PlayerUpdatePacketRemovePlayer { Guid = npc.Guid });
+        foreach (var effectId in new[] { CollectConfettiEffect, CollectPickupEffect })
+        {
+            player.SendTunneledToVisible(new PlayerUpdatePacketPlayCompositeEffect
+            {
+                Guid = npc.Guid,
+                CompositeEffectId = effectId,
+                Position = npc.Position
+            }, sendToSelf: true);
+        }
+
+        // Claim it straight away - the delay below is only for the look, and a second click in that window
+        // must not credit twice.
         player.CollectedPickups.Add(npc.Guid); // so the marker skips it and points at the next tool
+
+        // Hide it for the collecting player once the bounce has played. Collectibles are shared, so other
+        // players still see it; a relog re-adds them all and restarts this goal's (in-memory) count.
+        var pickupGuid = npc.Guid;
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(CollectBounceMs);
+            player.SendTunneled(new PlayerUpdatePacketRemovePlayer { Guid = pickupGuid });
+        });
 
         if (count >= required)
         {
@@ -282,6 +455,55 @@ public sealed class QuestManager : IQuestManager
     // whose KillNpcNameId matches the victim's NameId, animating the tracker's
     // "current/required" counter and completing the goal at RequiredCount.
     // Mirrors OnCollectInteract (same per-quest count storage + persistence).
+    // Player harvested something from a world node. Credits the active Gather goal of any in-progress
+    // quest that wants that item - the gathering system's counterpart to OnNpcKilled, and the same
+    // counter/tracker/persistence path Kill and Collect goals use.
+    public void OnItemGathered(Player player, int itemDefinitionId)
+    {
+        if (itemDefinitionId == 0)
+            return;
+
+        foreach (var (questId, completed) in player.Quests)
+        {
+            if (completed || !_resourceManager.Quests.TryGet(questId, out var quest))
+                continue;
+
+            var goals = quest.EffectiveGoals;
+            int done = player.QuestGoalProgress.TryGetValue(questId, out var progress) ? progress : 0;
+            if (done >= goals.Count)
+                continue;
+
+            var goal = goals[done];
+            if (goal.Type != QuestGoalType.Gather || goal.GatherItemDefinitionId != itemDefinitionId)
+                continue;
+
+            int required = goal.RequiredCount > 0 ? goal.RequiredCount : 1;
+            int count = (player.QuestCollectProgress.TryGetValue(questId, out var c) ? c : 0) + 1;
+
+            if (count >= required)
+            {
+                player.QuestCollectProgress.Remove(questId);
+                CompleteGoal(player, quest, done);
+            }
+            else
+            {
+                player.QuestCollectProgress[questId] = count;
+                player.SendTunneled(new QuestObjectiveUpdatePacket
+                {
+                    QuestId = questId,
+                    ObjectiveId = goal.NameId,
+                    CurrentCount = count,
+                    CompletedPercentage = (float)count / required
+                });
+
+                PersistCollectCount(player, questId, count);
+                RefreshObjectiveTarget(player);
+            }
+
+            return;
+        }
+    }
+
     public void OnNpcKilled(Player player, Npc npc)
     {
         if (npc.NameId == 0)
@@ -423,6 +645,33 @@ public sealed class QuestManager : IQuestManager
     // entry - that relevance packet, not just AddNpc's IsInteractable flag, is what registers a pickup as
     // interactable client-side (this is how zone-entry wires them up). NB: no RemovePlayer first - a
     // remove+re-add of the same guid races and can leave the pickup gone.
+    // Takes a quest's pickups back off this player's screen - they belong to the quest, so they go when
+    // it does (completed, abandoned, or the collect goal ticked off and the tracker moved on).
+    private void HideQuestCollectibles(Player player, int questId, int delayMs = 0)
+    {
+        var guids = _resourceManager.Quests.Collectibles
+            .Where(entry => entry.Value.QuestId == questId)
+            .Select(entry => entry.Key)
+            .ToList();
+
+        if (guids.Count == 0)
+            return;
+
+        if (delayMs <= 0)
+        {
+            foreach (var guid in guids)
+                player.SendTunneled(new PlayerUpdatePacketRemovePlayer { Guid = guid });
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(delayMs);
+            foreach (var guid in guids)
+                player.SendTunneled(new PlayerUpdatePacketRemovePlayer { Guid = guid });
+        });
+    }
+
     private void RespawnQuestCollectibles(Player player, int questId)
     {
         var relevance = new PlayerUpdatePacketNpcRelevance();
@@ -494,9 +743,25 @@ public sealed class QuestManager : IQuestManager
 
         RefreshQuestNotifications(player, quest);
 
+        // Just accepted - don't let the client's automatic re-interact immediately offer the next quest.
+        SuppressInteractRefire(player, quest.GiverGuid);
+
         // Finalize the interaction so the offer camera doesn't stay frozen on the giver (sub-opcode 29
         // recomputes the camera + dispatches QuestStartHandler:DismissEndScreen).
         player.SendTunneled(new CommandPacketQuestDialogComplete());
+    }
+
+    // The client re-fires FreeInteractionNpc on its own for a moment after a quest dialog closes - it is
+    // not a fresh click. Without holding the interact debounce open across that, finishing or accepting a
+    // quest instantly re-opens the NPC and the player is handed the NEXT quest they never asked for.
+    // Same guard the decline path uses; the window matches the debounce in the interact handlers.
+    private static void SuppressInteractRefire(Player player, ulong npcGuid)
+    {
+        if (npcGuid == 0)
+            return;
+
+        player.LastInteractNpcGuid = npcGuid;
+        player.LastInteractAt = DateTime.UtcNow;
     }
 
     public void CompleteQuest(Player player, int questId)
@@ -511,7 +776,13 @@ public sealed class QuestManager : IQuestManager
         player.QuestCollectProgress.Remove(questId);
         ClearTalkProgress(player, quest);
 
-        UpdateCharacterQuest(player, questId, q => q.Completed = true);
+        UpdateCharacterQuest(player, questId, q =>
+        {
+            q.Completed = true;
+            q.CompletedUtc = quest.IsDaily ? DateTimeOffset.UtcNow : null;
+        });
+
+        HideQuestCollectibles(player, questId);
 
         player.SendTunneled(new QuestCompletePacket { QuestId = questId });
 
@@ -525,6 +796,9 @@ public sealed class QuestManager : IQuestManager
         SendJournalQuestStates(player);
 
         GrantReward(player, quest);
+
+        // Just handed in - same guard, or the giver instantly offers whatever comes next in the chain.
+        SuppressInteractRefire(player, GoalTargetGuid(quest, quest.EffectiveGoals.Count - 1));
 
         // Clear the badges on both quest NPCs.
         RefreshQuestNotifications(player, quest);
@@ -574,6 +848,8 @@ public sealed class QuestManager : IQuestManager
             }
         }
 
+        HideQuestCollectibles(player, questId);
+
         // Tell the client to remove the quest from the Hero's Journal, then restore the giver's "!".
         player.SendTunneled(new QuestAbandonedPacket { QuestId = questId });
 
@@ -606,6 +882,9 @@ public sealed class QuestManager : IQuestManager
 
     public void RestoreJournal(Player player)
     {
+        ExpireDailyQuests(player);
+
+
         foreach (var (questId, completed) in player.Quests)
         {
             if (!completed && _resourceManager.Quests.TryGet(questId, out var quest))
@@ -749,17 +1028,22 @@ public sealed class QuestManager : IQuestManager
     private List<RewardBundleItem> BuildRewardItems(QuestDefinition quest)
     {
         var items = new List<RewardBundleItem>();
-        foreach (var definitionId in quest.RewardItems)
+        for (int i = 0; i < quest.RewardItems.Count; i++)
         {
-            if (_resourceManager.ClientItemDefinitions.TryGetValue(definitionId, out var itemDef))
+            if (!_resourceManager.ClientItemDefinitions.TryGetValue(quest.RewardItems[i], out var itemDef))
+                continue;
+
+            items.Add(new RewardBundleItem
             {
-                items.Add(new RewardBundleItem
-                {
-                    IconId = itemDef.Icon.Id,
-                    NameId = itemDef.NameId,
-                    Count = 1
-                });
-            }
+                // ClientItemDefinition.Icon.Id, passed through UNCHANGED. This field takes the image-SET
+                // id, NOT a flat image id - resolving it through ImageSetMappings broke every reward
+                // preview (tried 2026-08-12), so don't "fix" it again.
+                IconId = itemDef.Icon.Id,
+                NameId = itemDef.NameId,
+                // Show what the player will actually get; 1 hides the "xN" label, which is what a
+                // quantity-less reward wants anyway.
+                Count = i < quest.RewardItemQuantities.Count ? Math.Max(1, quest.RewardItemQuantities[i]) : 1
+            });
         }
         return items;
     }
@@ -788,6 +1072,12 @@ public sealed class QuestManager : IQuestManager
 
         int done = goalIndex + 1;
         player.QuestGoalProgress[quest.QuestId] = done;
+
+        // The finished goal's pickups are no longer this player's business - clear them now rather than
+        // leaving them standing until the quest ends (CanSeeQuestCollectible already stops them coming
+        // back on the next visibility pass).
+        if (goals[goalIndex].Type == QuestGoalType.Collect)
+            HideQuestCollectibles(player, quest.QuestId, CollectBounceMs);
 
         // Persist progress so a relog mid-quest resumes on the right goal.
         UpdateCharacterQuest(player, quest.QuestId, q =>
@@ -1421,20 +1711,38 @@ public sealed class QuestManager : IQuestManager
             player.SendTunneled(new RewardBundlePacket { Coins = coins, Xp = experience });
 
         // Item rewards - defined per quest in Resources/Quests.json ("RewardItems": [id, ...]).
-        foreach (var itemDefinitionId in quest.RewardItems)
-        {
-            GrantItem(player, itemDefinitionId);
+        // A quest with a RandomRewardItems pool pays out ONE item drawn from it instead; its RewardItems
+        // stay in the preview only, so the player is shown the wrapped gift and finds out what's inside
+        // on completion (retail's Holiday Mystery Gift).
+        IReadOnlyList<int> granted = quest.RandomRewardItems.Count > 0
+            ? new[] { quest.RandomRewardItems[Random.Shared.Next(quest.RandomRewardItems.Count)] }
+            : quest.RewardItems;
 
-            // "You earned an item" celebration (opcode 50/2): shows the item icon + "received 1".
-            player.SendTunneled(new RewardNonBundledItemPacket { ItemDefinitionId = itemDefinitionId, Quantity = 1 });
+        for (int i = 0; i < granted.Count; i++)
+        {
+            int itemDefinitionId = granted[i];
+
+            // Quantities are index-aligned with RewardItems; short/empty means one of each, so the common
+            // single-item reward needs no extra data. A random pool always pays out one.
+            int quantity = quest.RandomRewardItems.Count > 0 || i >= quest.RewardItemQuantities.Count
+                ? 1
+                : Math.Max(1, quest.RewardItemQuantities[i]);
+
+            GrantItem(player, itemDefinitionId, quantity);
+
+            // "You earned an item" celebration (opcode 50/2): the icon + how many actually arrived.
+            player.SendTunneled(new RewardNonBundledItemPacket { ItemDefinitionId = itemDefinitionId, Quantity = quantity });
         }
     }
 
     // Grants one of definitionId to the player: stacks it in the DB (by definition +
     // tint), mirrors it into the in-memory inventory, and tells the client (ItemAdd for a new item, or
     // ItemUpdate for an incremented stack). Mirrors the coin-store grant path.
-    public void GrantItem(Player player, int definitionId)
+    public void GrantItem(Player player, int definitionId, int quantity = 1)
     {
+        if (quantity < 1)
+            return;
+
         if (!_resourceManager.ClientItemDefinitions.TryGetValue(definitionId, out var itemDef))
             return;
 
@@ -1458,16 +1766,16 @@ public sealed class QuestManager : IQuestManager
 
             if (row.Item is not null)
             {
-                row.Item.Count += 1;
+                row.Item.Count += quantity;
                 itemId = row.Item.Id;
                 count = row.Item.Count;
             }
             else
             {
-                var dbItem = new DbItem { Id = row.NextId + 1, Definition = definitionId, Tint = tint, Count = 1 };
+                var dbItem = new DbItem { Id = row.NextId + 1, Definition = definitionId, Tint = tint, Count = quantity };
                 row.Character.Items.Add(dbItem);
                 itemId = dbItem.Id;
-                count = 1;
+                count = quantity;
             }
 
             db.SaveChanges();

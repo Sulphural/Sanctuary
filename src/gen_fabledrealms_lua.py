@@ -1,21 +1,45 @@
 #!/usr/bin/env python3
-# Regenerate Scripts/Zone/FabledRealms.lua from Resources/Npcs.json.
+# Regenerate Scripts/Zone/FabledRealms.lua - the overworld's single placement file.
 #
-# The starting zone's NPC roster is spawned by that .lua script (StartingZone.TrySpawnNpc), one
-# zone.spawnNpcWithGuid(id, guid, x, y, z, heading) call per Npcs.json entry, in file order (the order
-# matters: the FIRST Tormented Spirit entry found becomes the dungeon-entrance spirit). guid = the same
-# NpcGuidBase (100000000000) + id scheme StartingZone.cs and NpcVendors.json/Quests.json already use.
+# EVERYTHING the starting zone puts in the world is spawned from that script; the C# side only knows how
+# to build each thing, never where it goes. Sources, in the order they are emitted:
+#   Resources/Npcs.json         -> zone.spawnNpcWithGuid  (the NPC roster; file order matters, the FIRST
+#                                  Tormented Spirit entry becomes the dungeon-entrance spirit. guid =
+#                                  NpcGuidBase 100000000000 + id, the scheme NpcVendors/Quests also use)
+#   Resources/MiningNodes.json  -> zone.spawnGatheringNode (Miner job ore veins)
+#   Resources/SnowballPiles.json-> zone.spawnSnowballPile  (Snow Days piles)
+#   Resources/Quests.json       -> zone.spawnQuestCollectible (Collect-goal pickups)
+#   Resources/PointOfInterests.json -> zone.spawnDungeonEntrance (walk-up dungeon mouths, notif type 3)
 #
 # Usage: python gen_fabledrealms_lua.py
-# Re-run any time Npcs.json changes; do not hand-edit the generated spawn calls.
+# Re-run any time one of those changes; do not hand-edit the generated spawn calls.
 
 import json
 import os
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(ROOT, "Resources", "Npcs.json")
+MINING_SRC = os.path.join(ROOT, "Resources", "MiningNodes.json")
+SNOWBALL_SRC = os.path.join(ROOT, "Resources", "SnowballPiles.json")
+QUESTS_SRC = os.path.join(ROOT, "Resources", "Quests.json")
+POI_SRC = os.path.join(ROOT, "Resources", "PointOfInterests.json")
 DST = os.path.join(ROOT, "Scripts", "Zone", "FabledRealms.lua")
 NPC_GUID_BASE = 100000000000
+
+# Collect-goal pickups get their guid from a running counter as QuestDefinitionCollection.Load walks
+# Quests.json (CollectibleGuidBase + n, in file order). That guid is the pickup's IDENTITY - it binds it
+# back to its (quest, goal) - so this must allocate in EXACTLY the same order or a pickup would credit the
+# wrong goal. StartingZone.TrySpawnQuestCollectible refuses a guid it doesn't recognise, so a drift here
+# fails loudly at startup rather than silently in game. Keep in step with:
+#   QuestDefinitionCollection.CollectibleGuidBase  (700000000000)
+#   QuestDefinition.EffectiveGoals                 (Goals when non-empty, else one synthesized goal that
+#                                                   has no CollectSpawns and so allocates nothing)
+#   QuestGoalType.Collect                          (goal Type == 2)
+COLLECTIBLE_GUID_BASE = 700000000000
+COLLECT_GOAL_TYPE = 2
+
+# PointOfInterestNotificationType value that marks a walk-up dungeon mouth on the atlas.
+DUNGEON_POI_NOTIFICATION_TYPE = 3
 
 # NPCs that stay DEFINED in Npcs.json but must not spawn into the overworld. Held back rather than
 # deleted so they can be reused later (they are wanted for their own content, not as world dressing).
@@ -33,14 +57,48 @@ NOTES = {
         "Placed beside real Sunstone Valley spawns at their exact ground height, per the doc's descriptions:",
         "by The Rumbledome, outside Wheelie Pete's Roadhouse, and at the Sandscale Oasis entrance.",
     ],
+    32900: [
+        "Present Problems' three unhappy Snowhill residents (quest 3092). Placed from in-game !pos",
+        "readings, so these are measured ground heights, not guesses: Downey by the road east of the",
+        "Gifting Tree, Milus west of it, Annabelle up the hill to the north-east.",
+    ],
 }
 
-with open(SRC, "r", encoding="utf-8-sig") as f:
-    npcs = json.load(f)
+def load(path):
+    with open(path, "r", encoding="utf-8-sig") as f:
+        return json.load(f)
+
+
+npcs = load(SRC)
+mining_nodes = load(MINING_SRC)
+snowball_piles = load(SNOWBALL_SRC)
+quests = load(QUESTS_SRC)
+pois = load(POI_SRC)
+
+
+def collectibles():
+    """Every Collect-goal pickup, with the guid the quest loader will give it. Mirrors
+    QuestDefinitionCollection.Load's walk: quests in file order, EffectiveGoals in order, and within a
+    Collect goal its CollectSpawns in order - skipping malformed positions exactly as it does."""
+    guid = COLLECTIBLE_GUID_BASE
+    for quest in quests:
+        for goal in quest.get("Goals") or []:
+            if goal.get("Type") != COLLECT_GOAL_TYPE:
+                continue
+            for position in goal.get("CollectSpawns") or []:
+                if not position or len(position) < 3:
+                    continue
+                yield guid, quest.get("QuestId"), position
+                guid += 1
 
 lines = [
-    "-- Generated from Resources/Npcs.json by gen_fabledrealms_lua.py.",
-    "-- Regenerate this file after editing Npcs.json; do not hand-edit spawn calls below.",
+    "-- Generated by gen_fabledrealms_lua.py from Resources/Npcs.json, MiningNodes.json,",
+    "-- SnowballPiles.json and Quests.json. Regenerate after editing any of those; do not hand-edit",
+    "-- the spawn calls below.",
+    "--",
+    "-- Everything the overworld places is spawned from here: the NPC roster, the Miner job's ore veins,",
+    "-- the Snow Days snowball piles and the Collect-goal pickups. The C# side only knows HOW to build",
+    "-- each one - WHERE is here.",
     "function onStart(zone)",
 ]
 
@@ -64,10 +122,69 @@ for npc in npcs:
     lines.append(f"    zone.spawnNpcWithGuid({npc_id}, {guid}, {x!r}, {y!r}, {z!r}, {heading!r})")
     count += 1
 
+
+def lua_string(value):
+    return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+# World props. The prose for each one lives in its own .json entry's Comment - only a section header is
+# emitted here, so the generated file stays readable.
+lines.append("")
+lines.append("    -- Miner job ore veins (Resources/MiningNodes.json). Gather/respawn is GatheringManager's.")
+for node in mining_nodes:
+    x, y, z = node["Position"]
+    lines.append(
+        f"    zone.spawnGatheringNode({node['ModelId']}, {node['ItemDefinitionId']}, "
+        f"{lua_string(node['Name'])}, {x!r}, {y!r}, {z!r})"
+    )
+
+lines.append("")
+lines.append("    -- Snow Days snowball piles (Resources/SnowballPiles.json). Clicking one gives the tool.")
+for pile in snowball_piles:
+    x, y, z = pile["Position"]
+    lines.append(f"    zone.spawnSnowballPile({x!r}, {y!r}, {z!r}, {pile.get('Heading', 0.0)!r})")
+
+lines.append("")
+lines.append("    -- Collect-goal pickups (Resources/Quests.json). The guid is the pickup's identity - it")
+lines.append("    -- binds it to its quest goal, so these are only valid for the Quests.json they came from.")
+collectible_count = 0
+last_quest = None
+for guid, quest_id, position in collectibles():
+    if quest_id != last_quest:
+        lines.append(f"    -- quest {quest_id}")
+        last_quest = quest_id
+    x, y, z = position[0], position[1], position[2]
+    lines.append(f"    zone.spawnQuestCollectible({guid}, {x!r}, {y!r}, {z!r})")
+    collectible_count += 1
+
+lines.append("")
+lines.append("    -- Walk-up dungeon entrances (Resources/PointOfInterests.json, NotificationType 3). Keyed by")
+lines.append("    -- POI id; the zone resolves which dungeon that marker belongs to, and skips markers with none.")
+entrance_count = 0
+for poi in pois:
+    if poi.get("NotificationType") != DUNGEON_POI_NOTIFICATION_TYPE:
+        continue
+    # StartingZone preferred SpawnPosition and fell back to Position when it was unset (all-zero).
+    position = poi.get("SpawnPosition") or poi.get("Position")
+    if not position or len(position) < 3 or not any(position[:3]):
+        position = poi.get("Position")
+    if not position or len(position) < 3:
+        continue
+    x, y, z = position[0], position[1], position[2]
+    comment = (poi.get("Comment") or "").strip()
+    if comment:
+        lines.append(f"    -- {comment}")
+    lines.append(
+        f"    zone.spawnDungeonEntrance({poi['Id']}, {x!r}, {y!r}, {z!r}, {poi.get('Heading', 0.0)!r})"
+    )
+    entrance_count += 1
+
 lines.append("end")
 lines.append("")
 
 with open(DST, "w", encoding="utf-8", newline="\n") as f:
     f.write("\n".join(lines))
 
-print(f"Wrote {count} spawn calls to {DST} (held back {held} via DO_NOT_SPAWN)")
+print(f"Wrote {count} NPC spawns, {len(mining_nodes)} ore veins, {len(snowball_piles)} snowball piles, "
+      f"{collectible_count} quest collectibles and {entrance_count} dungeon entrances to {DST} "
+      f"(held back {held} via DO_NOT_SPAWN)")

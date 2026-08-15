@@ -1,4 +1,4 @@
-﻿using Sanctuary.Game.Resources;
+using Sanctuary.Game.Resources;
 
 namespace Sanctuary.Game;
 
@@ -11,6 +11,7 @@ public interface IResourceManager
     IdToStringLookup ModelCustomizationMappings { get; }
 
     ModelDefinitionCollection Models { get; }
+    ImageSetMappingCollection ImageSetMappings { get; }
 
     ClientItemDefinitionCollection ClientItemDefinitions { get; }
 

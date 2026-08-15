@@ -1,0 +1,42 @@
+[
+  {
+    "Comment": "Miner job ore veins - shared world resource nodes near world spawn. ModelId is the vein prop (Models.txt 612-616, the 'sanctuary'-themed mining nodes); ItemDefinitionId is the ore a successful gather grants (ClientItemDefinitions CategoryId 16); Name is the deposit, not the ore, and is only used in logs - the nameplate is hidden because there is no real localized 'X Vein' string to point at. Gather/respawn timing belongs to GatheringManager, not this file. These were hand-picked in game near where players actually land, and are a starter placement to be tuned against the live client - not the real Singing Crystal Mines, which isn't stood up yet.",
+    "Id": 1,
+    "Name": "Copper Vein",
+    "ModelId": 612,
+    "ItemDefinitionId": 2739,
+    "Position": [-1885.94, 43.54, 385.11]
+  },
+  {
+    "Comment": "Tin, west of the copper vein.",
+    "Id": 2,
+    "Name": "Tin Vein",
+    "ModelId": 616,
+    "ItemDefinitionId": 2740,
+    "Position": [-1891.94, 43.54, 385.11]
+  },
+  {
+    "Comment": "Iron, north of the cluster.",
+    "Id": 3,
+    "Name": "Iron Vein",
+    "ModelId": 614,
+    "ItemDefinitionId": 2741,
+    "Position": [-1888.94, 43.54, 388.11]
+  },
+  {
+    "Comment": "Silver, south of the cluster.",
+    "Id": 4,
+    "Name": "Silver Vein",
+    "ModelId": 615,
+    "ItemDefinitionId": 2742,
+    "Position": [-1888.94, 43.54, 382.11]
+  },
+  {
+    "Comment": "Gold, north-east of the cluster.",
+    "Id": 5,
+    "Name": "Gold Vein",
+    "ModelId": 613,
+    "ItemDefinitionId": 2743,
+    "Position": [-1886.94, 43.54, 387.11]
+  }
+]

@@ -1,3 +1,5 @@
+using System;
+
 namespace Sanctuary.Database.Entities;
 
 public class DbCharacterQuest
@@ -8,6 +10,10 @@ public class DbCharacterQuest
     public DbCharacter Character { get; set; } = null!;
 
     public bool Completed { get; set; }
+
+    // When a DAILY quest was completed (UTC). Null for everything else. Compared by calendar day against
+    // UtcNow the same way the daily wheel's LastSpinUtc is, to decide whether it has come round again.
+    public DateTimeOffset? CompletedUtc { get; set; }
 
     // Number of the quest's goals completed so far (goals tick off in order). 0 = on the first goal.
     // Lets multi-goal progress survive relog; single-goal quests only ever hit 0 -> turn-in.

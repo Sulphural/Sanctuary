@@ -42617,5 +42617,1087 @@
     "SkuId": 1,
     "MemberDiscount": 10,
     "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Lawn Chair mount - model 4439; availability verified against packs AND the asset CDN (the manifest alone lies)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Tint": "100",
+      "Image": "8456"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79412,
+        "MarketingItemId": 79412
+      }
+    ],
+    "Id": 900200,
+    "NameId": 442689,
+    "DescriptionId": 442690,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 100,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Black-Nosed Stallion mount - model 2099; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Tint": "95",
+      "Image": "6323"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 76866,
+        "MarketingItemId": 76866
+      }
+    ],
+    "Id": 900300,
+    "NameId": 15012,
+    "DescriptionId": 15020,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 200,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Broomstick mount - model 1529; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Tint": "100",
+      "Image": "8035"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79433,
+        "MarketingItemId": 79433
+      }
+    ],
+    "Id": 900301,
+    "NameId": 9911,
+    "DescriptionId": 9912,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 201,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Burnt Turkey mount - model 4622; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8615"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79462,
+        "MarketingItemId": 79462
+      }
+    ],
+    "Id": 900302,
+    "NameId": 5102767,
+    "DescriptionId": 5102770,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 202,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Clocktopus mount - model 726; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "7798"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79445,
+        "MarketingItemId": 79445
+      }
+    ],
+    "Id": 900303,
+    "NameId": 19040,
+    "DescriptionId": 19041,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 203,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Clockwork Horse mount - model 982; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "7886"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79443,
+        "MarketingItemId": 79443
+      }
+    ],
+    "Id": 900304,
+    "NameId": 8779,
+    "DescriptionId": 8780,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 204,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Dwarftech Chopper mount - model 3988; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "71"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79458,
+        "MarketingItemId": 79458
+      }
+    ],
+    "Id": 900305,
+    "NameId": 854,
+    "DescriptionId": 855,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 205,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Eight Ball mount - model 3378; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Tint": "263",
+      "Image": "6968"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 10499,
+        "MarketingItemId": 10499
+      }
+    ],
+    "Id": 900306,
+    "NameId": 6697,
+    "DescriptionId": 6698,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 206,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Fan Faire 2011 Bicycle mount - model 3831; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "7499"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79464,
+        "MarketingItemId": 79464
+      }
+    ],
+    "Id": 900307,
+    "NameId": 436136,
+    "DescriptionId": 436137,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 207,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Flying Saucer mount - model 687; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "7710"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79450,
+        "MarketingItemId": 79450
+      }
+    ],
+    "Id": 900308,
+    "NameId": 2664,
+    "DescriptionId": 2665,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 208,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Futuristic Bicycle mount - model 3718; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "7297"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79417,
+        "MarketingItemId": 79417
+      }
+    ],
+    "Id": 900309,
+    "NameId": 435220,
+    "DescriptionId": 435221,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 209,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Giant Jack-O-Lantern mount - model 3338; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "6939"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79441,
+        "MarketingItemId": 79441
+      }
+    ],
+    "Id": 900310,
+    "NameId": 9917,
+    "DescriptionId": 9918,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 210,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Giant Turkey mount - model 1533; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "92"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79437,
+        "MarketingItemId": 79437
+      }
+    ],
+    "Id": 900311,
+    "NameId": 9268,
+    "DescriptionId": 9269,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 211,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Gloamstone Hoverboard mount - model 3884; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "7674"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79442,
+        "MarketingItemId": 79442
+      }
+    ],
+    "Id": 900312,
+    "NameId": 387,
+    "DescriptionId": 388,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 212,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Icy Hoverboard mount - model 3164; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Tint": "109",
+      "Image": "6659"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 10383,
+        "MarketingItemId": 10383
+      }
+    ],
+    "Id": 900313,
+    "NameId": 6232,
+    "DescriptionId": 6312,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 213,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Lawless Gloam Chopper mount - model 4751; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8767"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79457,
+        "MarketingItemId": 79457
+      }
+    ],
+    "Id": 900314,
+    "NameId": 5103066,
+    "DescriptionId": 1114,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 214,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Octopus mount - model 4451; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8496"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79444,
+        "MarketingItemId": 79444
+      }
+    ],
+    "Id": 900315,
+    "NameId": 442880,
+    "DescriptionId": 442881,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 215,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Phoenix mount - model 3292; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "6889"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 10421,
+        "MarketingItemId": 10421
+      }
+    ],
+    "Id": 900316,
+    "NameId": 6574,
+    "DescriptionId": 6576,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 216,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Pogo Stick mount - model 1532; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8121"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79438,
+        "MarketingItemId": 79438
+      }
+    ],
+    "Id": 900317,
+    "NameId": 14105,
+    "DescriptionId": 14106,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 217,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Polar Bear mount - model 4110; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8225"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79447,
+        "MarketingItemId": 79447
+      }
+    ],
+    "Id": 900318,
+    "NameId": 441220,
+    "DescriptionId": 441234,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 218,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Raw Turkey mount - model 4622; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8616"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79463,
+        "MarketingItemId": 79463
+      }
+    ],
+    "Id": 900319,
+    "NameId": 5102765,
+    "DescriptionId": 5102768,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 219,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Reindeer mount - model 4111; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "5614"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79451,
+        "MarketingItemId": 79451
+      }
+    ],
+    "Id": 900320,
+    "NameId": 436679,
+    "DescriptionId": 4419630,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 220,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Roasted Turkey mount - model 4622; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8617"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79461,
+        "MarketingItemId": 79461
+      }
+    ],
+    "Id": 900321,
+    "NameId": 5102766,
+    "DescriptionId": 5102769,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 221,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Robgoblin Mech mount - model 3989; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Tint": "227",
+      "Image": "7928"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 17598,
+        "MarketingItemId": 17598
+      }
+    ],
+    "Id": 900322,
+    "NameId": 852,
+    "DescriptionId": 853,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 222,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Robo-Roo mount - model 4075; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8034"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79455,
+        "MarketingItemId": 79455
+      }
+    ],
+    "Id": 900323,
+    "NameId": 440558,
+    "DescriptionId": 440559,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 223,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Robotic Chicken mount - model 937; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "35"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79459,
+        "MarketingItemId": 79459
+      }
+    ],
+    "Id": 900324,
+    "NameId": 19014,
+    "DescriptionId": 19015,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 224,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Santa's Sleigh-mobile mount - model 4130; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8144"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79452,
+        "MarketingItemId": 79452
+      }
+    ],
+    "Id": 900325,
+    "NameId": 4419436,
+    "DescriptionId": 4419631,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 225,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Skeletal T-Rex mount - model 728; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "7799"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79446,
+        "MarketingItemId": 79446
+      }
+    ],
+    "Id": 900326,
+    "NameId": 19042,
+    "DescriptionId": 19043,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 226,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Skullz Chopper mount - model 4214; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8405"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79448,
+        "MarketingItemId": 79448
+      }
+    ],
+    "Id": 900327,
+    "NameId": 442318,
+    "DescriptionId": 1114,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 227,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Snow Globe mount - model 3393; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "6995"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79440,
+        "MarketingItemId": 79440
+      }
+    ],
+    "Id": 900328,
+    "NameId": 7504,
+    "DescriptionId": 7505,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 228,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Stallion mount - model 2099; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Tint": "487",
+      "Image": "6324"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 76867,
+        "MarketingItemId": 76867
+      }
+    ],
+    "Id": 900329,
+    "NameId": 10106,
+    "DescriptionId": 15021,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 229,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "The Blast Rover mount - model 4512; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8552"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 78396,
+        "MarketingItemId": 78396
+      }
+    ],
+    "Id": 900330,
+    "NameId": 442673,
+    "DescriptionId": 442678,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 230,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "The Hero Copter mount - model 4441; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8478"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 78394,
+        "MarketingItemId": 78394
+      }
+    ],
+    "Id": 900331,
+    "NameId": 442671,
+    "DescriptionId": 442676,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 231,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Unicorn mount - model 2113; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Tint": "117",
+      "Image": "6322"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 76872,
+        "MarketingItemId": 76872
+      }
+    ],
+    "Id": 900332,
+    "NameId": 4905,
+    "DescriptionId": 4906,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 232,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Valiant Gleam Cycle mount - model 4751; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8766"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79456,
+        "MarketingItemId": 79456
+      }
+    ],
+    "Id": 900333,
+    "NameId": 5103065,
+    "DescriptionId": 1114,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 233,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "White-Nosed Stallion mount - model 2099; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Tint": "488",
+      "Image": "6325"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 76868,
+        "MarketingItemId": 76868
+      }
+    ],
+    "Id": 900334,
+    "NameId": 15014,
+    "DescriptionId": 15022,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 234,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Wonderous Tiger mount - model 4462; renders (checked against local packs + the osfr.editz.dev CDN mirror)",
+    "LaunchTime": "2013-05-14T07:00:00+00:00",
+    "ExpireTime": "2090-01-01T08:00:00+00:00",
+    "Image": {
+      "Image": "8501"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 79436,
+        "MarketingItemId": 79436
+      }
+    ],
+    "Id": 900335,
+    "NameId": 442894,
+    "DescriptionId": 510213,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 267,
+    "CategoryDisplayOrder": 235,
+    "DiscountType": 20,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
   }
 ]

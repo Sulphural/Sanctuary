@@ -51,6 +51,35 @@ public class QuestDefinition
     // food whose ActivatableAbilityId is a Transformations entry. Empty = no item rewards.
     public List<int> RewardItems { get; set; } = new();
 
+    // How many of each RewardItems entry to grant, index-aligned with it. Short or empty = one of each,
+    // so ordinary single-item rewards need nothing here. Ignored when RandomRewardItems is set, which
+    // always pays out exactly one.
+    public List<int> RewardItemQuantities { get; set; } = new();
+
+    // A "mystery gift" pool: when set, the player receives ONE item picked at random from this list
+    // instead of the RewardItems above, and RewardItems becomes display-only - the offer/turn-in preview
+    // still shows the wrapped gift, and what's inside is only decided on completion. That is how retail's
+    // Holiday Mystery Gift works: the preview is the gift, the payout is a sweater or a cookie.
+    public List<int> RandomRewardItems { get; set; } = new();
+
+    // Icons this quest uses on the NPC's radial interaction menu, overriding the generic "!"/"?" discs.
+    // 0 = the default (ContextIcons.QuestOffer / QuestTurnIn). These are RAW IMAGE ids (Images.txt) - the
+    // SAME space ContextIcons uses and NOT the space NotificationAvailable/NotificationActive live in, so
+    // a badge id cannot be reused here: 242 as an image is icon_job_badge_service04, not anything festive.
+    public int RadialOfferIconId { get; set; }
+    public int RadialTurnInIconId { get; set; }
+
+    // Ring icon for a DAILY quest that is done for today. Non-zero also makes it APPEAR in the ring as a
+    // greyed, non-actionable entry, so a giver whose only other business is elsewhere still shows the
+    // quest exists and is simply spent - the ring counterpart of NotificationCompleted.
+    public int RadialCompletedIconId { get; set; }
+
+    // Repeatable once per UTC day: on completion the quest is stamped rather than closed for good, and
+    // the stamp is dropped again the first time the player is looked at on a later day - so it re-offers,
+    // fresh, exactly like retail's daily Gifting Tree. A daily quest should NOT be a prerequisite for
+    // anything, since it spends most of its life in the "completed" state.
+    public bool IsDaily { get; set; }
+
     // Chain / gating.
     public int PrerequisiteQuestId { get; set; }    // 0 = none; must be completed before this is offered
     public int NextQuestId { get; set; }            // 0 = none; becomes offerable once this completes
@@ -63,6 +92,12 @@ public class QuestDefinition
     public List<int> ExcludesQuestIds { get; set; } = new();
 
     // World notification-badge icon ids.
+    // Badge shown on the giver once a DAILY quest is done FOR TODAY - 379 is the greyed-out repeatable
+    // badge, i.e. "come back tomorrow". 0 = show nothing, which is what a non-repeatable quest wants.
+    // Cleared automatically: ExpireDailyQuests drops the completion at the day boundary, after which the
+    // giver is offerable again and goes back to NotificationAvailable.
+    public int NotificationCompleted { get; set; }
+
     public int NotificationAvailable { get; set; } = 2; // "!" exclamation (quest available)
     public int NotificationActive { get; set; } = 6;    // "?" question mark (quest in progress / turn-in)
 

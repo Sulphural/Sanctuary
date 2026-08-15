@@ -19,7 +19,43 @@ public class ScriptingTests
         public ILogger Logger => NullLogger.Instance;
         public List<(float X, float Y, float Z)> SpawnPoints { get; } = [];
 
-        public bool TrySpawnNpc(int npcId, ulong? npcGuid, float x, float y, float z, float heading) => true;
+        public List<int> SpawnedNpcIds { get; } = [];
+        public List<(int ModelId, int ItemDefinitionId, string Name)> GatheringNodes { get; } = [];
+        public List<(float X, float Y, float Z, float Heading)> SnowballPiles { get; } = [];
+
+        public bool TrySpawnNpc(int npcId, ulong? npcGuid, float x, float y, float z, float heading)
+        {
+            SpawnedNpcIds.Add(npcId);
+            return true;
+        }
+
+        public bool TrySpawnGatheringNode(int modelId, int itemDefinitionId, string name, float x, float y, float z)
+        {
+            GatheringNodes.Add((modelId, itemDefinitionId, name));
+            return true;
+        }
+
+        public bool TrySpawnSnowballPile(float x, float y, float z, float heading)
+        {
+            SnowballPiles.Add((x, y, z, heading));
+            return true;
+        }
+
+        public bool TrySpawnQuestCollectible(ulong guid, float x, float y, float z)
+        {
+            QuestCollectibles.Add(guid);
+            return true;
+        }
+
+        public List<ulong> QuestCollectibles { get; } = [];
+
+        public bool TrySpawnDungeonEntrance(int poiId, float x, float y, float z, float heading)
+        {
+            DungeonEntrances.Add(poiId);
+            return true;
+        }
+
+        public List<int> DungeonEntrances { get; } = [];
 
         public void AddSpawnPoint(float x, float y, float z) => SpawnPoints.Add((x, y, z));
 
@@ -76,6 +112,31 @@ public class ScriptingTests
         // Enemies composition. EncounterArenaZone.BuildDungeonSpawns silently falls back to its procedural
         // layout on any other count, so a mismatch here would ship without the mistake being obvious.
         Assert.AreEqual(15, zone.SpawnPoints.Count);
+    }
+
+    [TestMethod]
+    public async Task FabledRealmsPlacesTheWorldProps()
+    {
+        var zone = new FakeZone { Name = "FabledRealms" };
+        var context = await _scriptManager.GetContextForZoneAsync(zone);
+        Assert.IsNotNull(context, "FabledRealms.lua should load.");
+
+        await context!.CallFunctionAsync("onStart", zone);
+
+        // The overworld's placement all comes out of this one generated script, so a generator that
+        // silently stopped emitting a block would otherwise just look like the props vanished in game.
+        // Counts are Resources/MiningNodes.json and Resources/SnowballPiles.json.
+        Assert.AreEqual(5, zone.GatheringNodes.Count, "ore veins (MiningNodes.json)");
+        Assert.AreEqual(3, zone.SnowballPiles.Count, "snowball piles (SnowballPiles.json)");
+        Assert.AreEqual(31, zone.QuestCollectibles.Count, "collect-goal pickups (Quests.json)");
+        Assert.AreEqual(42, zone.DungeonEntrances.Count, "dungeon entrances (PointOfInterests.json)");
+
+        // The pickup guid is its identity - it binds back to a (quest, goal), so a generator that
+        // renumbered them would silently credit the wrong goals. 700000000000 is CollectibleGuidBase.
+        Assert.AreEqual(700000000000UL, zone.QuestCollectibles[0], "first collectible guid");
+
+        // The NPC roster dwarfs the props - this only guards against the roster block disappearing.
+        Assert.IsTrue(zone.SpawnedNpcIds.Count > 4000, $"NPC roster looked short: {zone.SpawnedNpcIds.Count}");
     }
 
     [TestCleanup]

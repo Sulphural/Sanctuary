@@ -59,6 +59,15 @@ public static class BaseCommandPacketHandler
     // here hid the whole HUD and locked player movement (no end screen was open to dismiss).
     private static bool HandleDialogResponse(GatewayConnection connection)
     {
+        // A non-quest dialog (the treasure chest) owns its own button - let it consume the click first.
+        if (connection.Player.PendingDialogAction is { } dialogAction)
+        {
+            connection.Player.PendingDialogAction = null;
+            dialogAction();
+            connection.Player.SendTunneled(new CommandPacketEndDialog());
+            return true;
+        }
+
         // A quest conversation can run several turns (NPC speaks -> player replies -> NPC speaks again).
         // While turns remain, the click advances the exchange instead of ending it - tearing the dialog
         // down here would cut the NPC off mid-conversation.

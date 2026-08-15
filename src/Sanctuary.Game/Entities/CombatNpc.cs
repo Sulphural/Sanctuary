@@ -69,7 +69,55 @@ public class CombatNpc : Npc
     public static readonly IReadOnlyDictionary<int, int> ExplicitAttackAnimByModel = new Dictionary<int, int>
     {
         [1944] = 1099, // Abominable Snowman -> com_swing
+        [1907] = 1099, // Snowman Invader (snowman_present) -> com_swing; same family as the boss, and
+                       // without an entry here the model's default contact event animates nothing at all
     };
+
+    // ── Scripted march + idle roaming ────────────────────────────────────────────────────────────────
+    // A one-time walk to somewhere (the Abominable Snowman's entrance, marching on the Gifting Tree).
+    //
+    // ★ This is deliberately NOT done by pointing SpawnPosition at the destination and letting the "walk
+    // home" state carry it: SpawnPosition is also the LEASH ANCHOR. A mob whose home is 130 units away
+    // aggros, takes one step, measures itself past LeashRange from home, and turns around - over and over,
+    // which is exactly the "just going back and forth" bounce. While marching, the leash anchor is kept at
+    // the mover's own position so aggro and pursuit behave normally the whole way in, and only when it
+    // ARRIVES does the destination become its real home.
+    public Vector4? MarchTarget { get; set; }
+
+    // RELENTLESS: the march is the point, not an entrance. A relentless marcher never abandons its
+    // destination to chase - it keeps walking and swings at whatever steps into AttackRange, so the fight is
+    // "stop it reaching the tree" rather than "kite it around a field". Non-relentless marchers drop the
+    // march the moment they engage.
+    public bool MarchRelentless { get; set; }
+
+    // HARMLESS: pursues, faces and postures, but never deals damage. The Snow Days snowmen work this way -
+    // the invaders chase and taunt you, the boss only cares about reaching the tree - so the whole event is a
+    // snowball fight rather than something that can kill a player standing in a town square.
+    public bool Harmless { get; set; }
+
+    // A brief hitch in the march. Snowballs are meant to SLOW the Abominable Snowman, not stop or divert him:
+    // each hit plants him for a moment and then he carries on. Nothing else interrupts a relentless march.
+    private DateTime _staggerUntil = DateTime.MinValue;
+
+    public void Stagger(int milliseconds)
+    {
+        var until = DateTime.UtcNow.AddMilliseconds(milliseconds);
+        if (until > _staggerUntil)
+            _staggerUntil = until;
+    }
+
+    // Route every step through the zone's A* graph (the same source "Take Me There" uses) instead of only
+    // when the coarse obstacle map reports the straight line blocked. Worth the cost for a long scripted
+    // walk across real terrain; ordinary chases stay on the cheap straight-line test.
+    public bool AlwaysRoute { get; set; }
+
+    // Idle wander radius around SpawnPosition. 0 = stand still (the default for every existing world enemy,
+    // so this changes nothing unless a spawner opts in).
+    public float RoamRadius { get; set; }
+    public float RoamSpeed { get; set; } = 2.5f;
+
+    private Vector4? _roamTarget;
+    private DateTime _nextRoamAt = DateTime.MinValue;
 
     // Cached A* route + stuck detection for obstacle-aware movement — see MoveTowards. Reset whenever
     // what we're walking to changes (new aggro target, giving up and heading home), so a stale route
@@ -134,15 +182,116 @@ public class CombatNpc : Npc
 
     private void UpdateIdle()
     {
-        // Look for nearby players to aggro
+        // Look for nearby players to aggro. Checked FIRST so a marching npc still fights back when someone
+        // walks up to it - the old "walks past you doing nothing on the way in" behaviour.
         var closestPlayer = FindClosestPlayer(AggroRange);
+
+        // A relentless marcher doesn't chase and doesn't stop: it just keeps walking at its destination.
+        // Players deal with it by killing it before it arrives, not by pulling it away.
+        if (MarchRelentless && MarchTarget is { } relentlessMarch)
+        {
+            AggroTarget = null;
+
+            // Staggered: stand still this tick, then keep going. Deliberately does NOT clear the march or
+            // pick a target - being hit slows him down, it can't stop him or pull him off course.
+            if (DateTime.UtcNow < _staggerUntil)
+            {
+                BroadcastStop();
+                return;
+            }
+
+            UpdateMarch(relentlessMarch);
+            return;
+        }
 
         if (closestPlayer is not null && !closestPlayer.IsDead)
         {
             AggroTarget = closestPlayer;
             State = CombatState.Pursuing;
             _pathState.ResetPath(); // new destination - don't follow a route planned toward anything else
+
+            // The march is an ENTRANCE, not a patrol: once something has engaged us, abandon it and anchor
+            // here. Otherwise every lull in the fight sends us walking off again mid-combat, which reads as
+            // the boss losing interest and pacing away. A RELENTLESS marcher is the exception - it keeps
+            // going and fights on the move (see UpdateMarch).
+            if (MarchTarget is not null && !MarchRelentless)
+            {
+                MarchTarget = null;
+                SpawnPosition = Position;
+
+                // Force-routing exists for the long scripted walk. Chasing a player a few metres away over a
+                // 2000-node world graph would route via the nearest node and stagger; ordinary pursuit wants
+                // the cheap straight-line steering.
+                AlwaysRoute = false;
+            }
+
+            return;
         }
+
+        if (MarchTarget is { } march)
+        {
+            UpdateMarch(march);
+            return;
+        }
+
+        if (RoamRadius > 0f)
+            UpdateRoam();
+    }
+
+    // Walk to the scripted destination, keeping the leash anchor with us so pursuit stays sane en route.
+    private void UpdateMarch(Vector4 march)
+    {
+        if (DistanceTo(march) < 2f)
+        {
+            // Arrived: the destination becomes home, so from here the normal leash/return behaviour applies
+            // around the place it was sent to.
+            MarchTarget = null;
+            SpawnPosition = march;
+            _pathState.ResetPath();
+            BroadcastStop();
+            return;
+        }
+
+        // The leash anchor travels with us - see MarchTarget's note on why this can't just be SpawnPosition.
+        SpawnPosition = Position;
+
+        MoveTowards(march, ReturnSpeed);
+    }
+
+    // Idle wander: amble between random points near home, pausing between legs. Keeps a camp looking alive
+    // instead of a row of statues, and stays well inside LeashRange so it never trips the leash.
+    private void UpdateRoam()
+    {
+        var now = DateTime.UtcNow;
+
+        if (_roamTarget is { } target)
+        {
+            if (DistanceTo(target) < 1f)
+            {
+                _roamTarget = null;
+                _nextRoamAt = now.AddSeconds(Random.Shared.Next(2, 6)); // stand about before the next leg
+                _pathState.ResetPath();
+                BroadcastStop();
+                return;
+            }
+
+            MoveTowards(target, RoamSpeed);
+            return;
+        }
+
+        if (now < _nextRoamAt)
+            return;
+
+        var angle = Random.Shared.NextSingle() * MathF.Tau;
+        var distance = RoamRadius * (0.35f + Random.Shared.NextSingle() * 0.65f);
+
+        _roamTarget = new Vector4(
+            SpawnPosition.X + MathF.Cos(angle) * distance,
+            SpawnPosition.Y,
+            SpawnPosition.Z + MathF.Sin(angle) * distance,
+            1f);
+
+        _pathState.ResetPath();
     }
 
     private void UpdatePursuing()
@@ -204,10 +353,20 @@ public class CombatNpc : Npc
         // Face the target
         FaceTarget(AggroTarget.Position);
 
-        // Auto-attack on timer
+        // Auto-attack on timer. A Harmless npc keeps the menace - it stays on you, faces you, plays its
+        // swing - but never actually lands anything.
         if ((DateTime.UtcNow - LastAttackTime).TotalSeconds >= AttackIntervalSeconds)
         {
-            PerformAttack(AggroTarget);
+            if (Harmless)
+            {
+                if (ExplicitAttackAnimByModel.TryGetValue(ModelId, out var harmlessSwing))
+                    PlaySwingAnimation(harmlessSwing);
+            }
+            else
+            {
+                PerformAttack(AggroTarget);
+            }
+
             LastAttackTime = DateTime.UtcNow;
         }
     }
@@ -288,8 +447,7 @@ public class CombatNpc : Npc
         if (target.TryDodgeIncomingAttack(Guid))
         {
             if (ExplicitAttackAnimByModel.TryGetValue(ModelId, out var missAnim))
-                foreach (var p in VisiblePlayers.Values)
-                    p.SendTunneled(new PlayerUpdatePacketSetAnimation { Guid = Guid, AnimationId = missAnim });
+                PlaySwingAnimation(missAnim);
             return;
         }
 
@@ -338,11 +496,40 @@ public class CombatNpc : Npc
         // Models whose default combat-contact event doesn't animate get an explicit swing clip so they
         // don't hit while frozen (e.g. the Abominable Snowman boss).
         if (ExplicitAttackAnimByModel.TryGetValue(ModelId, out var swingAnimId))
+            PlaySwingAnimation(swingAnimId);
+    }
+
+    // ★ NPC animation MUST be a base-animation write (PlayType 1). The op35/8 handler forks on bit0 of
+    // PlayType: bit0 clear is the "play now" path, which bails unless [entity+0x1870] is non-null - and that
+    // is never true for an npc. These swing packets were going out with PlayType 0 (the default), so they
+    // did nothing at all: that is why the Abominable Snowman and the Snowman Invaders both hit while
+    // standing frozen even though they were listed in ExplicitAttackAnimByModel.
+    //
+    // A base animation LOOPS until replaced, so the clip is reset to idle a beat later - the same "fake a
+    // single play" trick QuestDialogue uses for its talking gesture. Safe here because an npc only swings
+    // while standing in AttackRange, so nothing is being overridden mid-stride.
+    private const int SwingHoldMs = 900;
+    private const int IdleAnimationId = 1;
+
+    private void PlaySwingAnimation(int animationId)
+    {
+        var swing = new PlayerUpdatePacketSetAnimation { Guid = Guid, AnimationId = animationId, PlayType = 1 };
+        foreach (var player in VisiblePlayers.Values)
+            player.SendTunneled(swing);
+
+        var self = Guid;
+        var watchers = new List<Player>(VisiblePlayers.Values);
+        _ = System.Threading.Tasks.Task.Run(async () =>
         {
-            var swing = new PlayerUpdatePacketSetAnimation { Guid = Guid, AnimationId = swingAnimId };
-            foreach (var player in VisiblePlayers.Values)
-                player.SendTunneled(swing);
-        }
+            try
+            {
+                await System.Threading.Tasks.Task.Delay(SwingHoldMs);
+                var idle = new PlayerUpdatePacketSetAnimation { Guid = self, AnimationId = IdleAnimationId, PlayType = 1 };
+                foreach (var watcher in watchers)
+                    watcher.SendTunneled(idle);
+            }
+            catch { }
+        });
     }
 
     // Force this enemy to engage a player without dealing damage — used when the player's own
@@ -351,6 +538,13 @@ public class CombatNpc : Npc
     public void AggroOnto(Player source)
     {
         if (IsDead || source.IsDead)
+            return;
+
+        // ★ A relentless marcher CANNOT be aggroed. Damage used to drag it out of the march and into a chase
+        // (OnNpcDamaged -> AggroOnto -> Pursuing), which is precisely the "hit him and he stops and comes
+        // after me" behaviour - the opposite of a boss that keeps walking no matter what. Hitting him
+        // staggers him; it never redirects him.
+        if (MarchRelentless && MarchTarget is not null)
             return;
 
         if (AggroTarget is null || !AggroTarget.Visible || AggroTarget.IsDead)
@@ -367,6 +561,11 @@ public class CombatNpc : Npc
     public void TakeDamage(int amount, Player source, bool broadcastHitNumber = true)
     {
         if (IsDead)
+            return;
+
+        // Weapon/ability damage never touches a snowball-only enemy - see Npc.SnowballOnly. The snowball
+        // route goes through ApplyDamage(fromSnowball: true) instead of here.
+        if (SnowballOnly)
             return;
 
         CurrentHitpoints = Math.Max(0, CurrentHitpoints - amount);
@@ -476,7 +675,8 @@ public class CombatNpc : Npc
             _pathState,
             Zone.NavObstacles,
             Zone.TryFindPath,
-            Environment.TickCount64);
+            Environment.TickCount64,
+            AlwaysRoute);
 
         if (dir == Vector2.Zero)
             return;
@@ -502,9 +702,29 @@ public class CombatNpc : Npc
         // FINAL target, not the current waypoint: when routing around an obstacle the waypoints are just
         // intermediate steering points, and easing Y to each of them in turn would bob the model.
         var frac = MathF.Min(1f, moveAmount / dist);
+        var targetY = target.Y;
+        var yFrac = frac;
+
+        // ★ A long ROUTED walk follows real ground instead. Easing toward the destination's height is right
+        // for a short chase over flat ground, but over a cross-map march it is the terrain that changes
+        // underneath us: a boss walking 130 units from ground height 24 to a clearing at 27 rose steadily
+        // into the air the whole way, and died floating - which then left his treasure hanging where his
+        // body was. The routing graph's nodes ARE walkable ground samples, so when we're steering by them,
+        // take the height from the waypoint we're actually walking to, paced against the distance to THAT
+        // waypoint so we arrive at its height exactly as we reach it.
+        //
+        // Scoped to AlwaysRoute (the scripted march) on purpose: for an ordinary short detour around an
+        // obstacle the waypoints are just steering points, and tracking each one's height in turn is the
+        // model-bobbing the frac-against-final-target pacing above exists to avoid.
+        if (AlwaysRoute && _pathState.CachedPath is { Count: > 0 } route)
+        {
+            targetY = route[Math.Min(_pathState.PathIndex, route.Count - 1)].Y;
+            yFrac = MathF.Min(1f, moveAmount / MathF.Max(stepDist, 0.01f));
+        }
+
         var newPos = new Vector4(
             Position.X + nx * moveAmount,
-            Position.Y + (target.Y - Position.Y) * frac,
+            Position.Y + (targetY - Position.Y) * yFrac,
             Position.Z + nz * moveAmount,
             1f
         );
@@ -547,7 +767,8 @@ public class CombatNpc : Npc
     // Plant the NPC: tell clients to stop predicting movement (ExpectedSpeed 0) and send one
     // idle-state position at the current spot. Used when reaching attack range or arriving home, so the
     // model stops instead of coasting past on its last streamed speed.
-    private void BroadcastStop()
+    // Public so a scripted sequence can plant an npc on the spot (the Abominable Snowman's escape).
+    public void BroadcastStop()
     {
         SendExpectedSpeed(0f);
         BroadcastPositionUpdate(0);
@@ -583,6 +804,12 @@ public class CombatNpc : Npc
 
     private void BroadcastHpUpdate()
     {
+        // ★ Sending hitpoints is what MAKES the client draw a bar - so a barless enemy has to stay silent
+        // here too, not just carry ShowHealthBar=false at spawn. This is why the Snowman Invaders grew a bar
+        // the moment you hit one: the spawn was clean, and then the first point of damage announced it.
+        if (!ShowHealthBar)
+            return;
+
         var hpUpdate = new PlayerUpdatePacketUpdateHitpoints
         {
             Guid = Guid,

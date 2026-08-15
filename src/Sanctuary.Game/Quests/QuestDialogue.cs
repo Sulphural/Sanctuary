@@ -101,6 +101,34 @@ public static class QuestDialogue
         });
     }
 
+    // An NPC reacts to being scared: emo_afraid, the client's own fright emote. Played the same
+    // base-animation way as the talking loop (PlayType 1 - see SetBaseAnimation) and cleared by the same
+    // ticket/reset machinery, so a spooked NPC settles back to idle on its own.
+    private const int AfraidAnimationId = 3339;
+
+    public static void PlayScareReaction(Player player, ulong npcGuid)
+    {
+        if (npcGuid == 0)
+            return;
+
+        player.TalkingNpcGuid = npcGuid;
+        int ticket = ++player.TalkAnimationTicket;
+
+        player.SendTunneled(new PlayerUpdatePacketSetAnimation
+        {
+            Guid = npcGuid,
+            AnimationId = AfraidAnimationId,
+            PlayType = SetBaseAnimation
+        });
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TalkAnimationMs);
+            if (player.TalkAnimationTicket == ticket)
+                StopTalkAnimation(player);
+        });
+    }
+
     // Puts the NPC this player had talking back to its normal idle. Safe to call at any time - it's a
     // no-op when nobody is mid-sentence, so exit paths can call it unconditionally.
     public static void StopTalkAnimation(Player player)

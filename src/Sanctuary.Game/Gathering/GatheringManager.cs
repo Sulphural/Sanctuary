@@ -173,6 +173,9 @@ public sealed class GatheringManager : IGatheringManager
     {
         _questManager.GrantItem(player, state.ItemDefinitionId);
 
+        // Quests can ask for harvested goods, so a successful gather is reported the same way a kill is.
+        _questManager.OnItemGathered(player, state.ItemDefinitionId);
+
         // Same "you earned an item" HUD celebration (icon + "received N") quest item rewards already use -
         // a fixed-position popup, not attached to the node's world position.
         player.SendTunneled(new RewardNonBundledItemPacket { ItemDefinitionId = state.ItemDefinitionId, Quantity = 1 });

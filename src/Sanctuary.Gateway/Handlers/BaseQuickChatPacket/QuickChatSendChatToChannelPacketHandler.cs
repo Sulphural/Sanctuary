@@ -1,9 +1,11 @@
-﻿using System;
+using System;
 using System.Linq;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Sanctuary.Game;
+using Sanctuary.Game.Quests;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common.Attributes;
 using Sanctuary.Packet.Common.Chat;
@@ -14,11 +16,13 @@ namespace Sanctuary.Gateway.Handlers;
 public static class QuickChatSendChatToChannelPacketHandler
 {
     private static ILogger _logger = null!;
+    private static IQuestManager _questManager = null!;
 
     public static void ConfigureServices(IServiceProvider serviceProvider)
     {
         var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
         _logger = loggerFactory.CreateLogger(nameof(QuickChatSendChatToChannelPacketHandler));
+        _questManager = serviceProvider.GetRequiredService<IQuestManager>();
     }
 
     public static bool HandlePacket(GatewayConnection connection, ReadOnlySpan<byte> data)
@@ -30,6 +34,10 @@ public static class QuickChatSendChatToChannelPacketHandler
         }
 
         _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(QuickChatSendChatToChannelPacket), packet);
+
+        // Emotes come through here, not through any emote packet: the client's EmoteHandler binds every
+        // /emote to Ui.ProcessQuickChatCommand. /scare (219) is what a trick-or-treat target reacts to.
+        _questManager.OnQuickChatEmote(connection.Player, packet.Id);
 
         packet.Guid = connection.Player.Guid;
         packet.Name = connection.Player.Name;

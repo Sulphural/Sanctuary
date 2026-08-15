@@ -21,7 +21,12 @@ public sealed class DbUserConfiguration : IEntityTypeConfiguration<DbUser>
 
         builder.Property(u => u.MaxCharacters).IsRequired().HasDefaultValue(10);
 
-        builder.Property(u => u.IsMember).IsRequired().HasDefaultValue(true);
+        // No HasDefaultValue here on purpose: EF treats a configured default as the property's
+        // SENTINEL, so IsMember = true was read as "not set", dropped from the INSERT, and the
+        // column's own default won. On MySQL that default is 0 (from the Initial migration, which
+        // never got a SetIsMemberDefaultToTrue counterpart), so every new account landed
+        // non-member. Leaving the default off makes an explicit true always get written.
+        builder.Property(u => u.IsMember).IsRequired();
         builder.Property(u => u.IsAdmin).IsRequired().HasDefaultValue(false);
 
         builder.Property(u => u.Created).IsRequired().HasDefaultValueSql("NOW()");

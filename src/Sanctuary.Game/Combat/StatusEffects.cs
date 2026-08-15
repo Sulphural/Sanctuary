@@ -109,8 +109,12 @@ public static class StatusEffects
         return kind >= 0;
     }
 
+    // showFx=false applies the effect MECHANICALLY only, with no composite-effect burst on the target. Each
+    // kind's FxId is the burst of the ORB that classically inflicts it (Stun's is the Flabbergast Sphere's
+    // big yellow star explosion), which is right when an orb is what hit you and badly wrong when something
+    // else inflicts the same status - a snowball's own splat is the whole visual it wants.
     public static void Apply(IEntity target, StatusEffectKind kind, int durationMs,
-        CharacterStatus baseline = CharacterStatus.None, Player? source = null)
+        CharacterStatus baseline = CharacterStatus.None, Player? source = null, bool showFx = true)
     {
         var meta = _meta[kind];
         var state = _targets.GetOrAdd(target.Guid, _ => new TargetState());
@@ -130,7 +134,7 @@ public static class StatusEffects
 
         SendState(target, state);
 
-        if (meta.FxId > 0)
+        if (showFx && meta.FxId > 0)
         {
             Send(target, new PlayerUpdatePacketAddEffectTagCompositeEffect
             {

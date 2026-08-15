@@ -13,12 +13,17 @@
     "TargetGuid": 100000002049,
     "RewardCoins": 30,
     "RewardExperience": 60,
-    "RewardItems": [1180, 75110],
+    "RewardItems": [
+      1180,
+      75110
+    ],
     "PrerequisiteQuestId": 0,
     "NextQuestId": 1801,
     "NotificationAvailable": 2,
     "NotificationActive": 6,
-    "ExcludesQuestIds": [2564]
+    "ExcludesQuestIds": [
+      2564
+    ]
   },
   {
     "Comment": "Call the Crew",
@@ -34,7 +39,11 @@
     "TargetGuid": 100000003018,
     "RewardCoins": 30,
     "RewardExperience": 70,
-    "RewardItems": [8185, 3007, 2969],
+    "RewardItems": [
+      8185,
+      3007,
+      2969
+    ],
     "PrerequisiteQuestId": 2563,
     "NextQuestId": 0,
     "NotificationAvailable": 2,
@@ -68,12 +77,18 @@
     "TargetGuid": 100000002889,
     "RewardCoins": 30,
     "RewardExperience": 60,
-    "RewardItems": [56774, 4011, 4045],
+    "RewardItems": [
+      56774,
+      4011,
+      4045
+    ],
     "PrerequisiteQuestId": 0,
     "NextQuestId": 0,
     "NotificationAvailable": 2,
     "NotificationActive": 6,
-    "ExcludesQuestIds": [2563]
+    "ExcludesQuestIds": [
+      2563
+    ]
   },
   {
     "Comment": "Nomi's Little Brother",
@@ -121,7 +136,9 @@
     "TargetGuid": 100000002335,
     "RewardCoins": 40,
     "RewardExperience": 100,
-    "RewardItems": [69834],
+    "RewardItems": [
+      69834
+    ],
     "PrerequisiteQuestId": 3001,
     "NextQuestId": 0,
     "NotificationAvailable": 2,
@@ -135,14 +152,46 @@
         "CollectModelId": 584,
         "CollectNameId": 74449,
         "CollectSpawns": [
-          [-1090.0, 5.40, 384.0],
-          [-1072.0, 5.30, 348.0],
-          [-938.0, 4.75, 230.0],
-          [-1000.0, 6.40, 202.0],
-          [-1005.0, 6.40, 198.0],
-          [-1099.0, 5.19, 225.0],
-          [-1115.0, 5.17, 306.0],
-          [-1052.0, 4.63, 307.0]
+          [
+            -1090.0,
+            5.4,
+            384.0
+          ],
+          [
+            -1072.0,
+            5.3,
+            348.0
+          ],
+          [
+            -938.0,
+            4.75,
+            230.0
+          ],
+          [
+            -1000.0,
+            6.4,
+            202.0
+          ],
+          [
+            -1005.0,
+            6.4,
+            198.0
+          ],
+          [
+            -1099.0,
+            5.19,
+            225.0
+          ],
+          [
+            -1115.0,
+            5.17,
+            306.0
+          ],
+          [
+            -1052.0,
+            4.63,
+            307.0
+          ]
         ]
       },
       {
@@ -167,7 +216,9 @@
     "TargetGuid": 100000001557,
     "RewardCoins": 0,
     "RewardExperience": 88,
-    "RewardItems": [76216],
+    "RewardItems": [
+      76216
+    ],
     "PrerequisiteQuestId": 0,
     "NextQuestId": 0,
     "NotificationAvailable": 2,
@@ -229,7 +280,9 @@
     "TargetGuid": 100000033082,
     "RewardCoins": 15,
     "RewardExperience": 50,
-    "RewardItems": [75858],
+    "RewardItems": [
+      75858
+    ],
     "PrerequisiteQuestId": 104146,
     "NextQuestId": 104154,
     "NotificationAvailable": 2,
@@ -263,7 +316,9 @@
     "TargetGuid": 100000033083,
     "RewardCoins": 15,
     "RewardExperience": 63,
-    "RewardItems": [75855],
+    "RewardItems": [
+      75855
+    ],
     "PrerequisiteQuestId": 104150,
     "NextQuestId": 0,
     "NotificationAvailable": 2,
@@ -374,7 +429,10 @@
         "NameId": 441759,
         "Type": 3,
         "KillNpcNameId": 440711,
-        "KillNpcNameIds": [442610, 442609],
+        "KillNpcNameIds": [
+          442610,
+          442609
+        ],
         "RequiredCount": 9
       },
       {
@@ -407,7 +465,11 @@
       {
         "NameId": 93294,
         "Type": 1,
-        "ReachPosition": [-690.38, 2.3, -1060.25],
+        "ReachPosition": [
+          -690.38,
+          2.3,
+          -1060.25
+        ],
         "ReachRadius": 15
       },
       {
@@ -709,11 +771,31 @@
         "CollectModelId": 197,
         "CollectNameId": 2149,
         "CollectSpawns": [
-          [-595.0, 1.0, 1225.0],
-          [-438.0, 4.0, 1186.0],
-          [-503.0, 1.0, 1078.0],
-          [-399.0, 5.0, 1092.0],
-          [-440.0, 1.0, 1310.0]
+          [
+            -595.0,
+            1.0,
+            1225.0
+          ],
+          [
+            -438.0,
+            4.0,
+            1186.0
+          ],
+          [
+            -503.0,
+            1.0,
+            1078.0
+          ],
+          [
+            -399.0,
+            5.0,
+            1092.0
+          ],
+          [
+            -440.0,
+            1.0,
+            1310.0
+          ]
         ]
       },
       {
@@ -723,11 +805,31 @@
         "CollectModelId": 196,
         "CollectNameId": 3307,
         "CollectSpawns": [
-          [-608.0, 1.0, 1213.0],
-          [-425.0, 4.0, 1174.0],
-          [-491.0, 1.0, 1066.0],
-          [-387.0, 5.0, 1080.0],
-          [-428.0, 1.0, 1323.0]
+          [
+            -608.0,
+            1.0,
+            1213.0
+          ],
+          [
+            -425.0,
+            4.0,
+            1174.0
+          ],
+          [
+            -491.0,
+            1.0,
+            1066.0
+          ],
+          [
+            -387.0,
+            5.0,
+            1080.0
+          ],
+          [
+            -428.0,
+            1.0,
+            1323.0
+          ]
         ]
       },
       {
@@ -764,9 +866,21 @@
         "CollectModelId": 84,
         "CollectNameId": 21364,
         "CollectSpawns": [
-          [-535.0, 0.5, 1350.0],
-          [-550.0, 0.5, 1365.0],
-          [-525.0, 0.5, 1355.0]
+          [
+            -535.0,
+            0.5,
+            1350.0
+          ],
+          [
+            -550.0,
+            0.5,
+            1365.0
+          ],
+          [
+            -525.0,
+            0.5,
+            1355.0
+          ]
         ]
       },
       {
@@ -858,7 +972,10 @@
     "TargetGuid": 100000001557,
     "RewardCoins": 0,
     "RewardExperience": 125,
-    "RewardItems": [75390, 76210],
+    "RewardItems": [
+      75390,
+      76210
+    ],
     "PrerequisiteQuestId": 0,
     "NextQuestId": 0,
     "NotificationAvailable": 2,
@@ -901,15 +1018,24 @@
         "NameId": 101402,
         "TargetGuid": 100000001777,
         "Dialogue": [
-          { "TextId": 101412, "ResponseTextId": 101413 }
+          {
+            "TextId": 101412,
+            "ResponseTextId": 101413
+          }
         ]
       },
       {
         "NameId": 101404,
         "TargetGuid": 100000001758,
         "Dialogue": [
-          { "TextId": 101414, "ResponseTextId": 101415 },
-          { "TextId": 101416, "ResponseTextId": 103597 }
+          {
+            "TextId": 101414,
+            "ResponseTextId": 101415
+          },
+          {
+            "TextId": 101416,
+            "ResponseTextId": 103597
+          }
         ]
       },
       {
@@ -933,7 +1059,9 @@
     "TargetGuid": 100000001925,
     "RewardCoins": 40,
     "RewardExperience": 90,
-    "RewardItems": [15916],
+    "RewardItems": [
+      15916
+    ],
     "PrerequisiteQuestId": 0,
     "NextQuestId": 0,
     "NotificationAvailable": 2,
@@ -946,11 +1074,31 @@
         "CollectModelId": 611,
         "CollectNameId": 21936,
         "CollectSpawns": [
-          [-245.0, -29.09, -1166.0],
-          [-252.0, -30.24, -1173.0],
-          [-268.0, -21.43, -1159.0],
-          [-226.0, -24.65, -1151.0],
-          [-235.0, -30.5, -1183.0]
+          [
+            -245.0,
+            -29.09,
+            -1166.0
+          ],
+          [
+            -252.0,
+            -30.24,
+            -1173.0
+          ],
+          [
+            -268.0,
+            -21.43,
+            -1159.0
+          ],
+          [
+            -226.0,
+            -24.65,
+            -1151.0
+          ],
+          [
+            -235.0,
+            -30.5,
+            -1183.0
+          ]
         ]
       },
       {
@@ -1091,23 +1239,40 @@
         "NameId": 438901,
         "TargetGuid": 100000003842,
         "Dialogue": [
-          { "TextId": 438967, "ResponseTextId": 423585 }
+          {
+            "TextId": 438967,
+            "ResponseTextId": 423585
+          }
         ]
       },
       {
         "NameId": 438499,
         "TargetGuid": 100000003841,
         "Dialogue": [
-          { "TextId": 438969, "ResponseTextId": 428407 }
+          {
+            "TextId": 438969,
+            "ResponseTextId": 428407
+          }
         ]
       },
       {
         "NameId": 438985,
         "RequiredCount": 3,
         "TargetGuid": 100000040032,
-        "TargetGuids": [100000040033, 100000040034],
-        "TargetDialogueIds": [438971, 438973, 438975],
-        "TargetResponseIds": [438972, 438974, 8136]
+        "TargetGuids": [
+          100000040033,
+          100000040034
+        ],
+        "TargetDialogueIds": [
+          438971,
+          438973,
+          438975
+        ],
+        "TargetResponseIds": [
+          438972,
+          438974,
+          8136
+        ]
       },
       {
         "NameId": 437816,
@@ -1126,34 +1291,268 @@
     "SubGoalId": 419863,
     "TargetDialogueId": 419837,
     "IconId": 43278,
+    "RadialOfferIconId": 28294,
+    "RadialTurnInIconId": 28294,
+    "RadialCompletedIconId": 39988,
     "GiverGuid": 100000032813,
     "TargetGuid": 100000032813,
     "RewardCoins": 0,
     "RewardExperience": 0,
-    "RewardItems": [76631],
+    "RewardItems": [
+      76631
+    ],
+    "RandomRewardItems": [
+      76538,
+      76536,
+      76541,
+      76539,
+      76540,
+      76537,
+      76620,
+      76621,
+      76624,
+      76627,
+      76622,
+      76625,
+      76626
+    ],
+    "IsDaily": true,
     "PrerequisiteQuestId": 0,
     "NextQuestId": 0,
     "NotificationAvailable": 242,
-    "NotificationActive": 242,
+    "NotificationActive": 6,
+    "NotificationCompleted": 379,
     "Goals": [
       {
         "NameId": 419863,
         "DescriptionId": 419864,
         "Type": 2,
         "RequiredCount": 1,
-        "CollectModelId": 268,
+        "CollectModelId": 1777,
         "CollectNameId": 419839,
         "CollectSpawns": [
-          [248.77, 27.05, 410.67],
-          [248.79, 26.99, 406.07],
-          [252.72, 27.21, 402.27],
-          [244.70, 26.62, 403.94]
+          [
+            248.77,
+            27.05,
+            410.67
+          ],
+          [
+            252.72,
+            27.21,
+            402.27
+          ],
+          [
+            254.86,
+            27.58,
+            410.38
+          ],
+          [
+            244.7,
+            26.62,
+            403.94
+          ],
+          [
+            245.1,
+            26.85,
+            408.6
+          ]
         ]
       },
       {
         "NameId": 419846,
         "DescriptionId": 419847,
         "DialogueId": 419837,
+        "TargetGuid": 100000032813
+      }
+    ]
+  },
+  {
+    "Comment": "Trick-or-Treat - Super Spooktacular: scare 10 costumed townsfolk in Sanctuary, then talk to each for candy",
+    "QuestId": 3091,
+    "TitleId": 415050,
+    "DescriptionId": 415370,
+    "GiverDialogueId": 415049,
+    "ObjectiveDescriptionId": 415370,
+    "SubGoalId": 415370,
+    "TargetDialogueId": 415052,
+    "IconId": 43278,
+    "GiverGuid": 100000032815,
+    "TargetGuid": 100000032815,
+    "RewardCoins": 0,
+    "RewardExperience": 0,
+    "RewardItems": [
+      9099
+    ],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 0,
+    "NotificationAvailable": 237,
+    "NotificationActive": 237,
+    "Goals": [
+      {
+        "NameId": 415370,
+        "DescriptionId": 415370,
+        "Type": 0,
+        "RequiredCount": 10,
+        "RequiresScare": true,
+        "TargetGuids": [
+          100000040011,
+          100000002415,
+          100000002416,
+          100000002428,
+          100000002429,
+          100000002338,
+          100000040012,
+          100000002385,
+          100000002340,
+          100000002404
+        ]
+      },
+      {
+        "NameId": 415384,
+        "DescriptionId": 415384,
+        "DialogueId": 415052,
+        "TargetGuid": 100000032815
+      }
+    ]
+  },
+  {
+    "Comment": "Present Problems - Snow Days: Candi Ivy sends you round Snowhill to find out why everyone's gifts were empty",
+    "QuestId": 3092,
+    "TitleId": 420268,
+    "DescriptionId": 420269,
+    "GiverDialogueId": 420267,
+    "ObjectiveDescriptionId": 420300,
+    "SubGoalId": 420302,
+    "TargetDialogueId": 420270,
+    "IconId": 43278,
+    "RadialOfferIconId": 28294,
+    "RadialTurnInIconId": 28294,
+    "GiverGuid": 100000032813,
+    "TargetGuid": 100000032813,
+    "RewardCoins": 0,
+    "RewardExperience": 0,
+    "RewardItems": [
+      76627
+    ],
+    "RewardItemQuantities": [
+      5
+    ],
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 3093,
+    "NotificationAvailable": 242,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 420302,
+        "DescriptionId": 420302,
+        "DialogueId": 420311,
+        "TargetGuid": 100000032900
+      },
+      {
+        "NameId": 420304,
+        "DescriptionId": 420304,
+        "DialogueId": 420309,
+        "TargetGuid": 100000032901
+      },
+      {
+        "NameId": 420306,
+        "DescriptionId": 420306,
+        "DialogueId": 420313,
+        "TargetGuid": 100000032902
+      },
+      {
+        "NameId": 420308,
+        "DescriptionId": 420308,
+        "DialogueId": 420270,
+        "TargetGuid": 100000032813
+      }
+    ]
+  },
+  {
+    "Comment": "Holiday Cheer - Snow Days: /cheer at the Gifting Tree to try to coax it into blooming",
+    "QuestId": 3093,
+    "TitleId": 420272,
+    "DescriptionId": 420273,
+    "GiverDialogueId": 420271,
+    "ObjectiveDescriptionId": 420273,
+    "SubGoalId": 420273,
+    "TargetDialogueId": 420274,
+    "IconId": 43278,
+    "RadialOfferIconId": 28294,
+    "RadialTurnInIconId": 28294,
+    "GiverGuid": 100000032813,
+    "TargetGuid": 100000032813,
+    "RewardCoins": 0,
+    "RewardExperience": 0,
+    "RewardItems": [
+      76624
+    ],
+    "RewardItemQuantities": [
+      5
+    ],
+    "PrerequisiteQuestId": 3092,
+    "NextQuestId": 0,
+    "NotificationAvailable": 242,
+    "NotificationActive": 6,
+    "Goals": [
+      {
+        "NameId": 420273,
+        "DescriptionId": 420273,
+        "Type": 5,
+        "EmoteQuickChatId": 145,
+        "ReachPosition": [
+          250.0,
+          27.2,
+          406.5
+        ],
+        "ReachRadius": 18.0
+      },
+      {
+        "NameId": 419846,
+        "DescriptionId": 419847,
+        "DialogueId": 420274,
+        "TargetGuid": 100000032813
+      }
+    ]
+  },
+  {
+    "Comment": "Snowmen Disassembly - Candi Ivy sends you to knock out Snowman Invaders with Anti-Snowman Snowballs during the Snowmen Invaders world event. Wiki-accurate: giver, dialogue, goals (100 snowmen + return) and both gendered jacket rewards. All text ids are the REAL retail strings, recovered by hashing Global.Text.<id> against en_us_data.dat.",
+    "QuestId": 3094,
+    "TitleId": 420292,
+    "DescriptionId": 420293,
+    "GiverDialogueId": 420291,
+    "ObjectiveDescriptionId": 420293,
+    "SubGoalId": 420662,
+    "TargetDialogueId": 420294,
+    "IconId": 242,
+    "GiverGuid": 100000032813,
+    "TargetGuid": 100000032813,
+    "RewardCoins": 250,
+    "RewardExperience": 300,
+    "RewardItems": [
+      76603,
+      76588
+    ],
+    "RewardItemQuantities": [
+      1,
+      1
+    ],
+    "IsDaily": true,
+    "NotificationCompleted": 379,
+    "RadialOfferIconId": 28294,
+    "RadialTurnInIconId": 28294,
+    "RadialCompletedIconId": 39987,
+    "Goals": [
+      {
+        "NameId": 420662,
+        "DescriptionId": 420293,
+        "Type": 3,
+        "KillNpcNameId": 420986,
+        "RequiredCount": 100
+      },
+      {
+        "NameId": 419846,
+        "DialogueId": 420294,
         "TargetGuid": 100000032813
       }
     ]

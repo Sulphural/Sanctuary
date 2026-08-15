@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 
 using Microsoft.Extensions.Logging;
 
@@ -20,6 +20,7 @@ public class ResourceManager : IResourceManager
     public static readonly string ModelCustomizationMappingsFile = Path.Combine(BaseDirectory, "CharacterCreate", "ModelCustomizationMappings.txt");
 
     public static readonly string ModelsFile = Path.Combine(BaseDirectory, "Models.txt");
+    public static readonly string ImageSetMappingsFile = Path.Combine(BaseDirectory, "ImageSetMappings.txt");
 
     public static readonly string ClientItemDefinitionsFile = Path.Combine(BaseDirectory, "ClientItemDefinitions.json");
 
@@ -62,6 +63,7 @@ public class ResourceManager : IResourceManager
     public IdToStringLookup ModelCustomizationMappings { get; }
 
     public ModelDefinitionCollection Models { get; }
+    public ImageSetMappingCollection ImageSetMappings { get; }
 
     public ClientItemDefinitionCollection ClientItemDefinitions { get; }
 
@@ -112,6 +114,7 @@ public class ResourceManager : IResourceManager
         ModelCustomizationMappings = new(_logger);
 
         Models = new(_logger);
+        ImageSetMappings = new(_logger);
 
         ClientItemDefinitions = new(_logger);
 
@@ -159,6 +162,9 @@ public class ResourceManager : IResourceManager
             return false;
 
         if (!ModelCustomizationMappings.Load(ModelCustomizationMappingsFile))
+            return false;
+
+        if (!ImageSetMappings.Load(ImageSetMappingsFile))
             return false;
 
         if (!Models.Load(ModelsFile))

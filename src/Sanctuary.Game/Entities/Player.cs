@@ -171,10 +171,20 @@ public sealed class Player : ClientPcData, IEntity
     // same leniency the collect goals have, never a loss of progress.
     public HashSet<ulong> TalkedQuestNpcs { get; } = new();
 
+    // NPCs this player has scared (/scare, QuickChat id 219) and not yet collected from. A counted talk
+    // goal with RequiresScare only credits an NPC that is in here, which is how trick-or-treating works:
+    // scare first, then talk for the candy. Cleared alongside TalkedQuestNpcs on accept/abandon.
+    public HashSet<ulong> ScaredNpcs { get; } = new();
+
     // Turns of an NPC conversation still to play after the one on screen (see QuestDialogue): each
     // response-button click pops one. Empty = the bubble currently up is the last, so the click ends the
     // conversation and restores the camera.
     public Queue<Resources.Definitions.QuestDialogueLine> PendingDialogue { get; } = new();
+
+    // A one-shot action owned by whatever opened the CURRENT dialog, for dialogs that aren't quest
+    // conversations (the Abominable's Treasure chest). Consumed by the 26/6 response handler before it falls
+    // through to the quest flow, and cleared as it fires so a stale click can't re-trigger it.
+    public Func<bool>? PendingDialogAction { get; set; }
 
     // The NPC doing the talking in that conversation - every turn stays framed on them.
     public ulong PendingDialogueNpcGuid { get; set; }
@@ -503,8 +513,7 @@ public sealed class Player : ClientPcData, IEntity
         // reviving. WorldCombatStateTick resumes once alive.
         _worldCombatActive = false;
         _lastWorldCombatTicks = 0;
-        SendTunneled(new EncounterOverworldCombatPacket { Unknown3 = false });
-        SendTunneled(new EncounterPacketIsFighting { InWorldCombat = false });
+        SendWorldCombatState(false); // forced edge - the client-side appliers ignore a no-change value
 
         // Resurrect animation + revive FX at the player (visible to nearby players too).
         if (ResurrectAnimId > 0)
@@ -811,7 +820,40 @@ public sealed class Player : ClientPcData, IEntity
     // Single-threaded combat-state driver (UpdateEveryTick, 10 Hz). Compares "had a combat action
     // within OutOfCombatSeconds" against the current client state and sends the op41 enter/exit packets only
     // on a transition. Every op41 send happens here on one thread, so the client can never get latched "in
-    // combat" with the menu stuck. Sends BOTH flags for the full indicator; arenas drive their own.
+    // combat" with the menu stuck. Arenas drive their own.
+    //
+    // ★ ROOT CAUSE of "every npc has a health bar" (traced 2026-08-13). sub132 is an ENCOUNTER packet -
+    // battle-instance state. Inside a dungeon every actor in the world IS a combatant, so the client putting
+    // a bar on all of them is correct there. Sending it in the OVERWORLD imports that whole arena HUD, and
+    // arena-style bars on quest givers, props and projectile carriers are what that looks like.
+    //
+    // ★ DECISION (user, 2026-08-13): OFF. No health bars anywhere, at the cost of the floating damage
+    // numbers. The two are inseparable in this client and the bars were the bigger annoyance. Flipping this
+    // back to true restores the numbers and the bars together - there is no third option, see below.
+    //
+    // It is sent to unlock floating damage numbers, and LIVE-TESTED 2026-08-13 it is genuinely required for
+    // them out here. The combat-text gate (FUN_008bb0b0) suppresses text unless one of four conditions
+    // breaks, and only two are reachable from a server:
+    //   * `BaseClient+0x80 != 0`  <- this flag. The one that works.
+    //   * `BaseClient+0x788 == 3` <- +0x788 is the client's GAME MODE and 3 maps to the literal string
+    //     "StartingZone" (FUN_0090e8a0). Tried as an escape hatch on the theory that our overworld is that
+    //     mode; it is NOT - "StartingZone" is the client's own tutorial zone, our world reports a different
+    //     mode, and with 132 off the numbers vanished. Do not retry this.
+    // The other two are a client OPTION byte (+0x778 -> +10) and being inside a type-4 activity - neither is
+    // server-settable.
+    //
+    // The cost is that +0x80 also raises the ENCOUNTER combat HUD. Traced to the native nameplate updater
+    // (FUN_009d08f0): each plate ELEMENT carries a required detail level and is shown when a GLOBAL threshold
+    // at client+0x488 clears it - combat raises that threshold, so the health-bar element switches on for
+    // every plate at once. It is a global switch, not a per-actor decision, which is why no AddNpc field or
+    // status bit could ever have suppressed one actor's bar. (The client's own
+    // NamePlateSettings/ShowAllNamePlates user option is the only other lever, and it hides names too.)
+    //
+    // Enemy bars do NOT depend on this: every damageable npc gets SendNpcRelevance + SendNpcHealth when it
+    // becomes visible (OnAddVisibleNpcs), which is the per-npc path.
+    public static bool SendInWorldCombatFlag { get; set; }          // op41/132 EncounterOverworldCombatPacket
+    public static bool SendIsFightingFlag { get; set; } = true;     // op41/133 EncounterPacketIsFighting
+
     private void WorldCombatStateTick()
     {
         if (Zone is not StartingZone)
@@ -830,8 +872,53 @@ public sealed class Player : ClientPcData, IEntity
             return; // no transition
 
         _worldCombatActive = want;
-        SendTunneled(new EncounterOverworldCombatPacket { Unknown3 = want });
-        SendTunneled(new EncounterPacketIsFighting { InWorldCombat = want });
+        SendWorldCombatState(want);
+
+    }
+
+    // ★ Both client-side appliers are EDGE-GUARDED (traced 2026-08-13): FUN_009058d0 (op41/132 -> +0x80) and
+    // FUN_00905a50 (op41/133 -> +0x81) both open with `if (param_2 != current)` and do NOTHING otherwise. The
+    // UI event that actually drives the npc health bars, "CallHandler:SetInWorldCombat", is fired from inside
+    // that guard - so sending a value the client already holds is silently a no-op.
+    //
+    // That is the "bars stay up after combat ends" bug: any disagreement between our _worldCombatActive and
+    // the client's real +0x80/+0x81 (a crash, a mid-fight zone change, a server restart while flagged, a
+    // dropped packet) makes every later "combat off" unrepresentable, and the bars only clear when something
+    // else rebuilds the HUD - which is exactly why switching jobs cleared them.
+    //
+    // Turning OFF therefore forces a real edge: set true, then false. The client is already showing the bars
+    // at that point, so the intermediate value costs nothing visually, and the false transition is guaranteed
+    // to fire the handler no matter what state the client was actually in.
+    public void SendWorldCombatState(bool active)
+    {
+        if (active)
+        {
+            // Raising the state is what the flags gate. With SendInWorldCombatFlag off we simply never put
+            // the client into the encounter HUD, which is the whole point.
+            if (SendInWorldCombatFlag)
+                SendTunneled(new EncounterOverworldCombatPacket { Unknown3 = true });
+            if (SendIsFightingFlag)
+                SendTunneled(new EncounterPacketIsFighting { InWorldCombat = true });
+            return;
+        }
+
+        // ★ CLEARING is NEVER gated by the flags. Other paths raise 132 directly and legitimately - the
+        // knockout flow does it so the respawn window renders its pay/safe buttons (BaseZone.OnPlayerKnockedOut)
+        // - so if the clear respected SendInWorldCombatFlag, a player who died would revive with the encounter
+        // HUD latched on and nothing able to take it back down.
+        //
+        // The pre-pulse handles the other half: both appliers are edge-guarded (`if (param_2 != current)`),
+        // so a client that is already false ignores a false. Sending true first guarantees the false
+        // transition actually fires. Only done when the flag is on - with it off the client should never have
+        // been raised in the first place, and pulsing true would briefly show the very bars we are avoiding.
+        if (SendInWorldCombatFlag)
+        {
+            SendTunneled(new EncounterOverworldCombatPacket { Unknown3 = true });
+            SendTunneled(new EncounterPacketIsFighting { InWorldCombat = true });
+        }
+
+        SendTunneled(new EncounterOverworldCombatPacket { Unknown3 = false });
+        SendTunneled(new EncounterPacketIsFighting { InWorldCombat = false });
     }
 
     // DEATH: the player's HP reached 0 — they're knocked out. Marks them dead (blocks further
@@ -1465,6 +1552,12 @@ public sealed class Player : ClientPcData, IEntity
             if (npc is Mount)
                 continue;
 
+            // A quest's pickups are world entities shared by everyone, but they belong to whoever is on
+            // the quest: don't send them to players who aren't. Otherwise the Gifting Tree's presents sit
+            // under the tree for the whole server whether anyone is trick-or-treating or not.
+            if (!CanSeeQuestCollectible(npc.Guid))
+                continue;
+
             var playerUpdatePacketAddNpc = npc.GetAddNpcPacket();
 
             // Vendors bake a static badge into the AddNpc packet itself (npc.NotificationImageSetId).
@@ -1479,12 +1572,31 @@ public sealed class Player : ClientPcData, IEntity
 
             SendTunneled(playerUpdatePacketAddNpc);
 
+            // Per-npc plate colour, which has to follow the AddNpc for EVERY viewer - see Npc.ClientDisposition.
+            if (npc.ClientDisposition is { } clientDisposition)
+                SendTunneled(new PlayerUpdatePacketUpdateDisposition { Guid = npc.Guid, Disposition = clientDisposition });
+
+            // Same story for a permanent attached effect (the snowball piles' sparkle).
+            if (npc.AttachedEffectId > 0)
+                SendTunneled(new PlayerUpdatePacketAddEffectTagCompositeEffect
+                {
+                    Guid = npc.Guid,
+                    TagId = npc.AttachedEffectTagId,
+                    CompositeEffectId = npc.AttachedEffectId,
+                    SourceGuid = npc.Guid,
+                });
+
             // Damageable hostiles (quest kill targets, world combat NPCs) need their attack cursor
             // (NpcRelevance) + health bar as soon as they come into view, not just at zone load.
-            if (npc.IsDamageable)
+            if (npc.IsDamageable && npc.SendCombatRelevance)
             {
                 Zone.SendNpcRelevance(this, npc);
-                Zone.SendNpcHealth(this, npc);
+
+                // Only push health stats for enemies that are SUPPOSED to show a bar. Sending them is what
+                // makes the client draw one, so a damageable-but-barless enemy (the Snowman Invaders) has to
+                // be skipped here rather than just flagged.
+                if (npc.ShowHealthBar)
+                    Zone.SendNpcHealth(this, npc);
             }
         }
 
@@ -1558,6 +1670,21 @@ public sealed class Player : ClientPcData, IEntity
 
     // Quest badges are per-player (unlike vendor badges, which are static on the Npc entity),
     // since they depend on this player's own quest progress.
+    // True unless this NPC is a quest pickup the player has no business seeing. Non-collectibles are
+    // always visible. A pickup shows only while its quest is active AND its own goal is the one being
+    // worked on, so they appear on accept and vanish once the goal is ticked off or the quest ends.
+    public bool CanSeeQuestCollectible(ulong npcGuid)
+    {
+        if (!_resourceManager.Quests.Collectibles.TryGetValue(npcGuid, out var location))
+            return true;
+
+        if (!Quests.TryGetValue(location.QuestId, out var completed) || completed)
+            return false;
+
+        int goalIndex = QuestGoalProgress.TryGetValue(location.QuestId, out var progress) ? progress : 0;
+        return goalIndex == location.GoalIndex;
+    }
+
     public int GetNotificationImageId(Npc npc)
     {
         var quests = _resourceManager.Quests;
@@ -1579,6 +1706,20 @@ public sealed class Player : ClientPcData, IEntity
             {
                 if (Quests.TryGetValue(questId, out var completed) && !completed && quests.TryGet(questId, out var quest))
                     return quest.NotificationActive;
+            }
+        }
+
+        // Daily quest already done today: the giver wears the greyed "repeatable, not right now" badge
+        // instead of going bare, so it still reads as a quest NPC you should come back to.
+        if (quests.ByGiver.TryGetValue(npc.Guid, out var dailyQuestIds))
+        {
+            foreach (var questId in dailyQuestIds)
+            {
+                if (!Quests.TryGetValue(questId, out var isDone) || !isDone)
+                    continue;
+
+                if (quests.TryGet(questId, out var doneQuest) && doneQuest.IsDaily && doneQuest.NotificationCompleted != 0)
+                    return doneQuest.NotificationCompleted;
             }
         }
 

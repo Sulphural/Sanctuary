@@ -12,6 +12,9 @@ namespace Sanctuary.Game.Quests;
 // A DI singleton; every method takes the acting player, so it holds no per-player state itself.
 public interface IQuestManager
 {
+    // Lets DAILY quests finished on an earlier day be taken again.
+    void ExpireDailyQuests(Player player);
+
     // True if the NPC gives or is a target of any quest (used to wire its interaction).
     bool IsQuestNpc(ulong npcGuid);
 
@@ -22,9 +25,16 @@ public interface IQuestManager
     // One option is run directly by the NPC; two or more put the interaction ring on screen.
     List<NpcInteractionOption> GetInteractionOptions(Player player, Npc npc);
 
+    // Player used an emote. Emotes arrive as QuickChat, not as any emote packet - /scare (id 219) is
+    // what makes a trick-or-treat target willing to hand over candy.
+    void OnQuickChatEmote(Player player, int quickChatId);
+
     // Player interacted with a Collect-goal pickup (a spawned collectible world object): credit the active
     // Collect goal's count and, at the required count, tick the goal off and advance to the return step.
     void OnCollectInteract(Player player, Npc npc);
+
+    // Player harvested an item from a gathering node: credits the active Gather goal that wants it.
+    void OnItemGathered(Player player, int itemDefinitionId);
 
     // Player killed an NPC: credit the active Kill goal of any in-progress quest whose
     // KillNpcNameId matches the NPC's NameId.
@@ -70,5 +80,5 @@ public interface IQuestManager
     // Grants one of definitionId to the player: stacks it in the DB (by definition + tint), mirrors it
     // into the in-memory inventory, and tells the client. Exposed for reuse by non-quest reward paths
     // (e.g. gathering nodes).
-    void GrantItem(Player player, int definitionId);
+    void GrantItem(Player player, int definitionId, int quantity = 1);
 }

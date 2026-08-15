@@ -537,6 +537,12 @@ public abstract class BaseZone : IZone, IDisposable
         if (!npc.IsDamageable)
             return;
 
+        // Pushing health stats is what MAKES the client draw a bar, so an npc that opts out of one must not
+        // receive them from ANY caller - guarding only at the call sites let the bar back in through
+        // whichever path was overlooked.
+        if (!npc.ShowHealthBar)
+            return;
+
         var updateStat = new ClientUpdatePacketUpdateStat { Guid = npc.Guid };
         updateStat.Stats.Add(new CharacterStat(CharacterStatId.MaxHealth, npc.MaxHealth));
         player.SendTunneled(updateStat);
@@ -655,6 +661,33 @@ public abstract class BaseZone : IZone, IDisposable
         npc.UpdatePosition(position, rotation);
 
         return true;
+    }
+
+    // World props (ScriptableZone.spawnGatheringNode / spawnSnowballPile). These only exist in the
+    // overworld, so the base zone refuses them rather than half-spawning a prop with no system behind it —
+    // a dungeon script calling one is a mistake worth seeing in the log. StartingZone overrides both.
+    public virtual bool TrySpawnGatheringNode(int modelId, int itemDefinitionId, string name, float x, float y, float z)
+    {
+        _logger.LogWarning("Zone \"{zone}\" does not support gathering nodes (model {model}).", Name, modelId);
+        return false;
+    }
+
+    public virtual bool TrySpawnSnowballPile(float x, float y, float z, float heading)
+    {
+        _logger.LogWarning("Zone \"{zone}\" does not support snowball piles.", Name);
+        return false;
+    }
+
+    public virtual bool TrySpawnQuestCollectible(ulong guid, float x, float y, float z)
+    {
+        _logger.LogWarning("Zone \"{zone}\" does not support quest collectibles (guid {guid}).", Name, guid);
+        return false;
+    }
+
+    public virtual bool TrySpawnDungeonEntrance(int poiId, float x, float y, float z, float heading)
+    {
+        _logger.LogWarning("Zone \"{zone}\" does not support dungeon entrances (POI {poi}).", Name, poiId);
+        return false;
     }
 
     // Scratch space for CollectScriptSpawnPoints below — a script reports points into here via
@@ -1136,12 +1169,20 @@ public abstract class BaseZone : IZone, IDisposable
                 }
 
                 UpdateAmbientChatter();
+                UpdateEverySecondZone();
             }
             catch (Exception ex)
             {
                 _logger.LogCritical(ex, $"{Name} ({Id}) - Zone Exception");
             }
         }
+    }
+
+    // Per-second hook for a zone's own scheduled content (timed world events and the like). Runs on the same
+    // single thread as the entity sweep above, so an override can touch zone state without locking. Anything
+    // that throws here is caught by the loop's handler and logged, same as the rest of the tick.
+    protected virtual void UpdateEverySecondZone()
+    {
     }
 
     // NPC greeting bubbles. Driven from the PLAYER side on purpose: the loop above skips Static NPCs (which

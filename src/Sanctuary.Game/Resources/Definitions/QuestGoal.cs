@@ -24,6 +24,15 @@ public enum QuestGoalType
     // EncounterId (credited via QuestManager.OnEncounterComplete when the arena
     // win fires). This is how a dungeon/encounter becomes a quest objective.
     EncounterComplete = 4,
+
+    // Completes when the player uses a particular EMOTE while standing within ReachRadius of
+    // ReachPosition - retail's "stand near the Gifting Tree and /cheer". Emotes reach the server as
+    // QuickChat (see QuestManager.OnQuickChatEmote), so the emote is identified by its quick-chat id.
+    UseEmote = 5,
+
+    // Completes when the player HARVESTS RequiredCount of GatherItemDefinitionId from world nodes -
+    // the gathering system's counterpart to Kill, credited from GatheringManager via OnItemGathered.
+    Gather = 6,
 }
 
 // One turn of an NPC conversation: the NPC speaks, and the player's reply is the caption on the
@@ -86,6 +95,12 @@ public class QuestGoal
     // Freewheelers speak their own line instead of all sharing DialogueId. Short/empty = fall back to
     // DialogueId for the targets it doesn't cover.
     public List<int> TargetDialogueIds { get; set; } = new();
+
+    // Counted TalkToNpc only: the NPC must have been SCARED before talking will credit it - retail's
+    // Trick-or-Treat, where nobody hands out candy until you /scare them. The client sends emotes as
+    // QuickChat (EmoteHandler binds every one to Ui.ProcessQuickChatCommand), so /scare arrives as
+    // QuickChat id 219 and QuestManager.OnQuickChatEmote records it against nearby targets.
+    public bool RequiresScare { get; set; }
 
     // For count goals (Collect/Kill, and a counted TalkToNpc): how many
     // of the thing are required. 0 falls back to CollectSpawns.Count (collect them all).
@@ -172,4 +187,11 @@ public class QuestGoal
 
     // For ReachLocation: how close (world units) counts as "arrived". 0 -> default 12.
     public float ReachRadius { get; set; }
+
+    // For UseEmote: the quick-chat id of the emote that satisfies this goal. From the client's
+    // EmoteHandler table - /cheer is 145, /scare 219, /wave 143, /point 139.
+    public int EmoteQuickChatId { get; set; }
+
+    // For Gather: the item definition harvested from a node that credits this goal.
+    public int GatherItemDefinitionId { get; set; }
 }

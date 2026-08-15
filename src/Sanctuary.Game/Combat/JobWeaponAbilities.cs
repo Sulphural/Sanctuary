@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Numerics;
 
 using Sanctuary.Game.Entities;
+using Sanctuary.Game.Interactions;
 using Sanctuary.Packet;
 
 namespace Sanctuary.Game.Combat;
@@ -31,23 +32,45 @@ public static class JobWeaponAbilities
     public static AbilityPacketSetDefinition? BuildToolbar(Player player, IResourceManager resources)
     {
         var def = JobKits.Active(player)?.BuildToolbar(player, resources);
-        if (def is not null && PowerupSystem.MakeHeldSlot(player.Guid) is { } powerupSlot)
-            def.Slots.Add(powerupSlot);
+        if (def is not null)
+            ApplyThirdSlot(player, def);
         return def;
     }
 
-    // Same toolbar; BuildToolbar above already carries the held power-up slot (if any) whenever a job kit
-    // exists, so this only needs its own fallback for the no-kit case. Kept as a separate method (rather
-    // than folding call sites into plain BuildToolbar+SendTunneled) since PowerupSystem.Grant/TryUse want to
-    // guarantee the slot shows even for a player with no active combat job.
+    // Slot index 2 - the "3" key - sitting on top of the job's own attack (0) and special (1). Two things
+    // want it, so they take precedence rather than fight: a HELD POWER-UP wins while the player has one
+    // (transient and combat-critical, and it's gone the moment it's pressed), otherwise the SNOWBALL TOOL
+    // shows for anyone who has picked one up in Snowhill.
+    //
+    // ★ Assigned BY INDEX, not appended. Slots serialize positionally (see AbilityPacketSetDefinition), so
+    // appending only lands on index 2 when the kit happens to have contributed exactly 2 slots - on the
+    // empty no-kit toolbar an append would put it on index 0, i.e. the "1" key.
+    private static void ApplyThirdSlot(Player player, AbilityPacketSetDefinition def)
+    {
+        var slot = PowerupSystem.MakeHeldSlot(player.Guid) ?? SnowballTool.MakeToolbarSlot(player);
+        if (slot is null)
+            return;
+
+        while (def.Slots.Count < SnowballTool.ToolbarSlotIndex)
+            def.Slots.Add(new AbilityPacketSetDefinition.Slot { Type = 0 });
+
+        if (def.Slots.Count == SnowballTool.ToolbarSlotIndex)
+            def.Slots.Add(slot);
+        else
+            def.Slots[SnowballTool.ToolbarSlotIndex] = slot;
+    }
+
+    // Same toolbar; BuildToolbar above already carries the third slot whenever a job kit exists, so this
+    // only needs its own fallback for the no-kit case. Kept as a separate method (rather than folding call
+    // sites into plain BuildToolbar+SendTunneled) since PowerupSystem.Grant/TryUse and the snowball pickup
+    // want to guarantee the slot shows even for a player with no active combat job.
     public static void SendToolbarWithPowerup(Player player, IResourceManager resources)
     {
         var def = BuildToolbar(player, resources);
         if (def is null)
         {
             def = AbilityPacketSetDefinition.CreateEmpty(player.ActiveProfileId);
-            if (PowerupSystem.MakeHeldSlot(player.Guid) is { } powerupSlot)
-                def.Slots.Add(powerupSlot);
+            ApplyThirdSlot(player, def);
         }
 
         player.SendTunneled(def);
@@ -76,6 +99,7 @@ public static class JobWeaponAbilities
         PreloadAbilityDefinitions(player);
         player.SendTunneled(toolbar);
         PreloadAbilityEffects(player);
+        SnowballTool.PreloadEffects(player); // no-op unless they're carrying one
         return true;
     }
 

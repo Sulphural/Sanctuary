@@ -31,6 +31,31 @@ public class Npc : IEntity
     // Nameplate text color (AddNpc.NameColor; 0 = client default). Bosses in the reference
     // video render RED names — first candidate mechanism alongside op32/sub9 EnableBossDisplay.
     public int NameColor { get; set; }
+
+    // A looping composite effect attached to this npc, sent to each viewer right after its AddNpc.
+    //
+    // ★ Sent per-viewer for the same reason ClientDisposition is: doing it once at spawn only reaches players
+    // who were already standing there, and anyone who walks up later would see a bare prop.
+    public int AttachedEffectId { get; set; }
+    public int AttachedEffectTagId { get; set; }
+
+    // Whether this npc gets the combat NpcRelevance push (the attack cursor) when a player first sees it.
+    //
+    // ★ Relevance is what marks an npc as a TARGET, and ProjectileNpc already records that "a targetable NPC
+    // draws the health bar". So for a damageable npc that must NOT show a bar, this is the switch - the
+    // health packets were only ever half of it.
+    public bool SendCombatRelevance { get; set; } = true;
+
+    // Per-npc nameplate DISPOSITION override, applied to every viewer as they see the npc.
+    //
+    // ★ Needed because AddNpc's own Disposition field is DISCARDED client-side - the apply takes it from a
+    // client-global flag instead - so the only way to colour one npc's plate is op35/28 AFTER its AddNpc.
+    // Sending that once at spawn only reaches players who were already nearby; anyone who walks up later
+    // gets the AddNpc from the tile-visibility sweep and would keep the default colour. Carrying it on the
+    // npc lets OnAddVisibleNpcs send it alongside every AddNpc, whenever that happens.
+    //
+    // null = leave the client's default. 0 hostile (red), 1 neutral / 2 ally (both bluish 0xFF6699CC).
+    public int? ClientDisposition { get; set; }
     public int SubTextNameId { get; set; }
     // HIDE the overhead nameplate. LIVE-PROVEN 2026-07-03 (builds 12 vs 13): true hides,
     // false shows — upstream's name is correct; the IDA "m_bShowNamePlate" annotation is wrong.
@@ -132,8 +157,35 @@ public class Npc : IEntity
     // subtract, and EACH return true — firing OnNpcKilled 3-4x for one death (the level-up/XP effect
     // playing several times, and multiple graceful-removes that jam the client's combat state so a bow
     // can't re-fire). The lock guarantees a single caller crosses 0 and returns true.
-    public bool ApplyDamage(int amount)
+    // Only a SNOWBALL can hurt this npc - swords, bows and abilities do nothing. The Snow Days snowmen are
+    // built this way on purpose: the event is a snowball fight, so a passing archer can't shortcut it, and
+    // wandering into it on a combat job can't accidentally trivialise the boss.
+    public bool SnowballOnly { get; set; }
+
+    // This npc belongs to a timed world EVENT whose spawner owns its entire lifecycle (the Snowmen Invaders
+    // wave, its boss, its chest, its announcer). The one hard guarantee it buys: such an npc can NEVER fall
+    // through to the generic world-enemy "respawn at its post" path when killed.
+    //
+    // It is a flag on the NPC rather than a lookup in the event's lists because that fallthrough is exactly
+    // what happens when the two disagree - an npc the event has lost track of gets respawned forever at its
+    // home position, as a normal hostile, with none of the event's rules. The npc always knows what it is;
+    // the bookkeeping might not.
+    public bool IsEventSpawn { get; set; }
+
+    public bool ApplyDamage(int amount, bool fromSnowball = false)
     {
+        // Invulnerable is honoured HERE, not just in IsDamageable. Callers that pick targets by RANGE
+        // rather than by client targeting (the snowball) never consult IsDamageable, so without this an
+        // npc marked un-hittable could still be killed - which is the whole point of the flag for both of
+        // its users: the fleeing Frostfang Alpha, and the Abominable Snowman standing over the tree he has
+        // already won, whose death at that moment would run the "you beat him" ending on top of the
+        // failure in progress.
+        if (Invulnerable)
+            return false;
+
+        if (SnowballOnly && !fromSnowball)
+            return false;
+
         lock (_damageLock)
         {
             if (!IsAlive)
@@ -269,8 +321,13 @@ public class Npc : IEntity
     public const float AmbientGreetRange = 18f;
     public const float AmbientGreetRangeSquared = AmbientGreetRange * AmbientGreetRange;
 
-    private const int AmbientGreetCooldownMs = 25_000;
+    // Per-npc so an event mob can be quieter than a town greeter. The default is the town-greeter pace.
+    public int AmbientGreetCooldownMs { get; set; } = 25_000;
     private long _nextAmbientGreetTicks;
+
+    // Chance (percent) that an eligible bark actually fires. 100 = every time the cooldown is up. Lower it
+    // for a crowd: sixteen snowmen all barking on the same cooldown is a wall of noise.
+    public int AmbientGreetChancePercent { get; set; } = 100;
 
     public void TryAmbientGreet()
     {
@@ -282,6 +339,9 @@ public class Npc : IEntity
             return;
 
         _nextAmbientGreetTicks = now + AmbientGreetCooldownMs;
+
+        if (AmbientGreetChancePercent < 100 && Random.Shared.Next(100) >= AmbientGreetChancePercent)
+            return;
 
         // IsChatLogged=false: bubble over the head, nothing in the chat log.
         SayStringId(AmbientLineIds[Random.Shared.Next(AmbientLineIds.Length)]);
