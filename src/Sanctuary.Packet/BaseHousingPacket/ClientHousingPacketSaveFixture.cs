@@ -12,6 +12,8 @@ public class ClientHousingPacketSaveFixture : BaseHousingPacket, IDeserializable
     public ulong FixtureGuid;
     public Vector4 Position;
     public Quaternion Rotation;
+    public float Unknown;
+    public CustomizationDetail Customization = new();
     public float Scale;
 
     public ClientHousingPacketSaveFixture() : base(OpCode)
@@ -34,6 +36,23 @@ public class ClientHousingPacketSaveFixture : BaseHousingPacket, IDeserializable
             return false;
 
         if (!reader.TryRead(out value.Rotation))
+            return false;
+
+        // Older emulator tooling emitted only the transform and scale. The live
+        // client includes an additional float and the fixture customization
+        // immediately before the final scale value.
+        if (reader.RemainingLength == sizeof(float))
+        {
+            if (!reader.TryRead(out value.Scale))
+                return false;
+
+            return reader.RemainingLength == 0;
+        }
+
+        if (!reader.TryRead(out value.Unknown))
+            return false;
+
+        if (!value.Customization.TryRead(ref reader))
             return false;
 
         if (!reader.TryRead(out value.Scale))

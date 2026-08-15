@@ -64,7 +64,7 @@ public class GoHouseChatCommand : GatewayChatCommand
             // Verify the house exists and get its info
             using var cmd = db.CreateCommand();
             cmd.CommandText = @"
-                SELECT h.OwnerId, h.HouseDefinitionId
+                SELECT h.CharacterId, h.Definition
                 FROM Houses h
                 WHERE h.Id = $houseId
                 LIMIT 1;

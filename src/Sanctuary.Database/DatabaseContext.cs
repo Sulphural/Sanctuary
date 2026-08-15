@@ -24,6 +24,7 @@ public sealed class DatabaseContext : DbContext
     public DbSet<DbCharacter> Characters => Set<DbCharacter>();
     public DbSet<DbHouse> Houses => Set<DbHouse>();
     public DbSet<DbHouseFixture> HouseFixtures => Set<DbHouseFixture>();
+    public DbSet<DbHouseVote> HouseVotes => Set<DbHouseVote>();
     public DbSet<DbHousePermission> HousePermissions => Set<DbHousePermission>();
 
     public DatabaseContext()

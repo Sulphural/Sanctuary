@@ -66,17 +66,19 @@ public class CreateHouseChatCommand : GatewayChatCommand
             using var db = new SqliteConnection(CommandSupport.DbConnectionString);
             db.Open();
 
-            // Create a new house for the player
+            // Create a new house for the player. Houses.Id is ValueGeneratedNever in the EF model, so the id
+            // is allocated here rather than by SQLite's rowid - last_insert_rowid() would come back 0.
             using var cmd = db.CreateCommand();
             cmd.CommandText = @"
-                INSERT INTO Houses (OwnerId, HouseDefinitionId, NameId, IsLocked, IsMembersOnly, IsFloraAllowed,
-                                   PetAutospawn, MaxFixtureCount, MaxLandmarkCount, IconId, Rating, Votes,
-                                   Created, LastVisited)
-                VALUES ($ownerId, $houseDefId, 0, 0, 0, 1, 0, 100, 10, 0, 0.0, 0, datetime('now'), datetime('now'));
+                INSERT INTO Houses (Id, CharacterId, Definition, Name, IsLocked, IsMembersOnly, IsFloraAllowed,
+                                   PetAutospawn, MaxFixtureCount, MaxLandmarkCount, FurnitureScore, IsPublished,
+                                   Rating, Votes, Description, KeywordList, Created, LastVisited)
+                VALUES ((SELECT COALESCE(MAX(Id), 0) + 1 FROM Houses), $characterId, $houseDefId, NULL,
+                        0, 0, 1, 0, 2000, 0, 0, 0, 0.0, 0, '', '', datetime('now'), datetime('now'));
 
-                SELECT last_insert_rowid();
+                SELECT MAX(Id) FROM Houses;
             ";
-            cmd.Parameters.AddWithValue("$ownerId", characterId);
+            cmd.Parameters.AddWithValue("$characterId", characterId);
             cmd.Parameters.AddWithValue("$houseDefId", houseDefId);
 
             var newHouseId = cmd.ExecuteScalar();

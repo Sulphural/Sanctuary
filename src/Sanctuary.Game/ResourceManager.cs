@@ -182,6 +182,8 @@ public class ResourceManager : IResourceManager
         if (!Stores.Load(StoresFile) || !Stores.LoadBundles(StoreBundlesFile))
             return false;
 
+        AddGeneratedHousingItemDefinitions();
+
         if (!StoreBundleGroups.Load(StoreBundleGroupsFile))
             return false;
 
@@ -264,7 +266,11 @@ public class ResourceManager : IResourceManager
             else if (e.FullPath == ModelsFile)
                 loaded = Models.Load(ModelsFile);
             else if (e.FullPath == ClientItemDefinitionsFile)
+            {
                 loaded = ClientItemDefinitions.Load(ClientItemDefinitionsFile);
+                if (loaded)
+                    AddGeneratedHousingItemDefinitions();
+            }
             else if (e.FullPath == ItemClassesFile)
                 loaded = ItemClasses.Load(ItemClassesFile);
             else if (e.FullPath == ItemCategoriesFile)
@@ -274,7 +280,11 @@ public class ResourceManager : IResourceManager
             else if (e.FullPath == StoresFile)
                 loaded = Stores.Load(StoresFile);
             else if (e.FullPath == StoreBundlesFile)
+            {
                 loaded = Stores.LoadBundles(StoreBundlesFile);
+                if (loaded)
+                    AddGeneratedHousingItemDefinitions();
+            }
             else if (e.FullPath == StoreBundleGroupsFile)
                 loaded = StoreBundleGroups.Load(StoreBundleGroupsFile);
             else if (e.FullPath == StoreBundleCategoriesFile)
@@ -311,5 +321,12 @@ public class ResourceManager : IResourceManager
         {
             _fileSystemWatcher.EnableRaisingEvents = true;
         }
+    }
+
+    private void AddGeneratedHousingItemDefinitions()
+    {
+        var added = HousingItemDefinitionGenerator.AddMissingDefinitions(ClientItemDefinitions, Stores);
+        if (added > 0)
+            _logger.LogInformation("Generated {count} missing housing item definitions from store bundles.", added);
     }
 }

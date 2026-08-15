@@ -52,6 +52,7 @@ public static class PacketTunneledClientWorldPacketHandler
             BaseLobbyGameDefinitionPacket.OpCode => BaseLobbyGameDefinitionPacketHandler.HandlePacket(connection, reader),
             BaseHousingPacket.OpCode => BaseHousingPacketHandler.HandlePacket(connection, reader),
             BaseMatchmakingPacket.OpCode => BaseMatchmakingPacketHandler.HandlePacket(connection, reader),
+            BaseRatingPacket.OpCode => BaseRatingPacketHandler.HandlePacket(connection, reader),
             BaseFotomatPacket.OpCode => BaseFotomatPacketHandler.HandlePacket(connection, reader),
             BaseActivityServicePacket.OpCode => BaseActivityServicePacketHandler.HandlePacket(connection, reader, 1),
             WallOfDataBasePacket.OpCode => WallOfDataBasePacketHandler.HandlePacket(connection, reader),

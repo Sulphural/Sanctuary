@@ -39,7 +39,6 @@ public class HousingPacketUpdateHouseInfo : BaseHousingPacket, ISerializablePack
 
         writer.Write(CurFixtureCount);
         writer.Write(CurLandmarkCount);
-
         writer.Write(FurnitureScore);
 
         return writer.Buffer;

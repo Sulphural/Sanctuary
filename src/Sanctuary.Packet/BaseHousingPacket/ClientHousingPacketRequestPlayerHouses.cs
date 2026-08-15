@@ -21,6 +21,6 @@ public class ClientHousingPacketRequestPlayerHouses : BaseHousingPacket, IDeseri
         if (!value.TryRead(ref reader))
             return false;
 
-        return reader.RemainingLength == 0;
+        return true;
     }
 }

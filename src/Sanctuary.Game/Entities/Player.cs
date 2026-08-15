@@ -139,7 +139,6 @@ public sealed class Player : ClientPcData, IEntity
     public bool InCombat { get; set; }
     public ulong CombatTargetGuid { get; set; }
     public ulong ActiveMerchantGuid { get; set; }
-    public ulong CurrentHouseGuid { get; set; }
     public DateTime LastCombatTime { get; set; }
 
     public Pet? Pet { get; set; }
@@ -214,6 +213,20 @@ public sealed class Player : ClientPcData, IEntity
 
     public Vector4 StartingZonePosition { get; set; }
     public Quaternion StartingZoneRotation { get; set; }
+    private ulong _currentHouseGuid;
+    public ulong CurrentHouseGuid
+    {
+        get => _currentHouseGuid;
+        set
+        {
+            if (_currentHouseGuid == value)
+                return;
+
+            _currentHouseGuid = value;
+            RemovePlayersFromOtherInstances();
+            RemoveNpcsFromOtherInstances();
+        }
+    }
 
     public Player(BaseZone zone, UdpConnection connection, IResourceManager resourceManager)
     {
@@ -1327,7 +1340,9 @@ public sealed class Player : ClientPcData, IEntity
     // without it NPCs in the new world get distance-culled -> the "invisible wolves" bug).
     public void TeleportToZone(IZone zone, Vector4 position, Quaternion rotation, string? sky, int geometryId)
     {
-        if (Zone == zone)
+        // Leaving a house is a same-zone move on paper, but the house instance has to be torn down
+        // properly, so it takes the full path rather than the reposition shortcut.
+        if (Zone == zone && CurrentHouseGuid == 0)
         {
             // Same-zone teleport: skip zone membership changes, just reset visibility and reposition.
             foreach (var visiblePlayer in VisiblePlayers)
@@ -1358,7 +1373,7 @@ public sealed class Player : ClientPcData, IEntity
             return;
         }
 
-        if (Zone is StartingZone)
+        if (Zone is StartingZone && CurrentHouseGuid == 0)
         {
             StartingZonePosition = Position;
             StartingZoneRotation = Rotation;
@@ -1392,12 +1407,18 @@ public sealed class Player : ClientPcData, IEntity
 
         UpdatePosition(position, rotation);
 
+        // An explicit sky from the caller wins; null means "use the destination world's own sky", which is
+        // what the zone-definition lookup resolves (falling back to seaside for worlds that declare none).
+        var resolvedSky = sky ?? (_resourceManager.Zones.TryGetValue(zone.Id, out var zoneDefinition)
+            ? zoneDefinition.Sky ?? "sky_seaside24.xml"
+            : "sky_seaside24.xml");
+
         var packetClientBeginZoning = new PacketClientBeginZoning
         {
             Name = Zone.Name,
             Position = position,
             Rotation = rotation,
-            Sky = sky,
+            Sky = resolvedSky,
             Id = Zone.Id,
             GeometryId = geometryId,
             OverrideUpdateRadius = true
@@ -1460,7 +1481,13 @@ public sealed class Player : ClientPcData, IEntity
 
     public void OnAddVisibleNpcs(params IEnumerable<Npc> npcs)
     {
-        foreach (var npc in npcs)
+        var compatibleNpcs = npcs
+            .Where(CanSeeNpc)
+            .GroupBy(npc => npc.Guid)
+            .Select(group => group.First())
+            .ToList();
+
+        foreach (var npc in compatibleNpcs)
         {
             if (npc is Mount)
                 continue;
@@ -1490,7 +1517,7 @@ public sealed class Player : ClientPcData, IEntity
 
         var playerUpdatePacketNpcRelevance = new PlayerUpdatePacketNpcRelevance();
 
-        foreach (var npc in npcs)
+        foreach (var npc in compatibleNpcs)
         {
             if (npc.CursorId == 0)
                 continue;
@@ -1517,7 +1544,7 @@ public sealed class Player : ClientPcData, IEntity
 
         var notifications = new PlayerUpdatePacketAddNotifications();
 
-        foreach (var npc in npcs)
+        foreach (var npc in compatibleNpcs)
         {
             // Combat-encounter "Battle Starter" badge (img-24): red crossed-swords over the head + red minimap
             // dot. Type 3 = combat category; Unknown3=7 / Unknown10=1 are the live 2014 combat-badge values.
@@ -1552,7 +1579,7 @@ public sealed class Player : ClientPcData, IEntity
         if (notifications.Notifications.Count > 0)
             SendTunneled(notifications);
 
-        foreach (var npc in npcs)
+        foreach (var npc in compatibleNpcs)
             VisibleNpcs.TryAdd(npc.Guid, npc);
     }
 
@@ -1605,7 +1632,13 @@ public sealed class Player : ClientPcData, IEntity
 
     public void OnAddVisiblePlayers(params IEnumerable<Player> players)
     {
-        foreach (var player in players)
+        var compatiblePlayers = players
+            .Where(player => player.Guid != Guid && CanShareInstance(this, player))
+            .GroupBy(player => player.Guid)
+            .Select(group => group.First())
+            .ToList();
+
+        foreach (var player in compatiblePlayers)
         {
             if (player.Mount is not null)
             {
@@ -1623,8 +1656,41 @@ public sealed class Player : ClientPcData, IEntity
                 SendTunneled(player.GetAddPcPacket());
         }
 
-        foreach (var player in players)
+        foreach (var player in compatiblePlayers)
             VisiblePlayers.TryAdd(player.Guid, player);
+    }
+
+    public static bool CanShareInstance(Player left, Player right)
+    {
+        return left.CurrentHouseGuid == right.CurrentHouseGuid;
+    }
+
+    public bool CanSeeNpc(Npc npc)
+    {
+        return npc.CurrentHouseGuid == CurrentHouseGuid;
+    }
+
+    private void RemovePlayersFromOtherInstances()
+    {
+        var incompatiblePlayers = VisiblePlayers.Values
+            .Where(player => !CanShareInstance(this, player))
+            .ToList();
+
+        foreach (var player in incompatiblePlayers)
+        {
+            player.OnRemoveVisiblePlayers([this]);
+            OnRemoveVisiblePlayers([player]);
+        }
+    }
+
+    private void RemoveNpcsFromOtherInstances()
+    {
+        var incompatibleNpcs = VisibleNpcs.Values
+            .Where(npc => !CanSeeNpc(npc))
+            .ToList();
+
+        if (incompatibleNpcs.Count > 0)
+            OnRemoveVisibleNpcs(incompatibleNpcs);
     }
 
     public void OnRemoveVisibleNpcs(params IEnumerable<Npc> npcs)

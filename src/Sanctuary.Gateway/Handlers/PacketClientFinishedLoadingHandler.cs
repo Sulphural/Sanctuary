@@ -3,6 +3,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Sanctuary.Gateway.Admin;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common.Attributes;
 
@@ -38,6 +39,15 @@ public static class PacketClientFinishedLoadingHandler
         }
 
         connection.Player.Zone.OnClientFinishedLoading(connection.Player);
+
+        if (connection.Player.CurrentHouseGuid != 0)
+        {
+            HouseOwnershipService.CompleteHouseZoning(connection);
+            _logger.LogInformation(
+                "Client finished loading house {HouseGuid} for {PlayerName}.",
+                connection.Player.CurrentHouseGuid,
+                connection.Player.Name.FullName);
+        }
 
         return true;
     }

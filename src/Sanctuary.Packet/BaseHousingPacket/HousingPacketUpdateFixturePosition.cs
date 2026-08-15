@@ -8,8 +8,9 @@ public class HousingPacketUpdateFixturePosition : BaseHousingPacket, ISerializab
 {
     public new const short OpCode = 51;
 
-    public ulong FixtureGuid;
+    public ulong FixtureActorGuid;
     public Vector4 Position;
+    public Quaternion Rotation;
 
     public HousingPacketUpdateFixturePosition() : base(OpCode)
     {
@@ -20,9 +21,9 @@ public class HousingPacketUpdateFixturePosition : BaseHousingPacket, ISerializab
         using var writer = new PacketWriter();
 
         Write(writer);
-
-        writer.Write(FixtureGuid);
+        writer.Write(FixtureActorGuid);
         writer.Write(Position);
+        writer.Write(Rotation);
 
         return writer.Buffer;
     }

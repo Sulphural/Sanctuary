@@ -41,7 +41,7 @@ public static class ClientHousingPacketToggleLockedHandler
 
         var dbHouse = dbContext.Houses
             .Include(h => h.Fixtures)
-            .FirstOrDefault(h => h.Id == connection.Player.CurrentHouseGuid);
+            .FirstOrDefault(h => (ulong)h.Id == connection.Player.CurrentHouseGuid);
 
         if (dbHouse == null)
             return false;

@@ -4,9 +4,9 @@ namespace Sanctuary.Database.Entities;
 
 public sealed class DbHouseFixture
 {
-    public ulong Id { get; set; }
+    public int Id { get; set; }
 
-    public ulong HouseId { get; set; }
+    public int HouseId { get; set; }
     public DbHouse House { get; set; } = null!;
 
     public int ItemDefinitionId { get; set; }
@@ -21,9 +21,9 @@ public sealed class DbHouseFixture
     public float RotationZ { get; set; }
     public float RotationW { get; set; }
 
-    public float Scale { get; set; }
+    public float Scale { get; set; } = 1.0f;
 
     public string? CustomizationData { get; set; }
 
-    public DateTimeOffset Created { get; set; }
+    public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
 }

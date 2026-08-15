@@ -20,7 +20,6 @@ public class PlayerHousingInstanceData
 
     public bool IsLocked;
     public bool IsFloraAllowed;
-    public bool PetAutospawn;
 
     public int MaxFixtureCount;
     public int MaxLandmarkCount;
@@ -28,10 +27,10 @@ public class PlayerHousingInstanceData
     public int Unknown15;
 
     public bool Unknown14;
-
     public bool Preview;
 
     public int CurFixtureCount;
+
     public int CurLandmarkCount;
 
     public int IconId;
@@ -44,7 +43,6 @@ public class PlayerHousingInstanceData
 
     public bool IsMembersOnly;
 
-    public string? Unknown30;
     public string? Unknown23;
     public string? Unknown22;
 
@@ -67,29 +65,33 @@ public class PlayerHousingInstanceData
 
         writer.Write(Unknown4);
 
-        writer.Write(Unknown7);
-
         writer.Write(NameId);
         writer.Write(Name);
 
-        writer.Write(IsLocked);
-        writer.Write(IsFloraAllowed);
-        writer.Write(PetAutospawn);
+        writer.Write(Unknown7);
 
         writer.Write(MaxFixtureCount);
         writer.Write(MaxLandmarkCount);
 
-        writer.Write(Unknown15);
+        writer.Write(Fixtures);
 
-        writer.Write(Unknown14);
+        writer.Write(Permissions);
 
-        writer.Write(Preview);
+        writer.Write(IsLocked);
+        writer.Write(IsFloraAllowed);
 
         writer.Write(CurFixtureCount);
         writer.Write(CurLandmarkCount);
 
+        writer.Write(Unknown14);
+
+        writer.Write(Unknown15);
+
+        writer.Write(BuildAreas);
+
         writer.Write(IconId);
 
+        writer.Write(Preview);
         writer.Write(Unknown18);
 
         writer.Write(FurnitureScore);
@@ -98,18 +100,11 @@ public class PlayerHousingInstanceData
 
         writer.Write(IsMembersOnly);
 
-        writer.Write(Unknown30);
-        writer.Write(Unknown23);
         writer.Write(Unknown22);
+        writer.Write(Unknown23);
 
         writer.Write(Unknown24);
 
         writer.Write(false); // TODO: FactoryInstance
-
-        writer.Write(Fixtures);
-
-        writer.Write(Permissions);
-
-        writer.Write(BuildAreas);
     }
 }

@@ -17,10 +17,22 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Sanctuary.Database.SqLite\Sanctuary.Database.Sqlite.csproj" />
+    <ProjectReference Include="..\Sanctuary.Game\Sanctuary.Game.csproj" />
+    <ProjectReference Include="..\Sanctuary.Gateway\Sanctuary.Gateway.csproj" />
+    <ProjectReference Include="..\Sanctuary.Packet\Sanctuary.Packet.csproj" />
+    <ProjectReference Include="..\Sanctuary.Packet.Common\Sanctuary.Packet.Common.csproj" />
     <ProjectReference Include="..\Sanctuary.UdpLibrary\Sanctuary.UdpLibrary.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Resources\HousingPlacementData.txt" Link="Resources\HousingPlacementData.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

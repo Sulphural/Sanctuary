@@ -979,9 +979,12 @@ public abstract class BaseZone : IZone, IDisposable
                                 {
                                     case Npc npc:
                                         {
-                                            zoneTilePlayer.OnAddVisibleNpcs(npc);
-                                            if (npc.ShowCombatBadge)
-                                                SendCombatBadge(zoneTilePlayer, npc);
+                                            if (zoneTilePlayer.CanSeeNpc(npc))
+                                            {
+                                                zoneTilePlayer.OnAddVisibleNpcs(npc);
+                                                if (npc.ShowCombatBadge)
+                                                    SendCombatBadge(zoneTilePlayer, npc);
+                                            }
                                         }
                                         break;
 
@@ -1077,7 +1080,8 @@ public abstract class BaseZone : IZone, IDisposable
                                             if (zoneTilePlayer.Mount is not null && zoneTilePlayer.Mount == npc)
                                                 continue;
 
-                                            zoneTilePlayer.OnRemoveVisibleNpcs(npc);
+                                            if (zoneTilePlayer.CanSeeNpc(npc))
+                                                zoneTilePlayer.OnRemoveVisibleNpcs(npc);
                                         }
                                         break;
 

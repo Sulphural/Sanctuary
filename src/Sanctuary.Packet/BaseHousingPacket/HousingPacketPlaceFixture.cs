@@ -23,7 +23,6 @@ public class HousingPacketPlaceFixture : BaseHousingPacket, ISerializablePacket
         using var writer = new PacketWriter();
 
         Write(writer);
-
         writer.Write(FixtureGuid);
         writer.Write(ItemDefinitionId);
         writer.Write(Position);

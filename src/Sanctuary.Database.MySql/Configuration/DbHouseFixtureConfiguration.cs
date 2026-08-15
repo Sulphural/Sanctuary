@@ -28,9 +28,7 @@ public sealed class DbHouseFixtureConfiguration : IEntityTypeConfiguration<DbHou
         builder.Property(f => f.RotationW).IsRequired();
 
         builder.Property(f => f.Scale).IsRequired().HasDefaultValue(1.0f);
-
         builder.Property(f => f.CustomizationData).IsRequired(false).HasColumnType("TEXT");
-
         builder.Property(f => f.Created).IsRequired().HasDefaultValueSql("NOW()");
 
         builder.HasOne(f => f.House)

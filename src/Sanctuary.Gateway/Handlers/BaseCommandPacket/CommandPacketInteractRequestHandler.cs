@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 
 using Sanctuary.Game.Entities;
 using Sanctuary.Game.Zones;
+using Sanctuary.Gateway.Admin;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common.Attributes;
 
@@ -59,6 +60,11 @@ public static class CommandPacketInteractRequestHandler
             encounterArena.UseExitDoor(player);
             return true;
         }
+
+        // Housing fixtures are actors owned by the placement service rather than zone entities, so they
+        // have to be resolved before the zone lookup below (which would miss them entirely).
+        if (HousingFixtureActorService.TryHandleInteraction(player, packet.Guid))
+            return true;
 
         if (!player.Zone.TryGetEntity(packet.Guid, out var entity))
             return true;
