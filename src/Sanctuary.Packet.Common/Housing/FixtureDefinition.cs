@@ -10,9 +10,11 @@ public class FixtureDefinition : ISerializableType
     public int ItemDefinitionId;
 
     public int Unknown3;
-
+    public int Unknown4;
     public int ModelId;
 
+    public string? Unknown11;
+    public string? Unknown12;
     public string? Category;
     public string? LuaCall;
 
@@ -27,30 +29,24 @@ public class FixtureDefinition : ISerializableType
 
     public class FixtureAction : ISerializableType
     {
-        public int Id;
-
-        public string? Name;
-
-        public int RequirementId;
-
+        public int Unknown;
+        public string? Unknown2;
+        public int Unknown3;
         public int Unknown4;
+        public int UnknownKey;
 
         public void Serialize(PacketWriter writer)
         {
-            writer.Write(Id);
-
-            writer.Write(Name);
-
-            writer.Write(RequirementId);
-
+            writer.Write(Unknown);
+            writer.Write(Unknown2);
+            writer.Write(Unknown3);
             writer.Write(Unknown4);
         }
     }
 
     public int CompositeEffectId;
-
-    public int Unknown14;
-    public int Unknown15;
+    public float Unknown14;
+    public float Unknown15;
 
     public bool Unknown16;
     public bool Unknown17;
@@ -63,11 +59,7 @@ public class FixtureDefinition : ISerializableType
         writer.Write(ItemDefinitionId);
 
         writer.Write(Unknown3);
-
-        writer.Write(ModelId);
-
-        writer.Write(Category);
-        writer.Write(LuaCall);
+        writer.Write(ModelId != 0 ? ModelId : Unknown4);
 
         writer.Write(Unknown5);
         writer.Write(Unknown6);
@@ -76,10 +68,12 @@ public class FixtureDefinition : ISerializableType
         writer.Write(Unknown9);
         writer.Write(Unknown10);
 
+        writer.Write(Category ?? Unknown11);
+        writer.Write(LuaCall ?? Unknown12);
+
         writer.Write(Actions);
 
         writer.Write(CompositeEffectId);
-
         writer.Write(Unknown14);
         writer.Write(Unknown15);
 

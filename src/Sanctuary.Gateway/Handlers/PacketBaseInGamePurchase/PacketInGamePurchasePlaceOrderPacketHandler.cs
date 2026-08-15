@@ -10,6 +10,7 @@ using Sanctuary.Core.IO;
 using Sanctuary.Database;
 using Sanctuary.Database.Entities;
 using Sanctuary.Game;
+using Sanctuary.Gateway.Admin;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
 using Sanctuary.Packet.Common.Attributes;
@@ -113,10 +114,31 @@ public static class PacketInGamePurchasePlaceOrderPacketHandler
         var lastItemId = dbContext.Items.Where(i => i.CharacterId == dbCharacter.Id)
             .Select(i => (int?)i.Id)
             .Max() ?? 0;
+        var bundleContainsHouse = appStoreBundleDefinition.Entries.Any(entry =>
+            TryResolveItemDefinition(
+                entry.MarketingItemId,
+                entry.GameItemId,
+                allowGameItemFallback: true,
+                out var definition) &&
+            HouseOwnershipService.IsHouseItem(definition));
+        var purchasedHouse = false;
 
         foreach (var bundleEntry in appStoreBundleDefinition.Entries)
         {
-            if (!_resourceManager.ClientItemDefinitions.TryGetValue(bundleEntry.MarketingItemId, out var clientItemDefinition))
+            // Several native house bundles contain a legacy pet-item placeholder.
+            // It is not part of the housing purchase and must not abort the deed.
+            if (bundleContainsHouse &&
+                ((bundleEntry.MarketingItemId == 32786 && bundleEntry.GameItemId == 5475) ||
+                    (bundleEntry.MarketingItemId == 32791 && bundleEntry.GameItemId == 5480)))
+            {
+                continue;
+            }
+
+            if (!TryResolveItemDefinition(
+                    bundleEntry.MarketingItemId,
+                    bundleEntry.GameItemId,
+                    allowGameItemFallback: bundleContainsHouse,
+                    out var clientItemDefinition))
             {
                 packetInGamePurchasePlaceOrderResponse.Result = 2;
 
@@ -125,12 +147,34 @@ public static class PacketInGamePurchasePlaceOrderPacketHandler
                 return true;
             }
 
-            if (clientItemDefinition.Type == 1 || clientItemDefinition.Type == 12)
+            if (HouseOwnershipService.IsHouseItem(clientItemDefinition))
+            {
+                HouseOwnershipService.PurchaseHouse(
+                    dbContext,
+                    dbCharacter,
+                    _resourceManager,
+                    clientItemDefinition,
+                    out var alreadyOwned);
+
+                if (alreadyOwned)
+                {
+                    packetInGamePurchasePlaceOrderResponse.Result = 2;
+                    connection.SendTunneled(packetInGamePurchasePlaceOrderResponse);
+                    return true;
+                }
+
+                purchasedHouse = true;
+            }
+            else if (StoreInventoryPurchasePolicy.IsSupported(clientItemDefinition))
             {
                 var totalQuantity = orderDetail.Quantity * bundleEntry.Quantity;
+                var itemTintId = HouseOwnershipService.ResolveItemTintId(
+                    _resourceManager,
+                    clientItemDefinition.Id,
+                    orderDetailTint);
 
                 var dbItem = dbContext.Items.SingleOrDefault(i => i.CharacterId == dbCharacter.Id &&
-                    i.Definition == clientItemDefinition.Id && i.Tint == orderDetailTint);
+                    i.Definition == clientItemDefinition.Id && i.Tint == itemTintId);
 
                 if (dbItem is not null)
                 {
@@ -142,7 +186,7 @@ public static class PacketInGamePurchasePlaceOrderPacketHandler
                     {
                         Id = lastItemId++ + 1,
                         Definition = clientItemDefinition.Id,
-                        Tint = orderDetailTint,
+                        Tint = itemTintId,
 
                         Count = totalQuantity
                     };
@@ -150,7 +194,8 @@ public static class PacketInGamePurchasePlaceOrderPacketHandler
                     dbCharacter.Items.Add(dbItem);
                 }
 
-                var clientItem = connection.Player.Items.SingleOrDefault(x => x.Definition == clientItemDefinition.Id && x.Tint == orderDetailTint);
+                var clientItem = connection.Player.Items.SingleOrDefault(x =>
+                    x.Definition == clientItemDefinition.Id && x.Tint == itemTintId);
 
                 var addItem = false;
 
@@ -324,67 +369,6 @@ public static class PacketInGamePurchasePlaceOrderPacketHandler
                     petListPacket.Pets.Count, PetBasePacket.OpCode, PetListPacket.OpCode);
                 connection.Player.SendTunneled(petListPacket);
             }
-            else if (clientItemDefinition.Type == 16) // Houses
-            {
-                _logger.LogInformation("Attempting to purchase house. Item ID: {ItemId}, Param1 (House Def ID): {Param1}", clientItemDefinition.Id, clientItemDefinition.Param1);
-
-                if (!_resourceManager.Houses.TryGetValue(clientItemDefinition.Param1, out var houseDefinition))
-                {
-                    _logger.LogError("House definition {HouseDefId} not found in Houses.json", clientItemDefinition.Param1);
-                    packetInGamePurchasePlaceOrderResponse.Result = 2;
-
-                    connection.SendTunneled(packetInGamePurchasePlaceOrderResponse);
-
-                    return true;
-                }
-
-                // Check if player already owns this house type
-                var existingHouse = dbContext.Houses.FirstOrDefault(h => h.OwnerId == dbCharacter.Id && h.HouseDefinitionId == houseDefinition.Id);
-                if (existingHouse != null)
-                {
-                    _logger.LogWarning("Player {CharacterId} already owns house type {HouseDefId}", dbCharacter.Id, houseDefinition.Id);
-                    packetInGamePurchasePlaceOrderResponse.Result = 2;
-
-                    connection.SendTunneled(packetInGamePurchasePlaceOrderResponse);
-
-                    return true;
-                }
-
-                // Create new house for player
-                var dbHouse = new DbHouse
-                {
-                    OwnerId = dbCharacter.Id,
-                    HouseDefinitionId = houseDefinition.Id,
-                    NameId = 0,
-                    CustomName = null,
-                    IsLocked = false,
-                    IsMembersOnly = false,
-                    IsFloraAllowed = true,
-                    PetAutospawn = false,
-                    MaxFixtureCount = 200,
-                    MaxLandmarkCount = 0,
-                    IconId = 33439,
-                    Description = null,
-                    KeywordList = null,
-                    Rating = 0,
-                    Votes = 0,
-                    Created = DateTimeOffset.UtcNow,
-                    LastVisited = DateTimeOffset.UtcNow
-                };
-
-                dbContext.Houses.Add(dbHouse);
-
-                if (dbContext.SaveChanges() <= 0)
-                {
-                    _logger.LogError("Failed to save new house to database. CharacterId={characterId}, HouseDefId={houseDefId}", dbCharacter.Id, houseDefinition.Id);
-                    packetInGamePurchasePlaceOrderResponse.Result = 2;
-                    connection.SendTunneled(packetInGamePurchasePlaceOrderResponse);
-                    return true;
-                }
-
-                _logger.LogInformation("House purchased successfully. HouseId={houseId}, Definition={definition}, OwnerId={ownerId}", 
-                    dbHouse.Id, dbHouse.HouseDefinitionId, dbHouse.OwnerId);
-            }
             else
             {
                 // TODO: Implement other item types
@@ -417,8 +401,31 @@ public static class PacketInGamePurchasePlaceOrderPacketHandler
 
         packetInGamePurchasePlaceOrderResponse.Total = totalCost;
 
+        if (purchasedHouse)
+            HouseOwnershipService.SendHouseList(connection, dbContext, _resourceManager);
+
+        if (connection.Player.CurrentHouseGuid != 0)
+        {
+            var activeHouse = HouseOwnershipService.TryGetHouse(
+                dbContext,
+                connection.Player.CurrentHouseGuid);
+            if (activeHouse is not null && activeHouse.CharacterId == dbCharacter.Id)
+                HouseOwnershipService.SendFixtureItemList(connection, activeHouse, _resourceManager);
+        }
+
         connection.SendTunneled(packetInGamePurchasePlaceOrderResponse);
 
         return true;
+    }
+
+    private static bool TryResolveItemDefinition(
+        int marketingItemId,
+        int gameItemId,
+        bool allowGameItemFallback,
+        out ClientItemDefinition itemDefinition)
+    {
+        return _resourceManager.ClientItemDefinitions.TryGetValue(marketingItemId, out itemDefinition!) ||
+            (allowGameItemFallback &&
+                _resourceManager.ClientItemDefinitions.TryGetValue(gameItemId, out itemDefinition!));
     }
 }

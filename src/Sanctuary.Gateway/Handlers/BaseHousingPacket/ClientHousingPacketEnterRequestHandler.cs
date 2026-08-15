@@ -1,6 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Numerics;
+using System;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,17 +6,27 @@ using Microsoft.Extensions.Logging;
 
 using Sanctuary.Core.Helpers;
 using Sanctuary.Database;
-using Sanctuary.Database.Entities;
 using Sanctuary.Game;
+using Sanctuary.Gateway.Admin;
 using Sanctuary.Packet;
-using Sanctuary.Packet.Common;
 using Sanctuary.Packet.Common.Attributes;
+using Sanctuary.UdpLibrary.Enumerations;
 
 namespace Sanctuary.Gateway.Handlers;
 
 [PacketHandler]
 public static class ClientHousingPacketEnterRequestHandler
 {
+    private static readonly TimeSpan[] ZoningCompletionRetryDelays =
+    [
+        TimeSpan.FromMilliseconds(1500),
+        TimeSpan.FromMilliseconds(2500),
+        TimeSpan.FromSeconds(4),
+        TimeSpan.FromSeconds(6),
+        TimeSpan.FromSeconds(8),
+        TimeSpan.FromSeconds(10)
+    ];
+
     private static ILogger _logger = null!;
     private static IResourceManager _resourceManager = null!;
     private static IDbContextFactory<DatabaseContext> _dbContextFactory = null!;
@@ -40,227 +48,127 @@ public static class ClientHousingPacketEnterRequestHandler
             return false;
         }
 
-        _logger.LogInformation("Player {name} requesting to enter house {guid}", 
-            connection.Player.Name.FirstName, packet.HouseInstanceGuid);
+        _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(ClientHousingPacketEnterRequest), packet);
 
-        using var dbContext = _dbContextFactory.CreateDbContext();
-        
-        var playerId = GuidHelper.GetPlayerId(connection.Player.Guid);
-        
-        // Get or create player's house
-        var dbHouse = dbContext.Houses
-            .Include(h => h.Fixtures)
-            .FirstOrDefault(h => h.OwnerId == playerId);
-
-        if (dbHouse == null)
-        {
-            // Create default house for player
-            dbHouse = CreateDefaultHouse(dbContext, playerId);
-            _logger.LogInformation("Created new house for player {name}", connection.Player.Name.FirstName);
-        }
-
-        // Get house definition
-        if (!_resourceManager.Houses.TryGetValue(dbHouse.HouseDefinitionId, out var houseDefinition))
-        {
-            _logger.LogError("Invalid house definition ID: {id}", dbHouse.HouseDefinitionId);
-            return false;
-        }
-
-        // Store current house in player connection for furniture operations
-        connection.Player.CurrentHouseGuid = dbHouse.Id;
-
-        // Begin zone transition to house
-        SendZoneTransition(connection, dbHouse, houseDefinition);
-
-        // Send house instance data
-        SendHouseData(connection, dbHouse, houseDefinition);
-
-        // Send furniture data
-        SendFurnitureData(connection, dbHouse);
-
-        _logger.LogInformation("Player {name} entered house successfully", connection.Player.Name.FirstName);
+        TryEnterHouse(
+            connection,
+            packet.HouseInstanceGuid,
+            allowDefaultFallback: true,
+            reason: "housing-enter");
 
         return true;
     }
 
-    private static DbHouse CreateDefaultHouse(DatabaseContext dbContext, ulong playerId)
+    public static bool TryEnterHouse(
+        GatewayConnection connection,
+        ulong houseInstanceGuid,
+        bool allowDefaultFallback,
+        string reason)
     {
-        var house = new DbHouse
-        {
-            OwnerId = playerId,
-            HouseDefinitionId = 1, // Default: Seaside Beach house
-            NameId = 0,
-            CustomName = null,
-            IsLocked = false,
-            IsMembersOnly = false,
-            IsFloraAllowed = true,
-            PetAutospawn = false,
-            MaxFixtureCount = 200,
-            MaxLandmarkCount = 0,
-            IconId = 33439,
-            Description = null,
-            KeywordList = null,
-            Rating = 0,
-            Votes = 0,
-            Created = DateTimeOffset.UtcNow,
-            LastVisited = DateTimeOffset.UtcNow
-        };
 
-        dbContext.Houses.Add(house);
+        using var dbContext = _dbContextFactory.CreateDbContext();
+
+        var playerId = GuidHelper.GetPlayerId(connection.Player.Guid);
+        var house = HouseOwnershipService.TryGetHouse(dbContext, houseInstanceGuid);
+
+        if (house is null && allowDefaultFallback)
+            house = HouseOwnershipService.GetOrCreateDefaultHouse(dbContext, connection.Player, _resourceManager);
+
+        if (house is null)
+            return false;
+
+        var targetHouseGuid = GuidHelper.GetHouseGuid((ulong)house.Id);
+        var isOwner = house.CharacterId == playerId;
+        var isSameHouse = connection.Player.CurrentHouseGuid == targetHouseGuid;
+
+        if (isSameHouse)
+        {
+            if (!connection.Player.Visible)
+            {
+                HouseOwnershipService.CompleteHouseZoning(connection);
+            }
+
+            _logger.LogDebug(
+                "Ignored duplicate housing enter request for player {PlayerGuid} and house {HouseGuid} (reason={Reason}, visible={Visible}).",
+                connection.Player.Guid,
+                targetHouseGuid,
+                reason,
+                connection.Player.Visible);
+            return true;
+        }
+
+        if (connection.Player.CurrentHouseGuid != 0)
+        {
+            HousingPlacementSession.TakeAll(connection.Player.Guid);
+            HousingFixtureActorService.RemoveAllForPlayer(connection.Player);
+        }
+
+        house.LastVisited = DateTimeOffset.UtcNow;
         dbContext.SaveChanges();
 
-        return house;
+        if (connection.Player.Mount is not null)
+            PacketDismountRequestHandler.HandlePacket(connection);
+
+        var zoningInfo = HouseOwnershipService.TeleportToHouse(connection, house, _resourceManager);
+        _logger.LogInformation(
+            "Entering house {HouseId} owned by character {OwnerCharacterId} for {PlayerName} (owner={IsOwner}, reason={Reason}). Definition={HouseDefinitionId}, Zone={RequestedZoneId}->{PacketZoneId}, ZoneName={ZoneName}, Position={Position}.",
+            house.Id,
+            house.CharacterId,
+            connection.Player.Name.FullName,
+            isOwner,
+            reason,
+            zoningInfo.HouseDefinitionId,
+            zoningInfo.RequestedZoneId,
+            zoningInfo.PacketZoneId,
+            zoningInfo.ZoneName,
+            zoningInfo.Position);
+
+        HouseOwnershipService.SendHouseData(connection, house, _resourceManager);
+        HouseOwnershipService.CompleteHouseZoning(connection);
+        QueueHouseZoningCompletionRetry(connection);
+
+        return true;
     }
 
-    private static void SendZoneTransition(GatewayConnection connection, DbHouse dbHouse, Game.Resources.Definitions.HouseDefinition houseDefinition)
+    private static void QueueHouseZoningCompletionRetry(GatewayConnection connection)
     {
-        // Get zone definition for this house
-        string zoneName = "hsg_emptylot_seaside_beach_01"; // Default fallback
-        string sky = "sky_seaside24.xml"; // Default sky
-        int geometryId = 214; // Seaside housing geometry ID (client-side)
-        
-        // Always use spawn position from Houses.json (more reliable than zone files)
-        var spawnPosition = new Vector4(
-            houseDefinition.SpawnPosition.X,
-            houseDefinition.SpawnPosition.Y + 10f, // Add 10 units height to prevent falling
-            houseDefinition.SpawnPosition.Z,
-            houseDefinition.SpawnPosition.W
-        );
-        
-        var spawnRotation = houseDefinition.SpawnRotation;
+        var houseGuid = connection.Player.CurrentHouseGuid;
 
-        if (_resourceManager.Zones.TryGetValue(houseDefinition.ZoneId, out var zoneDef))
+        if (houseGuid == 0)
+            return;
+
+        _ = System.Threading.Tasks.Task.Run(async () =>
         {
-            zoneName = zoneDef.Name;
-            
-            _logger.LogInformation("Using house spawn position: ({X}, {Y}, {Z})", 
-                spawnPosition.X, spawnPosition.Y, spawnPosition.Z);
-
-            _logger.LogInformation("Using zone {ZoneName} (ID: {ZoneId}) for house def {HouseDefId}",
-                zoneName, houseDefinition.ZoneId, houseDefinition.Id);
-        }
-        else
-        {
-            _logger.LogWarning("Zone {ZoneId} not found for house def {HouseDefId}, using default zone",
-                houseDefinition.ZoneId, houseDefinition.Id);
-        }
-
-        // Send zone transition packet
-        var packetClientBeginZoning = new PacketClientBeginZoning
-        {
-            Name = zoneName,
-            Type = 2, // Housing instance
-            Position = spawnPosition,
-            Rotation = new Quaternion(spawnRotation.X, spawnRotation.Y, spawnRotation.Z, spawnRotation.W),
-            Sky = sky,
-            Unknown = 1,
-            Id = houseDefinition.ZoneId,
-            GeometryId = geometryId,
-            OverrideUpdateRadius = true
-        };
-
-        connection.SendTunneled(packetClientBeginZoning);
-
-        _logger.LogInformation("Sending zone transition to {ZoneName} (ZoneId={ZoneId}) for house {HouseId}", 
-            zoneName, houseDefinition.ZoneId, dbHouse.Id);
-    }
-
-    private static void SendHouseData(GatewayConnection connection, DbHouse dbHouse, Game.Resources.Definitions.HouseDefinition houseDefinition)
-    {
-        var instanceInfo = BuildInstanceInfo(connection, dbHouse);
-
-        connection.SendTunneled(new HousingPacketZoneData
-        {
-            IsPreview = false,
-            HeadSize = 0,
-            InstanceInfo = instanceInfo
-        });
-
-        connection.SendTunneled(new HousingPacketInstanceData
-        {
-            InstanceData = new PlayerHousingInstanceData
+            try
             {
-                HouseGuid = dbHouse.Id,
-                OwnerGuid = connection.Player.Guid,
-                OwnerName = connection.Player.Name.FirstName,
-                NameId = dbHouse.NameId,
-                Name = dbHouse.CustomName,
-                IsLocked = dbHouse.IsLocked,
-                IsFloraAllowed = dbHouse.IsFloraAllowed,
-                PetAutospawn = dbHouse.PetAutospawn,
-                MaxFixtureCount = dbHouse.MaxFixtureCount,
-                MaxLandmarkCount = dbHouse.MaxLandmarkCount,
-                CurFixtureCount = dbHouse.Fixtures.Count,
-                IconId = dbHouse.IconId,
-                IsMembersOnly = dbHouse.IsMembersOnly,
-                BuildAreas = houseDefinition.BuildAreas
+                foreach (var delay in ZoningCompletionRetryDelays)
+                {
+                    await System.Threading.Tasks.Task.Delay(delay);
+                    if (connection.Status != Status.Connected ||
+                        connection.Player.CurrentHouseGuid != houseGuid ||
+                        connection.Player.Visible)
+                        return;
+
+                    HouseOwnershipService.CompleteHouseZoning(connection);
+                }
+
+                if (connection.Status == Status.Connected &&
+                    connection.Player.CurrentHouseGuid == houseGuid &&
+                    !connection.Player.Visible)
+                {
+                    connection.Player.Visible = true;
+                    connection.Player.UpdatePosition(connection.Player.Position, connection.Player.Rotation);
+
+                    _logger.LogWarning(
+                        "Client did not finish loading house {HouseGuid} for {PlayerName} after the zoning completion retry window. Restored player visibility.",
+                        houseGuid,
+                        connection.Player.Name.FullName);
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.LogDebug(exception, "House zoning completion retry stopped for house {HouseGuid}.", houseGuid);
             }
         });
-    }
-
-    private static PlayerHousingInstanceInfo BuildInstanceInfo(GatewayConnection connection, DbHouse dbHouse)
-    {
-        return new PlayerHousingInstanceInfo
-        {
-            OwnerGuid = connection.Player.Guid,
-            InstanceGuid = dbHouse.Id,
-            NameId = dbHouse.NameId,
-            OwnerName = connection.Player.Name.FirstName,
-            HouseName = dbHouse.CustomName,
-            IconId = dbHouse.IconId,
-            FixtureCount = dbHouse.Fixtures.Count,
-            FurnitureScore = 0,
-            LastVisited = dbHouse.LastVisited,
-            WhenCreated = dbHouse.Created,
-            IsLocked = dbHouse.IsLocked,
-            IsMembersOnly = dbHouse.IsMembersOnly,
-            IsFloraAllowed = dbHouse.IsFloraAllowed,
-            Description = dbHouse.Description,
-            KeywordList = dbHouse.KeywordList,
-            Rating = dbHouse.Rating,
-            Votes = dbHouse.Votes,
-            HasRating = dbHouse.Votes > 0,
-            CanVote = false,
-            FactoryPlotId = 0
-        };
-    }
-
-    private static void SendFurnitureData(GatewayConnection connection, DbHouse dbHouse)
-    {
-        var fixtureItemList = new HousingPacketFixtureItemList();
-
-        uint fixtureKey = 1;
-        foreach (var dbFixture in dbHouse.Fixtures)
-        {
-            fixtureItemList.Infos.Add(new FixtureInstanceInfo
-            {
-                FixtureGuid = dbFixture.Id,
-                ItemDefinitionId = dbFixture.ItemDefinitionId
-            });
-
-            fixtureItemList.Definitions.Add(new FixtureDefinition
-            {
-                Id = (int)fixtureKey++,
-                ItemDefinitionId = dbFixture.ItemDefinitionId,
-                Unknown3 = 0,
-                Unknown5 = false,
-                Unknown6 = false,
-                Unknown7 = true,
-                Unknown8 = false,
-                Unknown9 = false,
-                Unknown10 = false,
-                CompositeEffectId = 0,
-                Unknown14 = 1,
-                Unknown15 = 1,
-                Unknown16 = false,
-                Unknown17 = false,
-                Unknown18 = false,
-                Unknown19 = false
-            });
-        }
-
-        connection.SendTunneled(fixtureItemList);
-
-        _logger.LogInformation("Sent {count} furniture fixtures to player", dbHouse.Fixtures.Count);
     }
 }

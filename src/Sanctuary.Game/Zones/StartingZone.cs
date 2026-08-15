@@ -2804,7 +2804,14 @@ public sealed partial class StartingZone : BaseZone
 
             foreach (var storeBundle in mainStore.Bundles.Values)
             {
-                var valid = storeBundle.Entries.All(x => _resourceManager.ClientItemDefinitions.ContainsKey(x.MarketingItemId));
+                var containsHouse = storeBundle.Entries.Any(entry =>
+                    (_resourceManager.ClientItemDefinitions.TryGetValue(entry.MarketingItemId, out var marketingDefinition) &&
+                        marketingDefinition.Type == 16) ||
+                    (_resourceManager.ClientItemDefinitions.TryGetValue(entry.GameItemId, out var gameDefinition) &&
+                        gameDefinition.Type == 16));
+                var valid = storeBundle.Entries.All(entry =>
+                    _resourceManager.ClientItemDefinitions.ContainsKey(entry.MarketingItemId) ||
+                    (containsHouse && _resourceManager.ClientItemDefinitions.ContainsKey(entry.GameItemId)));
 
                 if (valid)
                     packetInGamePurchaseStoreBundles.Store.Bundles.Add(storeBundle.Id, storeBundle);

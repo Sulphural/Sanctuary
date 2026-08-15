@@ -17,6 +17,7 @@ using Sanctuary.Database;
 using Sanctuary.Database.Entities;
 using Sanctuary.Game;
 using Sanctuary.Game.Entities;
+using Sanctuary.Gateway.Admin;
 using Sanctuary.Gateway.Handlers;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
@@ -89,13 +90,51 @@ public class GatewayConnection : UdpConnection
             _logger.LogWarning(ex, "Party cleanup on disconnect failed for {player}.", Player.Name);
         }
 
-        SendFriendOffline();
+        try
+        {
+            SendFriendOffline();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Failed to notify friends while disconnecting player {PlayerGuid}.", Player.Guid);
+        }
 
-        _loginClient.SendCharacterLogout(GuidHelper.GetPlayerId(Player.Guid));
+        try
+        {
+            HousingPlacementSession.TakeAll(Player.Guid);
+            HousingFixtureActorService.RemoveAllForPlayer(Player);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Failed to clear housing runtime state while disconnecting player {PlayerGuid}.", Player.Guid);
+        }
 
-        SavePlayerToDatabase();
+        try
+        {
+            _loginClient.SendCharacterLogout(GuidHelper.GetPlayerId(Player.Guid));
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Failed to notify login server while disconnecting player {PlayerGuid}.", Player.Guid);
+        }
 
-        Player.Dispose();
+        try
+        {
+            SavePlayerToDatabase();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to save disconnect state for player {PlayerGuid}.", Player.Guid);
+        }
+
+        try
+        {
+            Player.Dispose();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Failed to dispose player {PlayerGuid} after disconnect.", Player.Guid);
+        }
     }
 
     public override void OnRoutePacket(Span<byte> data)
@@ -556,7 +595,14 @@ public class GatewayConnection : UdpConnection
             Vector4 position;
             Quaternion rotation;
 
-            if (Player.Zone == _zoneManager.StartingZone)
+            // Never persist a position taken inside a house instance - logging back in would drop the
+            // player into house-local coordinates out in the overworld.
+            if (Player.CurrentHouseGuid != 0)
+            {
+                position = Player.StartingZonePosition;
+                rotation = Player.StartingZoneRotation;
+            }
+            else if (Player.Zone == _zoneManager.StartingZone)
             {
                 position = Player.Position;
                 rotation = Player.Rotation;
@@ -684,58 +730,13 @@ public class GatewayConnection : UdpConnection
         SendHousingList();
     }
 
+    // Delegates to the housing service so the owner lookup and instance-info mapping live in one place
+    // (PR 111's HouseOwnershipService), rather than being duplicated against the DbHouse shape here.
     private void SendHousingList()
     {
         using var dbContext = _dbContextFactory.CreateDbContext();
 
-        var playerId = GuidHelper.GetPlayerId(Player.Guid);
-
-        // Load all houses owned by this player
-        var dbHouses = dbContext.Houses
-            .Where(h => h.OwnerId == playerId)
-            .ToList();
-
-        var housingPacketInstanceList = new HousingPacketInstanceList
-        {
-            PlayerGuid = Player.Guid
-        };
-
-        foreach (var dbHouse in dbHouses)
-        {
-            // Get house definition to populate display info
-            var houseDefinition = _resourceManager.Houses.TryGetValue(dbHouse.HouseDefinitionId, out var def) ? def : null;
-
-            var instanceInfo = new PlayerHousingInstanceInfo
-            {
-                OwnerGuid = Player.Guid,
-                InstanceGuid = dbHouse.Id,
-                NameId = dbHouse.NameId,
-                OwnerName = Player.Name.FirstName,
-                HouseName = dbHouse.CustomName,
-                IconId = dbHouse.IconId,
-                FixtureCount = dbHouse.MaxFixtureCount, // Current fixture count
-                FurnitureScore = 0, // TODO: Calculate furniture score
-                LastVisited = dbHouse.LastVisited.DateTime,
-                IsLocked = dbHouse.IsLocked,
-                IsMembersOnly = dbHouse.IsMembersOnly,
-                IsFloraAllowed = dbHouse.IsFloraAllowed,
-                Description = dbHouse.Description,
-                KeywordList = dbHouse.KeywordList,
-                Rating = dbHouse.Rating,
-                Votes = dbHouse.Votes,
-                HasRating = dbHouse.Rating > 0,
-                CanVote = false,
-                FactoryPlotId = 0,
-                WhenCreated = dbHouse.Created
-            };
-
-            housingPacketInstanceList.Instances.Add(instanceInfo);
-        }
-
-        _logger.LogInformation("Sending housing list with {count} houses to player {name}",
-            housingPacketInstanceList.Instances.Count, Player.Name.FirstName);
-
-        Player.SendTunneled(housingPacketInstanceList);
+        HouseOwnershipService.SendHouseList(this, dbContext, _resourceManager);
     }
 
     public void SendFriendOffline()

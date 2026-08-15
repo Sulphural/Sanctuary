@@ -4,7 +4,7 @@ namespace Sanctuary.Database.Entities;
 
 public sealed class DbHousePermission
 {
-    public ulong HouseId { get; set; }
+    public int HouseId { get; set; }
     public DbHouse House { get; set; } = null!;
 
     public ulong CharacterId { get; set; }

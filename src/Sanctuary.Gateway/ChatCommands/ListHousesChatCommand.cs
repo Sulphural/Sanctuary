@@ -51,9 +51,9 @@ public class ListHousesChatCommand : GatewayChatCommand
 
             using var cmd = db.CreateCommand();
             cmd.CommandText = @"
-                SELECT Id, HouseDefinitionId, CustomName, Created
+                SELECT Id, Definition, Name, Created
                 FROM Houses
-                WHERE OwnerId = $charId
+                WHERE CharacterId = $charId
                 ORDER BY Created DESC;
             ";
             cmd.Parameters.AddWithValue("$charId", characterId);

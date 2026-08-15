@@ -1,9 +1,11 @@
-﻿using System;
+using System;
+using System.Numerics;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Sanctuary.Game;
+using Sanctuary.Gateway.Admin;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common.Attributes;
 
@@ -14,6 +16,7 @@ public static class PacketZoneTeleportRequestHandler
 {
     private static ILogger _logger = null!;
     private static IResourceManager _resourceManager = null!;
+    private static IZoneManager _zoneManager = null!;
 
     public static void ConfigureServices(IServiceProvider serviceProvider)
     {
@@ -21,6 +24,7 @@ public static class PacketZoneTeleportRequestHandler
         _logger = loggerFactory.CreateLogger(nameof(PacketZoneTeleportRequestHandler));
 
         _resourceManager = serviceProvider.GetRequiredService<IResourceManager>();
+        _zoneManager = serviceProvider.GetRequiredService<IZoneManager>();
     }
 
     public static bool HandlePacket(GatewayConnection connection, Span<byte> data)
@@ -42,16 +46,27 @@ public static class PacketZoneTeleportRequestHandler
         var rotationX = MathF.Cos(pointOfInterest.Heading);
         var rotationZ = MathF.Sin(pointOfInterest.Heading);
 
-        connection.Player.UpdatePosition(pointOfInterest.SpawnPosition, new(rotationZ, 0f, rotationX, 0f), updateZoneArea: false);
+        var position = pointOfInterest.SpawnPosition;
+        var rotation = new Quaternion(rotationZ, 0f, rotationX, 0f);
 
-        var clientUpdatePacketUpdateLocation = new ClientUpdatePacketUpdateLocation
+        HousingPlacementSession.TakeAll(connection.Player.Guid);
+        HousingFixtureActorService.RemoveAllForPlayer(connection.Player);
+
+        if (connection.Player.CurrentHouseGuid != 0)
         {
-            Position = pointOfInterest.SpawnPosition,
-            Rotation = new(rotationZ, 0f, rotationX, 0f),
-            Teleport = true
-        };
-
-        connection.SendTunneled(clientUpdatePacketUpdateLocation);
+            connection.Player.TeleportToZone(_zoneManager.StartingZone, position, rotation);
+            connection.Player.CurrentHouseGuid = 0;
+        }
+        else
+        {
+            connection.Player.UpdatePosition(position, rotation, updateZoneArea: false);
+            connection.SendTunneled(new ClientUpdatePacketUpdateLocation
+            {
+                Position = position,
+                Rotation = rotation,
+                Teleport = true
+            });
+        }
 
         return true;
     }

@@ -10,6 +10,7 @@ using Sanctuary.Core.IO;
 using Sanctuary.Database;
 using Sanctuary.Database.Entities;
 using Sanctuary.Game;
+using Sanctuary.Gateway.Admin;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
 using Sanctuary.Packet.Common.Attributes;
@@ -61,9 +62,7 @@ public static class CoinStoreSellToClientRequestPacketHandler
             return true;
         }
 
-        // TODO: Implement other item types
-        if (clientItemDefinition.Type != 1 &&
-            clientItemDefinition.Type != 12)
+        if (!StoreInventoryPurchasePolicy.IsSupported(clientItemDefinition))
         {
             coinStoreTransactionCompletePacket.Result = 8;
 
@@ -77,6 +76,19 @@ public static class CoinStoreSellToClientRequestPacketHandler
             : clientItemDefinition.GetMemberPurchasePrice();
 
         var totalCost = cost * packet.Quantity;
+        var isHousingFixture = HouseOwnershipService.IsFixtureInventoryItem(clientItemDefinition);
+        var itemTintId = packet.ItemRecord.Tint;
+        if (isHousingFixture)
+        {
+            itemTintId = HouseOwnershipService.ResolveItemTintId(
+                _resourceManager,
+                clientItemDefinition.Id,
+                itemTintId);
+        }
+        else if (!clientItemDefinition.IsTintable)
+        {
+            itemTintId = clientItemDefinition.Icon.TintId;
+        }
 
         if (connection.Player.Coins < totalCost)
         {
@@ -95,7 +107,7 @@ public static class CoinStoreSellToClientRequestPacketHandler
             {
                 Character = x,
                 Item = x.Items.SingleOrDefault(i => i.Definition == clientItemDefinition.Id && i.Tint == packet.ItemRecord.Tint),
-                NextId = x.Items.Max(i => i.Id)
+                NextId = x.Items.Select(i => (int?)i.Id).Max() ?? 0
             })
             .SingleOrDefault();
 
@@ -193,6 +205,15 @@ public static class CoinStoreSellToClientRequestPacketHandler
         };
 
         connection.SendTunneled(clientUpdatePacketCoinCount);
+
+        if (connection.Player.CurrentHouseGuid != 0)
+        {
+            var activeHouse = HouseOwnershipService.TryGetHouse(
+                dbContext,
+                connection.Player.CurrentHouseGuid);
+            if (activeHouse is not null && activeHouse.CharacterId == dbQuery.Character.Id)
+                HouseOwnershipService.SendFixtureItemList(connection, activeHouse, _resourceManager);
+        }
 
         coinStoreTransactionCompletePacket.Result = 1;
 

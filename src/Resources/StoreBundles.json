@@ -19045,7 +19045,7 @@
       {
         "Quantity": 1,
         "GameItemId": 4787,
-        "MarketingItemId": 17184
+        "MarketingItemId": 11110
       }
     ],
     "Id": 4709,
@@ -19157,7 +19157,7 @@
     "LaunchTime": "2010-11-17T08:00:00+00:00",
     "ExpireTime": "2040-08-15T07:00:00+00:00",
     "Image": {
-      "Image": "6881"
+      "Image": "6846"
     },
     "Entries": [
       {
@@ -19168,7 +19168,7 @@
       {
         "Quantity": 1,
         "GameItemId": 4794,
-        "MarketingItemId": 17183
+        "MarketingItemId": 10338
       }
     ],
     "Id": 4715,
@@ -22082,7 +22082,7 @@
       {
         "Quantity": 1,
         "GameItemId": 5048,
-        "MarketingItemId": 11524
+        "MarketingItemId": 2215
       }
     ],
     "Id": 4967,
@@ -43699,5 +43699,238 @@
     "SkuId": 1,
     "MemberDiscount": 10,
     "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Apartment",
+    "LaunchTime": "2010-07-28T07:00:00+00:00",
+    "ExpireTime": "2040-08-15T07:00:00+00:00",
+    "Image": {
+      "Image": "5651"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 10337,
+        "MarketingItemId": 10337
+      }
+    ],
+    "Id": 100100,
+    "NameId": 420151,
+    "DescriptionId": 1114,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 125,
+    "CategoryDisplayOrder": 15200,
+    "DiscountType": 120000,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Shrouded Gloam Lot",
+    "LaunchTime": "2010-11-17T08:00:00+00:00",
+    "ExpireTime": "2040-08-15T07:00:00+00:00",
+    "Image": {
+      "Image": "7891"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 5475,
+        "MarketingItemId": 32786
+      },
+      {
+        "Quantity": 1,
+        "GameItemId": 17183,
+        "MarketingItemId": 17183
+      }
+    ],
+    "Id": 100101,
+    "NameId": 17432,
+    "DescriptionId": 17433,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 206,
+    "CategoryDisplayOrder": 1128000,
+    "DiscountType": 215,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1,
+    "ForceCanPreview": 2
+  },
+  {
+    "Comment": "Wilds Condo",
+    "LaunchTime": "2010-10-27T07:00:00+00:00",
+    "ExpireTime": "2040-08-15T07:00:00+00:00",
+    "Image": {
+      "Image": "7733"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 17184,
+        "MarketingItemId": 17184
+      }
+    ],
+    "Id": 100102,
+    "NameId": 296,
+    "DescriptionId": 436700,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 125,
+    "CategoryDisplayOrder": 15300,
+    "DiscountType": 121000,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1
+  },
+  {
+    "Comment": "Wilds Farm",
+    "LaunchTime": "2011-07-12T07:00:00+00:00",
+    "ExpireTime": "2040-08-15T07:00:00+00:00",
+    "Image": {
+      "Image": "7168"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 5475,
+        "MarketingItemId": 32786
+      },
+      {
+        "Quantity": 1,
+        "GameItemId": 11435,
+        "MarketingItemId": 11435
+      }
+    ],
+    "Id": 100103,
+    "NameId": 5409,
+    "DescriptionId": 434508,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 206,
+    "CategoryDisplayOrder": 1350000,
+    "DiscountType": 218,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1,
+    "ForceCanPreview": 2
+  },
+  {
+    "Comment": "Rumbledome Lot",
+    "LaunchTime": "2012-12-03T16:00:01+00:00",
+    "ExpireTime": "2040-12-31T08:00:00+00:00",
+    "Image": {
+      "Image": "8358"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 5475,
+        "MarketingItemId": 32786
+      },
+      {
+        "Quantity": 1,
+        "GameItemId": 15955,
+        "MarketingItemId": 15955
+      }
+    ],
+    "Id": 100104,
+    "NameId": 442333,
+    "DescriptionId": 442329,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 206,
+    "CategoryDisplayOrder": 1110000,
+    "DiscountType": 219,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1,
+    "ForceCanPreview": 2
+  },
+  {
+    "Comment": "Bat Cavern Lot",
+    "LaunchTime": "2011-10-12T07:00:00+00:00",
+    "ExpireTime": "2040-08-15T07:00:00+00:00",
+    "Image": {
+      "Image": "5653"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 5475,
+        "MarketingItemId": 32786
+      },
+      {
+        "Quantity": 1,
+        "GameItemId": 17195,
+        "MarketingItemId": 17195
+      }
+    ],
+    "Id": 100105,
+    "NameId": 69977,
+    "DescriptionId": 1114,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 206,
+    "CategoryDisplayOrder": 225000,
+    "DiscountType": 220,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1,
+    "ForceCanPreview": 2
+  },
+  {
+    "Comment": "Sunset Party Boat",
+    "LaunchTime": "2012-12-03T16:00:01+00:00",
+    "ExpireTime": "2040-12-31T08:00:00+00:00",
+    "Image": {
+      "Image": "8887"
+    },
+    "Entries": [
+      {
+        "Quantity": 1,
+        "GameItemId": 5475,
+        "MarketingItemId": 32786
+      },
+      {
+        "Quantity": 1,
+        "GameItemId": 79149,
+        "MarketingItemId": 79149
+      }
+    ],
+    "Id": 100106,
+    "NameId": 5103265,
+    "DescriptionId": 5103266,
+    "Status": 1,
+    "CurrencyType": 1,
+    "Price": 1,
+    "AltCurrencyPrice": 1,
+    "StoreId": 1,
+    "CategoryGroupId": 206,
+    "CategoryDisplayOrder": 1370000,
+    "DiscountType": 221,
+    "SkuId": 1,
+    "MemberDiscount": 10,
+    "MembersOnlyPrice": 1,
+    "ForceCanPreview": 2
   }
 ]

@@ -292,7 +292,7 @@ public class UdpConnection : PriorityQueueMember
         PhysicalSend(buf, 8, true);
     }
 
-    public bool Send(UdpChannel channel, Span<byte> data)
+    public virtual bool Send(UdpChannel channel, Span<byte> data)
     {
         lock (_guard)
         {

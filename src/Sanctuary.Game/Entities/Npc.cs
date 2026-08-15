@@ -19,6 +19,7 @@ public class Npc : IEntity
     public Quaternion Rotation { get; private set; }
 
     public bool Visible { get; set; }
+    public ulong CurrentHouseGuid { get; set; }
 
     public IZone Zone { get; set; }
     public ZoneTile ZoneTile { get; protected set; } = ZoneTile.Empty;
@@ -223,6 +224,7 @@ public class Npc : IEntity
     // World units - the interact/click distance, also sent to the client in the AddNpc packet.
     public int InteractRange { get; set; } = 5;
     public bool IsInteractable { get; set; } = true;
+    public bool CollisionEnabled { get; set; }
 
     // MOVEMENT (client OnPlayerUpdatePosition @0x90DE90, RE'd 2026-07-02): the client applies op125
     // position updates ONLY when the actor's MovementType is 1 (CONTROLLER: ClientMovementManager
@@ -492,7 +494,7 @@ public class Npc : IEntity
             Unknown39 = default,
             Unknown40 = default,
             Unknown41 = ShowHealthBar, // Health bar
-            Unknown42 = default,
+            Unknown42 = CollisionEnabled,
 
             HasTilt = default,
 

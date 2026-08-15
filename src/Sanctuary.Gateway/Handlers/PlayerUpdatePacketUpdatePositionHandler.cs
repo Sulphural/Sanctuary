@@ -3,6 +3,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Sanctuary.Gateway.Admin;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
 using Sanctuary.Packet.Common.Attributes;
@@ -191,6 +192,9 @@ public static class PlayerUpdatePacketUpdatePositionHandler
         }
 
         connection.Player.UpdatePosition(packet.Position, packet.Rotation);
+
+        if (HousingFixtureActorService.HandlePlayerPosition(connection.Player))
+            return true;
 
         // ReachLocation quest goals complete by proximity — evaluate against the fresh position.
         // Cheap: early-outs on players with no active reach goal.
