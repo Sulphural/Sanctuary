@@ -660,6 +660,10 @@ public class HousingFixtureRehydrationTests
         public bool TryCreateProjectileNpc([MaybeNullWhen(false)] out ProjectileNpc npc) { npc = null; return false; }
 
         public bool TrySpawnNpc(int npcId, ulong? npcGuid, float x, float y, float z, float heading) => false;
+        public bool TrySpawnDungeonEntrance(int dungeonId, float x, float y, float z, float heading) => false;
+        public bool TrySpawnGatheringNode(int nodeId, int modelId, string key, float x, float y, float z) => false;
+        public bool TrySpawnQuestCollectible(ulong guid, float x, float y, float z) => false;
+        public bool TrySpawnSnowballPile(float x, float y, float z, float heading) => false;
         public void AddSpawnPoint(float x, float y, float z) { }
         public void AddSpawnArea(float x, float y, float z, int radius) { }
         #endregion
