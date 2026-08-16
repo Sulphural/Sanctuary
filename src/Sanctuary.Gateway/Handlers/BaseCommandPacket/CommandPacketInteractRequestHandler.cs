@@ -1,14 +1,22 @@
 using System;
+using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Sanctuary.Core.Helpers;
+using Sanctuary.Core.IO;
+using Sanctuary.Database;
+using Sanctuary.Database.Entities;
+using Sanctuary.Game;
 using Sanctuary.Game.Entities;
 using Sanctuary.Game.Zones;
 using Sanctuary.Gateway.Admin;
 using Sanctuary.Packet;
+using Sanctuary.Packet.Common;
 using Sanctuary.Packet.Common.Attributes;
 
 namespace Sanctuary.Gateway.Handlers;
@@ -17,11 +25,15 @@ namespace Sanctuary.Gateway.Handlers;
 public static class CommandPacketInteractRequestHandler
 {
     private static ILogger _logger = null!;
+    private static IDbContextFactory<DatabaseContext> _dbContextFactory = null!;
+    private static IResourceManager _resourceManager = null!;
 
     public static void ConfigureServices(IServiceProvider serviceProvider)
     {
         var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
         _logger = loggerFactory.CreateLogger(nameof(CommandPacketInteractRequestHandler));
+        _dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<DatabaseContext>>();
+        _resourceManager = serviceProvider.GetRequiredService<IResourceManager>();
     }
 
     public static bool HandlePacket(GatewayConnection connection, ReadOnlySpan<byte> data)
@@ -205,8 +217,160 @@ public static class CommandPacketInteractRequestHandler
             return true;
         }
 
-        entity.OnInteract(player);
+        if (entity is CollectionNode collectionNode)
+            return HandleCollectionNode(connection, collectionNode);
 
+        entity.OnInteract(player);
         return true;
+    }
+
+    private static bool HandleCollectionNode(GatewayConnection connection, CollectionNode node)
+    {
+        var playerPosition = connection.Player.Position;
+        var nodePosition = node.Position;
+        var distanceSquared = Vector3.DistanceSquared(
+            new Vector3(playerPosition.X, playerPosition.Y, playerPosition.Z),
+            new Vector3(nodePosition.X, nodePosition.Y, nodePosition.Z));
+
+        if (distanceSquared > node.InteractRange * node.InteractRange)
+            return true;
+
+        if (!node.TryReserve())
+            return true;
+
+        var itemPersisted = false;
+        var nodeCompleted = false;
+
+        try
+        {
+            var roll = Random.Shared.Next(node.TypeDefinition.TotalDropWeight);
+            var drop = node.TypeDefinition.SelectDrop(roll);
+            var itemDefinitionId = drop.ItemDefinitionId;
+
+            if (!_resourceManager.ClientItemDefinitions.TryGetValue(itemDefinitionId, out var itemDefinition))
+            {
+                _logger.LogError("Collection node type {type} references unknown item definition {itemDefinitionId}.",
+                    node.TypeDefinition.Key, itemDefinitionId);
+                node.Release();
+                return true;
+            }
+
+            var characterId = GuidHelper.GetPlayerId(connection.Player.Guid);
+
+            using var dbContext = _dbContextFactory.CreateDbContext();
+            var dbCharacter = dbContext.Characters
+                .Include(character => character.Items)
+                .SingleOrDefault(character => character.Id == characterId);
+
+            if (dbCharacter is null)
+            {
+                node.Release();
+                return true;
+            }
+
+            var dbItem = dbCharacter.Items.SingleOrDefault(item => item.Definition == itemDefinitionId && item.Tint == 0);
+
+            if (dbItem is null)
+            {
+                dbItem = new DbItem
+                {
+                    Id = dbCharacter.Items.Select(item => item.Id).DefaultIfEmpty(0).Max() + 1,
+                    Definition = itemDefinitionId,
+                    Count = 1,
+                    Tint = 0
+                };
+
+                dbCharacter.Items.Add(dbItem);
+            }
+            else
+            {
+                dbItem.Count++;
+            }
+
+            if (dbContext.SaveChanges() <= 0)
+            {
+                node.Release();
+                return true;
+            }
+
+            itemPersisted = true;
+
+            var clientItem = connection.Player.Items.SingleOrDefault(item =>
+                item.Definition == itemDefinitionId && item.Tint == 0);
+
+            if (clientItem is null)
+            {
+                clientItem = new ClientItem
+                {
+                    Id = dbItem.Id,
+                    Definition = dbItem.Definition,
+                    Count = dbItem.Count,
+                    Tint = dbItem.Tint
+                };
+
+                connection.Player.Items.Add(clientItem);
+
+                using var writer = new PacketWriter();
+                clientItem.Serialize(writer);
+                itemDefinition.Serialize(writer);
+
+                connection.SendTunneled(new ClientUpdatePacketItemAdd { Payload = writer.Buffer });
+            }
+            else
+            {
+                clientItem.Count = dbItem.Count;
+                connection.SendTunneled(new ClientUpdatePacketItemUpdate
+                {
+                    ItemGuid = clientItem.Id,
+                    Count = clientItem.Count
+                });
+            }
+
+            node.CompleteCollection();
+            nodeCompleted = true;
+
+            // The delta packet is not fully decoded. The authoritative self packet is
+            // capture-validated and refreshes an already-open collection panel.
+            connection.SendSelfToClient();
+            SendCollectionRewardToast(connection, clientItem, itemDefinition);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to collect node {nodeId} ({type}).", node.SpawnDefinition.Id, node.TypeDefinition.Key);
+
+            if (itemPersisted && !nodeCompleted)
+                node.CompleteCollection();
+            else if (!itemPersisted)
+                node.Release();
+
+            return false;
+        }
+    }
+
+    // Upstream built this against its own RewardBundlePacket (flat Entry* fields + a SourceGuid XORed
+    // with Environment.TickCount). Ours is the IDA-verified 50/1 serializer instead: the banner icon and
+    // name ride in U13/U14, and the granted row goes in the entry list carrying the player's inventory
+    // item id as the ItemGuid tail (the bundle's lead byte is set automatically from that).
+    private static void SendCollectionRewardToast(GatewayConnection connection, ClientItem clientItem,
+        ClientItemDefinition itemDefinition)
+    {
+        connection.SendTunneled(new RewardBundlePacket
+        {
+            IconId = itemDefinition.Icon.Id,
+            NameId = itemDefinition.NameId,
+            Entries =
+            {
+                new RewardEntry
+                {
+                    IconId = itemDefinition.Icon.Id,
+                    TintId = clientItem.Tint,
+                    NameId = itemDefinition.NameId,
+                    Quantity = 1,
+                    ItemDefId = clientItem.Definition,
+                    TailItemGuid = clientItem.Id
+                }
+            }
+        });
     }
 }

@@ -14,6 +14,10 @@ public interface IResourceManager
     ImageSetMappingCollection ImageSetMappings { get; }
 
     ClientItemDefinitionCollection ClientItemDefinitions { get; }
+    CollectionDefinitionCollection Collections { get; }
+    CollectionNodePoolDefinitionCollection CollectionNodePools { get; }
+    CollectionNodeTypeDefinitionCollection CollectionNodeTypes { get; }
+    CollectionNodeSpawnDefinitionCollection CollectionNodeSpawns { get; }
 
     CoinStoreItemCollection CoinStoreItems { get; }
 

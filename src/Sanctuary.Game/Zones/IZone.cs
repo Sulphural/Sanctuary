@@ -12,6 +12,8 @@ namespace Sanctuary.Game.Zones;
 
 public interface IZone : IScriptZone
 {
+    int DefinitionId { get; }
+
     Vector4 SpawnPosition { get; }
     Quaternion SpawnRotation { get; }
 
@@ -88,6 +90,23 @@ public interface IZone : IScriptZone
 
     bool TryCreateNpc([MaybeNullWhen(false)] out Npc npc);
     bool TryCreateNpc(ulong guid, [MaybeNullWhen(false)] out Npc npc);
+
+    #region Collection nodes
+
+    IReadOnlyList<CollectionNodePoolStatus> GetCollectionNodePoolStatuses();
+    IReadOnlyList<CollectionNodeSpawnStatus> GetCollectionNodeSpawnStatuses(string? poolKey = null);
+    bool TryPlaceCollectionNodeSpawn(string poolKey, Vector4 position, float heading,
+        [MaybeNullWhen(false)] out CollectionNodeSpawnDefinition spawn, out bool activated);
+    bool TryConfigureCollectionNodePool(string poolKey, int maxActiveNodes, int respawnSeconds,
+        out int activeCount, out int targetActiveCount);
+    bool TryRemoveCollectionNodeSpawn(int id,
+        [MaybeNullWhen(false)] out CollectionNodeSpawnDefinition removedSpawn);
+    bool TryRemoveNearestCollectionNodeSpawn(Vector4 position, float radius,
+        [MaybeNullWhen(false)] out CollectionNodeSpawnDefinition removedSpawn);
+    void CompleteCollectionNode(CollectionNode node);
+
+    #endregion
+
     bool TryCreateMount(Player rider, MountDefinition definition, [MaybeNullWhen(false)] out Mount mount);
     bool TryCreatePet(Player owner, Resources.Definitions.PetDefinition definition, [MaybeNullWhen(false)] out Pet pet);
     bool TryCreateCombatNpc([MaybeNullWhen(false)] out CombatNpc combatNpc);

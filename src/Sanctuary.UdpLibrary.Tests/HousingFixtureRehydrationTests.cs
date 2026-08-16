@@ -668,6 +668,40 @@ public class HousingFixtureRehydrationTests
         public void AddSpawnArea(float x, float y, float z, int radius) { }
         #endregion
 
+        #region Collection nodes (not exercised by the housing fixture tests)
+
+        public IReadOnlyList<CollectionNodePoolStatus> GetCollectionNodePoolStatuses() => [];
+        public IReadOnlyList<CollectionNodeSpawnStatus> GetCollectionNodeSpawnStatuses(string? poolKey = null) => [];
+        public bool TryPlaceCollectionNodeSpawn(string poolKey, Vector4 position, float heading,
+            [MaybeNullWhen(false)] out CollectionNodeSpawnDefinition spawn, out bool activated)
+        {
+            spawn = null;
+            activated = false;
+            return false;
+        }
+        public bool TryConfigureCollectionNodePool(string poolKey, int maxActiveNodes, int respawnSeconds,
+            out int activeCount, out int targetActiveCount)
+        {
+            activeCount = 0;
+            targetActiveCount = 0;
+            return false;
+        }
+        public bool TryRemoveCollectionNodeSpawn(int id,
+            [MaybeNullWhen(false)] out CollectionNodeSpawnDefinition removedSpawn)
+        {
+            removedSpawn = null;
+            return false;
+        }
+        public bool TryRemoveNearestCollectionNodeSpawn(Vector4 position, float radius,
+            [MaybeNullWhen(false)] out CollectionNodeSpawnDefinition removedSpawn)
+        {
+            removedSpawn = null;
+            return false;
+        }
+        public void CompleteCollectionNode(CollectionNode node) { }
+
+        #endregion
+
         public int Id => 1;
         public int DefinitionId => 1;
         public string Name => "Housing fixture rehydration test";
