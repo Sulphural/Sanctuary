@@ -26,6 +26,13 @@ public class MatchmakingQueueDefinition : ISerializableType
     public int Param6;
     public int Param7;
 
+    // ★ LIVE-PROVEN 2026-08-15 (`/snowball queuecol 15/16`): these two really are the description and the
+    // icon - writing them changed the minigame description and picture on the Matchmaking panel. They were
+    // briefly renamed PlayersWaiting/AverageWaitSeconds on a bad reading of the client's Lua; they are not
+    // that. Which fields carry "N Waiting" and "Avg Wait" is still open - see MatchmakingQueueTable.
+    //
+    // (Their duplication with Param5/Param6 on every row is therefore a real property of the record, or of
+    // the capture it was reconstructed from, rather than the mistake it looked like.)
     public int EncounterDescriptionId;
 
     public int EncounterIcon;

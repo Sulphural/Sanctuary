@@ -83,6 +83,57 @@ public sealed class ProjectileNpc : Npc
     // Play the impact burst ON this actor (auto-fades) instead of world-anchored (world effects never clean).
     public void SetImpactTarget(ulong guid) => _impactTargetGuid = guid;
 
+    // ── Homing ────────────────────────────────────────────────────────────────────────────────────────
+    // OPT-IN, and off for everything that doesn't ask: a plain projectile flies to the point it was aimed
+    // at when it left the hand, which is right for an arrow but wrong for a snowball at close range - the
+    // target walks two steps and it sails past them even though the hit still registers. With this set,
+    // the flight re-aims at the target's CURRENT position as it goes.
+    //
+    // ★ Deliberately NOT re-sent every tick. The whole reason this class sends ONE position and lets the
+    // MovementType=1 controller interpolate is that per-tick updates render as a visible stutter (see
+    // GlideToTarget). So a correction only goes out when the target has actually moved a meaningful
+    // distance, and never more often than HomingRefreshMs - a few smooth course corrections, not a stream.
+    public IEntity? HomingTarget { get; set; }
+
+    private const float HomingRetargetDistance = 1.2f;
+    private const int HomingRefreshMs = 250;
+    private DateTime _nextHomingUpdate = DateTime.MinValue;
+
+    private void UpdateHoming()
+    {
+        if (HomingTarget is not { } target || _arrived || _pendingLaunch)
+            return;
+
+        var now = DateTime.UtcNow;
+        if (now < _nextHomingUpdate)
+            return;
+
+        // Aim at the chest, the same offset the original throw used.
+        var aim = new Vector4(target.Position.X, target.Position.Y + 1f, target.Position.Z, 1f);
+
+        var dx = aim.X - _target.X;
+        var dy = aim.Y - _target.Y;
+        var dz = aim.Z - _target.Z;
+
+        if (dx * dx + dy * dy + dz * dz < HomingRetargetDistance * HomingRetargetDistance)
+            return; // close enough to where we were already going
+
+        _nextHomingUpdate = now.AddMilliseconds(HomingRefreshMs);
+        _target = aim;
+
+        // Re-time the arrival from where the projectile actually is now, so a target running away extends
+        // the flight rather than the impact firing early at a stale clock.
+        var rdx = aim.X - Position.X;
+        var rdy = aim.Y - Position.Y;
+        var rdz = aim.Z - Position.Z;
+        var remaining = MathF.Sqrt(rdx * rdx + rdy * rdy + rdz * rdz);
+
+        _arriveAt = now.AddSeconds(_speed > 0.1f ? remaining / _speed : 0.1f);
+        _expireAt = _arriveAt.AddSeconds(3);
+
+        GlideToTarget();
+    }
+
     // Fired once, on the zone tick, at the moment the projectile lands - so anything the hit should DO
     // (damage, a status effect) happens when the player SEES it land rather than when it was thrown.
     // Ticked, not timer-based, so it can't outlive the zone or fire on a torn-down projectile.
@@ -288,6 +339,8 @@ public sealed class ProjectileNpc : Npc
             GlideToTarget();
             return;
         }
+
+        UpdateHoming();
 
         // Reached the target: stop moving and LINGER (keep the carrier alive) so the attached trail plays
         // out its lifetime and fades naturally. Removing the carrier kills the attached particles instantly

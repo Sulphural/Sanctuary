@@ -76,18 +76,9 @@ app.UseHttpLogging();
 
 app.MapAuthEndpoints();
 app.MapPortraitEndpoints();
+// Serves GET /servermanifest.xml for the launcher, from the "ServerManifest" config section.
+// Do NOT also MapGet("/servermanifest.xml") here: two handlers on one route make routing throw
+// AmbiguousMatchException, and the launcher just sees a 500 and cannot add the server.
 app.MapManifestEndpoints();
-
-// Server manifest for the OSFR Launcher (GET /servermanifest.xml). Added for local hosting.
-app.MapGet("/servermanifest.xml", () => Microsoft.AspNetCore.Http.Results.Content(
-    """
-    <?xml version="1.0"?>
-    <ServerManifest version="2">
-      <Name>Local Dev</Name>
-      <Description>Local Sanctuary combat dev server</Description>
-      <WebApiUrl>http://127.0.0.1:20040</WebApiUrl>
-      <LoginServer>127.0.0.1:20042</LoginServer>
-    </ServerManifest>
-    """, "text/xml"));
 
 app.Run();

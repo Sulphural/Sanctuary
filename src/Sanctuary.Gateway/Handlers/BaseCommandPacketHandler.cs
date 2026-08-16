@@ -45,7 +45,7 @@ public static class BaseCommandPacketHandler
             CommandPacketChatChannelOn.OpCode => CommandPacketChatChannelOnHandler.HandlePacket(connection, reader.Span),
             CommandPacketChatChannelOff.OpCode => CommandPacketChatChannelOffHandler.HandlePacket(connection, reader.Span),
             23 => CommandPacketQuestAbandonHandler.HandlePacket(connection, reader.Span), // "Drop Quest" (journal)
-            6 => HandleDialogResponse(connection),                                        // 26/6 PacketDialogResponse
+            6 => HandleDialogResponse(connection, reader),                                 // 26/6 PacketDialogResponse
             11 => HandleStartWheel(connection),                                           // 26/11 InteractionStartWheel
             _ => LogUnhandled(opCode, reader)
         };
@@ -57,8 +57,22 @@ public static class BaseCommandPacketHandler
     // +0x654 and restores the camera via FUN_009f6890). NOT sub-opcode 29 (QuestDialogComplete): that
     // dispatches "QuestStartHandler:DismissEndScreen", which is for the quest END SCREEN - sending it
     // here hid the whole HUD and locked player movement (no end screen was open to dismiss).
-    private static bool HandleDialogResponse(GatewayConnection connection)
+    private static bool HandleDialogResponse(GatewayConnection connection, PacketReader reader)
     {
+        // A dialog with more than one button cares WHICH was clicked, so read the response Id the client
+        // echoes back (the body after the 26/6 header). Checked before the single-action path below,
+        // because a multi-choice dialog owns the whole click.
+        if (connection.Player.PendingDialogChoices is { } choices)
+        {
+            connection.Player.PendingDialogChoices = null;
+
+            if (reader.TryRead(out int responseId) && choices.TryGetValue(responseId, out var choice))
+                choice();
+
+            connection.Player.SendTunneled(new CommandPacketEndDialog());
+            return true;
+        }
+
         // A non-quest dialog (the treasure chest) owns its own button - let it consume the click first.
         if (connection.Player.PendingDialogAction is { } dialogAction)
         {

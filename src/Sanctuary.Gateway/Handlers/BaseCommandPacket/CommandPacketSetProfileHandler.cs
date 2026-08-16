@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 
 using Sanctuary.Core.IO;
 using Sanctuary.Game;
+using Sanctuary.Game.Entities;
 using Sanctuary.Game.Combat;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common.Attributes;
@@ -38,19 +39,32 @@ public static class CommandPacketSetProfileHandler
 
         _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(CommandPacketSetProfile), packet);
 
-        var profile = connection.Player.Profiles.FirstOrDefault(x => x.Id == packet.Id);
+        TryActivateProfile(connection.Player, packet.Id);
 
-        if (profile is null)
-            return true;
+        return true;
+    }
 
-        connection.Player.ActiveProfileId = packet.Id;
+    // The whole job-swap sequence, extracted so the server can drive a swap itself rather than only in
+    // response to the player clicking one. Snowball Battles forces Adventurer on entry this way.
+    //
+    // Returns false when the player doesn't own that profile, or already has it active - in both cases
+    // nothing is sent, because re-activating the current job would be a visible no-op swirl AND would
+    // clear the ability toolbar for no reason (see the toolbar re-send below).
+    public static bool TryActivateProfile(Player player, int profileId)
+    {
+        var profile = player.Profiles.FirstOrDefault(x => x.Id == profileId);
+
+        if (profile is null || player.ActiveProfileId == profileId)
+            return false;
+
+        player.ActiveProfileId = profileId;
 
         // Each job has its own level, so switching jobs rescales HP/mana/stats to the new job's rank.
-        connection.Player.RecalculateStats(refill: true);
+        player.RecalculateStats(refill: true);
 
         // Refresh the (now-active) job's trait list to its current rank so the Traits panel is right after a
         // swap too, not just at login.
-        connection.Player.RefreshTraits();
+        player.RefreshTraits();
 
         var clientUpdatePacketActivateProfile = new ClientUpdatePacketActivateProfile();
 
@@ -60,43 +74,43 @@ public static class CommandPacketSetProfileHandler
 
         clientUpdatePacketActivateProfile.Payload = packetWriter.Buffer;
 
-        clientUpdatePacketActivateProfile.Attachments = connection.Player.GetAttachments();
+        clientUpdatePacketActivateProfile.Attachments = player.GetAttachments();
 
         clientUpdatePacketActivateProfile.Animation = 3001; // emo_outfit_all
         clientUpdatePacketActivateProfile.CompositeEffect = 4005; // PFX_Job_Swirl
 
-        connection.SendTunneled(clientUpdatePacketActivateProfile);
+        player.SendTunneled(clientUpdatePacketActivateProfile);
 
         // COMBAT: on swap to any kit job (ninja/archer), populate the ability toolbar from the
         // EQUIPPED WEAPON (same builder zone-load + equip use, FX cache warmed for first casts).
         // No kit weapon equipped => empty bar.
-        if (JobWeaponAbilities.SendToolbarWithFxPreload(connection.Player, _resourceManager))
+        if (JobWeaponAbilities.SendToolbarWithFxPreload(player, _resourceManager))
         {
             _logger.LogInformation("Sent weapon-driven ability SetDefinition on swap to profile {id}.", profile.Id);
         }
 
         var playerUpdatePacketEquippedItemsChange = new PlayerUpdatePacketEquippedItemsChange();
 
-        playerUpdatePacketEquippedItemsChange.Guid = connection.Player.Guid;
+        playerUpdatePacketEquippedItemsChange.Guid = player.Guid;
 
         playerUpdatePacketEquippedItemsChange.Attachments = clientUpdatePacketActivateProfile.Attachments;
 
-        connection.Player.SendTunneledToVisible(playerUpdatePacketEquippedItemsChange);
+        player.SendTunneledToVisible(playerUpdatePacketEquippedItemsChange);
 
         var friendStatusPacket = new FriendStatusPacket
         {
-            Guid = connection.Player.Guid,
+            Guid = player.Guid,
             Status =
             {
-                ProfileId = connection.Player.ActiveProfile.Id,
-                ProfileRank = connection.Player.ActiveProfile.Rank,
-                ProfileIconId = connection.Player.ActiveProfile.Icon,
-                ProfileNameId = connection.Player.ActiveProfile.NameId,
-                ProfileBackgroundImageId = connection.Player.ActiveProfile.BadgeImageSet
+                ProfileId = player.ActiveProfile.Id,
+                ProfileRank = player.ActiveProfile.Rank,
+                ProfileIconId = player.ActiveProfile.Icon,
+                ProfileNameId = player.ActiveProfile.NameId,
+                ProfileBackgroundImageId = player.ActiveProfile.BadgeImageSet
             }
         };
 
-        foreach (var friend in connection.Player.Friends)
+        foreach (var friend in player.Friends)
         {
             if (!_zoneManager.TryGetPlayer(friend.Guid, out var friendPlayer))
                 continue;

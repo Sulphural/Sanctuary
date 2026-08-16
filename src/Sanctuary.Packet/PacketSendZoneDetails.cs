@@ -27,7 +27,16 @@ public class PacketSendZoneDetails : ISerializablePacket
     public int GeometryId;
 
     public bool IsInStartingSocialZone;
-    public bool Unknown6;
+
+    // ★ The client exposes this to its scripts as the Lua global `IsInSnowballFight()` - that C function
+    // (FUN_00c170d0) just pushes a byte read from the live zone object at +0x782, and this is the bool that
+    // lands there: it is the LAST of the two consecutive bools here, matching `IsInHub` reading +0x781 for
+    // the one before it (IsInStartingSocialZone).
+    //
+    // It is what gates the snowball-fight first-time-event tutorial: triggering FtesSnowball while the
+    // client does not believe it is in a snowball fight silently does nothing, no matter how the trigger is
+    // sent. Set it on the Snowball Battles arena zone.
+    public bool IsInSnowballFight;
 
     public byte[] Serialize()
     {
@@ -49,7 +58,7 @@ public class PacketSendZoneDetails : ISerializablePacket
 
         writer.Write(GeometryId);
         writer.Write(IsInStartingSocialZone);
-        writer.Write(Unknown6);
+        writer.Write(IsInSnowballFight);
 
         return writer.Buffer;
     }

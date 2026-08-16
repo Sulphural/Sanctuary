@@ -35,6 +35,10 @@ public class ZoneManager : IZoneManager
     private CombatTutorialZone? _combatTutorial;
     private readonly object _combatTutorialLock = new();
 
+    // INSTANCE (Snowball Battles): the sh_snowball_battle team arena, same lazy pattern.
+    private SnowballArenaZone? _snowballArena;
+    private readonly object _snowballArenaLock = new();
+
     // Debug world browser (!map): one cached instance per world name so repeated jumps reuse the zone.
     private readonly Dictionary<string, DebugWorldZone> _debugWorlds = [];
     private readonly object _debugWorldLock = new();
@@ -177,6 +181,28 @@ public class ZoneManager : IZoneManager
             }
 
             return _combatTutorial;
+        }
+    }
+
+    public SnowballArenaZone GetOrCreateSnowballArena()
+    {
+        lock (_snowballArenaLock)
+        {
+            if (_snowballArena is null)
+            {
+                _snowballArena = new SnowballArenaZone(_serviceProvider)
+                {
+                    Id = _uniqueId++
+                };
+
+                _zones.TryAdd(_snowballArena.Id, _snowballArena);
+
+                _snowballArena.OnStart();
+
+                _logger.LogInformation("Created Snowball Battles arena zone {name} ({id}).", _snowballArena.Name, _snowballArena.Id);
+            }
+
+            return _snowballArena;
         }
     }
 

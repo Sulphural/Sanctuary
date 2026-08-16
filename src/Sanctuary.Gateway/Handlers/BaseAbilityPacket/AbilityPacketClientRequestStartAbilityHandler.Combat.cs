@@ -203,18 +203,57 @@ public static partial class AbilityPacketClientRequestStartAbilityHandler
         // 1=special) and never routed through the weapon-ability resolution below. Two things live there,
         // in the same precedence JobWeaponAbilities.ApplyThirdSlot draws them: a held power-up first, then
         // the Snowhill snowball tool.
-        if (packet.Data.Slot == 2)
+        // ★ THE ARENA REMAPS THE BAR: 0 = throw, 1 = guard, 2 = pile power-up. Handled before the normal
+        // slot-2 path below, because in here slot 2 is power-ups ONLY (the throw has moved to slot 0) and
+        // slots 0/1 are not weapon abilities to be resolved through a job kit.
+        if (zone is Sanctuary.Game.Zones.SnowballArenaZone)
+        {
+            // Explicit per-slot logging: "slot 0 never refreshes" needs to be separable into "the press
+            // never arrived" vs "it arrived and the client drew nothing".
+            _logger.LogInformation("Snowball arena: bar {bar} slot {slot} pressed by {player}.",
+                packet.Data.Id, packet.Data.Slot, player.Name?.FullName);
+
+            switch (packet.Data.Slot)
+            {
+                case 0:
+                    return SnowballTool.TryThrow(player, _resourceManager, packet.Guid) || SendFailure(connection);
+
+                case 1:
+                    return SnowballGuard.TryGuard(player) || SendFailure(connection);
+
+                case 2:
+                    return SnowballSpecials.TryThrow(player, _resourceManager, packet.Guid) || SendFailure(connection);
+            }
+
+            return SendFailure(connection);
+        }
+
+        // The two extra slots the job kits don't own - see JobWeaponAbilities.ApplyThirdSlot. They used to
+        // share the "3" key and fall through to each other; they have a key each now, so each press only
+        // does its own thing.
+        if (packet.Data.Slot == JobWeaponAbilities.PowerupSlotIndex)
         {
             if (PowerupSystem.TryUse(player, _resourceManager))
                 return true;
 
+            _logger.LogInformation("Powerup slot pressed with nothing on it (holding={held}).",
+                PowerupSystem.IsHolding(player.Guid));
+
+            return SendFailure(connection);
+        }
+
+        if (packet.Data.Slot == SnowballTool.ToolbarSlotIndex)
+        {
             // packet.Guid = the client's selected target, so a snowball thrown with an enemy targeted lands
             // on that enemy instead of on whatever is nearest the facing.
             if (SnowballTool.TryThrow(player, _resourceManager, packet.Guid))
                 return true;
 
-            _logger.LogInformation("Slot 3 pressed with nothing on it: powerup held={held}, snowball={snowball}.",
-                PowerupSystem.IsHolding(player.Guid), SnowballTool.IsEquipped(player));
+            if (SnowballTool.IsOnCooldown(player))
+                _logger.LogDebug("Snowball slot: still on cooldown.");
+            else
+                _logger.LogInformation("Snowball slot pressed with nothing on it (equipped={snowball}).",
+                    SnowballTool.IsEquipped(player));
 
             return SendFailure(connection);
         }

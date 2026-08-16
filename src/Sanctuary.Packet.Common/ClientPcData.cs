@@ -355,7 +355,16 @@ public class ClientPcData
 
     public Dictionary<int, ClientActionBar> ActionBars = new();
 
-    // public List<int> FirstTimeEvent = new();
+    // ★ THE FIRST-TIME-EVENT LIST. Ids from Client/Resources/FirstTimeEvents.txt (e.g. 75 = FtesSnowball,
+    // the snowball-fight tutorial). This is NOT an "already seen" list: it was shipped EMPTY with the
+    // Enable flag already true, and in that state no FTE ever fires - an already-seen list would have had
+    // the opposite effect (everything unseen => everything shows). So an id has to be present here for the
+    // client to act on a trigger for it.
+    //
+    // Live-established: the trigger itself works. `FirstTimeEvent:TriggerFirstTimeEvent("FtesSnowball")`
+    // sent via ExecuteScriptPacket runs with NO error in the client's Logs/LuaErrors.log (a nil global
+    // would have been logged there) - it just had nothing enabled to show.
+    public List<int> FirstTimeEvent = new();
     // public List<int> MiniGameTutorials = new();
 
     // public Dictionary<int, ClientEffectTag> EffectTags = new();
@@ -544,9 +553,9 @@ public class ClientPcData
 
         writer.Write(ActionBars);
 
-        // TODO FirstTimeEvent
+        // [bool Enable][int count][int id]xcount
         writer.Write(true); // Enable
-        writer.Write(0);
+        writer.Write(FirstTimeEvent);
 
         writer.Write(0); // TODO MiniGameTutorials
         writer.Write(0); // TODO EffectTags

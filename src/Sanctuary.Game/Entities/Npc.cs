@@ -40,6 +40,26 @@ public class Npc : IEntity
     public int AttachedEffectId { get; set; }
     public int AttachedEffectTagId { get; set; }
 
+    // A looping BASE animation this npc holds, sent to each viewer right after its AddNpc.
+    //
+    // ★ PlayType 1 (the base-animation WRITE) is the only way an npc animates at all - the "play now" path
+    // is gated on client-side state npcs never have. A base animation LOOPS until it is overwritten, which
+    // is normally a nuisance (see CombatNpc.PlaySwingAnimation, which has to reset to idle afterwards) but
+    // is exactly what a standing performance wants.
+    //
+    // Per-viewer for the same reason as AttachedEffectId: set once at spawn it would only reach players who
+    // were already standing there, and anyone walking up later would find the actor frozen in its idle.
+    public int BaseAnimationId { get; set; }
+
+    // A sound EMITTER id played on this npc as each viewer sees it (op26/39 PlaySoundIdOnTarget).
+    //
+    // ★ Distinct from AttachedEffectId, which takes a COMPOSITE effect id - a different table and a
+    // different id space. Sounds that no composite wraps are only reachable this way.
+    //
+    // Whether it loops is a property of the emitter definition, not of this field: an emitter with
+    // loopCount="0" repeats forever on its own, so nothing here needs a replay timer.
+    public int LoopingSoundId { get; set; }
+
     // Whether this npc gets the combat NpcRelevance push (the attack cursor) when a player first sees it.
     //
     // ★ Relevance is what marks an npc as a TARGET, and ProjectileNpc already records that "a targetable NPC

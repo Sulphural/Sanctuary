@@ -126,6 +126,12 @@ public sealed partial class StartingZone : BaseZone
         // Place a wandering "Battle Starter" creature for each small combat encounter, among its own kind.
         SpawnEncounterEntryNpcs();
 
+        // Calvin Coldcastle, the Snowball Fight match-maker - permanent, unlike Bruce, because he is both a
+        // quest target and the minigame's entrance.
+        SpawnCalvinColdcastle();
+
+        // Bruce is NOT spawned here - he only exists while performing, and the zone tick brings him in for
+        // each show (see UpdateBrucePerformance).
     }
 
     // NPCs come from the community-contributed Npcs.json (fixed scale/rotation, static-marked). The guid

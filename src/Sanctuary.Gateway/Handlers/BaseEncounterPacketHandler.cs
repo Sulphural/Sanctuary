@@ -213,6 +213,15 @@ public static class BaseEncounterPacketHandler
             _logger.LogInformation("Leave button (RequestExit) in {zone} — returning {name} to the overworld.", encounter.Name, player.Name);
             encounter.LeaveEncounter(player);
         }
+        else if (player.Zone is SnowballArenaZone arena)
+        {
+            // ★ THIS is the leave button the minigame HUD actually uses - op41/sub109, not op39/sub6
+            // MiniGameEnd (which is a real leave path too, just not the one this UI sends). Both were
+            // gated on CombatEncounterZone, and Snowball Battles is deliberately a plain BaseZone - no
+            // knockouts, revives or power-ups - so it fell through both and the button did nothing.
+            _logger.LogInformation("Leave button (RequestExit) in {zone} — returning {name} to the overworld.", arena.Name, player.Name);
+            arena.SendHome(player);
+        }
 
         return true;
     }

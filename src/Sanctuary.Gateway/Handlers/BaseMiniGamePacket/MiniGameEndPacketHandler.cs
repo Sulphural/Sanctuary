@@ -30,6 +30,12 @@ public static class MiniGameEndPacketHandler
 
         _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(MiniGameEndPacket), packet);
 
+        // Remember which state the client means - see Player.LastMiniGameStateId.
+        connection.Player.LastMiniGameStateId = packet.StateId;
+
+        _logger.LogInformation("MiniGameEnd from {name}: client StateId = {stateId}.",
+            connection.Player.Name?.FullName, packet.StateId);
+
         var miniGameLeavePacket = new MiniGameLeavePacket(packet.StateId);
 
         connection.SendTunneled(miniGameLeavePacket);
@@ -45,6 +51,15 @@ public static class MiniGameEndPacketHandler
         {
             _logger.LogInformation("Leave button pressed in {zone} — returning {name} to the overworld.", encounter.Name, player.Name);
             encounter.LeaveEncounter(player);
+        }
+        else if (player.Zone is SnowballArenaZone arena)
+        {
+            // Snowball Battles is a minigame but NOT a CombatEncounterZone (no knockouts, no revives, no
+            // power-ups), so it misses the branch above - which is exactly why its Leave button closed the
+            // panel and left the player standing in the arena. SendHome does the same job: drops them off
+            // the roster, tears the MiniGameState down and teleports them back where they came in.
+            _logger.LogInformation("Leave button pressed in {zone} — returning {name} to the overworld.", arena.Name, player.Name);
+            arena.SendHome(player);
         }
 
         return true;

@@ -22,7 +22,8 @@ namespace Sanctuary.Packet;
 // rather than invented. Serialize() pads to the measured body size, so the packet stays the exact
 // length the client expects even if a named field's width is later corrected.
 //
-// Field MEANINGS are unknown - the reader gives types and order only.
+// Field MEANINGS are unknown - the reader gives types and order only. Send the guids + Position and leave
+// the rest at 0: that is the combination that is known to work.
 public class AbilityPacketLaunchAndLand : BaseAbilityPacket, ISerializablePacket
 {
     public new const short OpCode = 4;
@@ -34,6 +35,10 @@ public class AbilityPacketLaunchAndLand : BaseAbilityPacket, ISerializablePacket
     // +0x18 is an empty LIST (int count 0), NOT a string - see the serializer. No field to set.
     public int Unknown1;            // +0x28
     public int Unknown2;            // +0x2c
+    // ★ LEAVE THIS AT 0. A 2026-07-18 note called it the cooldown duration; setting it was tested live in
+    // 2026-08-15 and does NOT drive the sweep length. Worse, setting it (and Unknown1) on a packet that was
+    // rendering fine STOPPED it rendering. The whole packet's field meanings are unresolved - the sweep
+    // works when it is sent with the guids and Position ONLY, so don't populate anything else here.
     public int Unknown3;            // +0x30
     public int Unknown4;            // +0x38   NOTE: read order is 0x30 -> 0x38 -> 0x34.
     public int Unknown5;            // +0x34   Offsets are non-monotonic; ORDER is what matters.

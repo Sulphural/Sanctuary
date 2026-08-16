@@ -28,6 +28,17 @@ namespace Sanctuary.Gateway;
 
 public class GatewayConnection : UdpConnection
 {
+
+    // ★ EMPTY, as it originally shipped. Both readings of this list ("already seen" vs "enabled") were
+    // tried live and NEITHER displayed a tutorial - because the client's FTE DISPLAY path is inert here,
+    // not because of the list (see the memory notes: even an FTE the client triggers ITSELF, observed live
+    // as FtesCombatSplashScreen on arena entry, draws nothing). Leaving ids in here would be a guess with
+    // real side effects - id 2 is GamedockJobs - for no benefit.
+    //
+    // The plumbing is kept because the field genuinely was unimplemented and is now correct on the wire:
+    // [bool Enable][int count][int id]xcount.
+    private static readonly int[] FirstTimeEventIds = [];
+
     private readonly ILogger _logger;
     private readonly LoginClient _loginClient;
     private readonly IZoneManager _zoneManager;
@@ -88,6 +99,17 @@ public class GatewayConnection : UdpConnection
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Party cleanup on disconnect failed for {player}.", Player.Name);
+        }
+
+        // Drop out of any matchmaking queue - otherwise the "N Waiting" count keeps counting someone who
+        // has left, and a match could try to launch for a player who isn't here.
+        try
+        {
+            MatchmakingQueueTable.Leave(Player.Guid);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Failed to clear matchmaking queue state for {PlayerGuid}.", Player.Guid);
         }
 
         try
@@ -422,6 +444,19 @@ public class GatewayConnection : UdpConnection
 
         Player.Gender = dbCharacter.Gender;
 
+        // ★ FIRST-TIME EVENTS. An id must be in this list for the client to act on a trigger for it - the
+        // field shipped empty (with Enable already true), which is why FTE triggers ran without error and
+        // showed nothing. Ids come from Client/Resources/FirstTimeEvents.txt.
+        //
+        // Only the ones this server actually triggers are listed. Enabling all 93 would arm every tutorial
+        // in the game - the new-player walkthrough, the pet chain, the job/combat/atlas panels - and they
+        // would start firing at whatever the client considers their trigger point.
+        //
+        // No "already seen" persistence exists yet (there is no column for it), so an enabled event can
+        // re-fire on later logins. That is the trade for having it appear at all; add a Characters column
+        // and drop ids from this list once seen if that becomes annoying.
+        Player.FirstTimeEvent.AddRange(FirstTimeEventIds);
+
         foreach (var dbMount in dbCharacter.Mounts)
         {
             if (!_resourceManager.Mounts.TryGetValue(dbMount.Definition, out var mountDefinition))
@@ -670,7 +705,23 @@ public class GatewayConnection : UdpConnection
         var packetSendZoneDetails = new PacketSendZoneDetails
         {
             Name = Player.Zone.Name,
-            Id = Player.Zone.Id
+            Id = Player.Zone.Id,
+
+            // ★★ DELIBERATELY NEVER SET TRUE. This flag is real and correctly identified - the client
+            // exposes it to its scripts as IsInSnowballFight() (FUN_00c170d0 reads byte [zone+0x782]) - but
+            // setting it LOCKS THE GAMEDOCK: the client's own script picks GameDock MINIGAME_STATE vs
+            // NORMAL_STATE from a predicate set that includes it, so mounts / start menu / jobs stay greyed
+            // for as long as it is true. Live-read confirmed IsInSnowballFight = 1 in the OVERWORLD with the
+            // buttons dead, every combat flag 0.
+            //
+            // It was only ever set to unlock the FtesSnowball tutorial, and that tutorial is unreachable
+            // from a server anyway (the client's FTE DISPLAY path is inert - see the memory notes). So it
+            // buys nothing and costs the dock.
+            //
+            // If it is ever needed again: it must be cleared BEFORE the player leaves, and the clear has to
+            // actually reach the client - PacketSendZoneDetails was historically sent only at login, which
+            // is why a stale true survived the trip home.
+            IsInSnowballFight = false,
         };
 
         SendTunneled(packetSendZoneDetails);

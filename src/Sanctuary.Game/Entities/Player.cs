@@ -185,6 +185,27 @@ public sealed class Player : ClientPcData, IEntity
     // through to the quest flow, and cleared as it fires so a stale click can't re-trigger it.
     public Func<bool>? PendingDialogAction { get; set; }
 
+    // The same idea for a dialog with SEVERAL buttons, keyed by CommandPacketShowDialog.Response.Id, for
+    // when it matters WHICH one was clicked (Calvin Coldcastle's "Ok, lets do this!" / "No thanks!").
+    // PendingDialogAction can't express that - it fires for any button - so a two-choice dialog uses this
+    // instead. Cleared as a whole when any of its buttons fires, so a stale click can't re-trigger it.
+    public Dictionary<int, Action>? PendingDialogChoices { get; set; }
+
+    // The matchmaking queue this player is sitting in, or 0. Lives on the player (not just in the
+    // gateway's queue registry) so game-side code can see it - Calvin Coldcastle uses it to stop
+    // re-offering a match to someone who has already joined one.
+    // The MiniGameState id the CLIENT reports for the minigame it thinks it is in (from op39/6 MiniGameEnd).
+    // Not needed by the current teardown (StateId<=0 targets the first state, and there is only ever one),
+    // but it is the only place the client's own id is visible, so it is worth keeping for diagnostics.
+    public int LastMiniGameStateId;
+
+    public int MatchmakingQueueId { get; set; }
+
+    // The serialized MatchmakingRequest their join was made with. Kept because withdrawing them again
+    // (141/5 ClearMatchRequest) means handing the same record back, and for a group member the request
+    // was the LEADER's - they never sent one of their own.
+    public byte[]? MatchmakingRequest { get; set; }
+
     // The NPC doing the talking in that conversation - every turn stays framed on them.
     public ulong PendingDialogueNpcGuid { get; set; }
 
@@ -1512,6 +1533,24 @@ public sealed class Player : ClientPcData, IEntity
         };
 
         SendTunneled(packetClientBeginZoning);
+
+    }
+
+    // The zone-flag packet, kept in one place because it has to be re-sent whenever the zone changes -
+    // notably from BaseZone.OnClientIsReady, i.e. AFTER the destination has finished loading.
+    public void SendZoneDetails()
+    {
+        SendTunneled(new PacketSendZoneDetails
+        {
+            Name = Zone.Name,
+            Id = Zone.Id,
+            GeometryId = 0,
+
+            // ★ NEVER TRUE. Setting IsInSnowballFight locks the GameDock (the client picks
+            // MINIGAME_STATE from a predicate set including it), and its only purpose was the FTE
+            // tutorial, which is unreachable from a server anyway.
+            IsInSnowballFight = false,
+        });
     }
 
     private void UpdateZoneArea()
@@ -1611,6 +1650,28 @@ public sealed class Player : ClientPcData, IEntity
                     TagId = npc.AttachedEffectTagId,
                     CompositeEffectId = npc.AttachedEffectId,
                     SourceGuid = npc.Guid,
+                });
+
+            // A held looping animation (Bruce's guitar performance) - see Npc.BaseAnimationId. Sent after
+            // the AddNpc, since the actor has to exist before it can be posed.
+            if (npc.BaseAnimationId > 0)
+                SendTunneled(new PlayerUpdatePacketSetAnimation
+                {
+                    Guid = npc.Guid,
+                    AnimationId = npc.BaseAnimationId,
+                    PlayType = 1,
+                });
+
+            // A sound the npc emits continuously (Bruce's track) - see Npc.LoopingSoundId. Anchored on the
+            // npc so the emitter's attenuation/clip distance falls off around it. Target type 1 = position
+            // + actor guid, live-confirmed 2026-08-15; the layout is NOT free-form, see the packet.
+            if (npc.LoopingSoundId > 0)
+                SendTunneled(new CommandPacketPlaySoundIdOnTarget
+                {
+                    SoundId = npc.LoopingSoundId,
+                    TargetType = CommandPacketPlaySoundIdOnTarget.TargetPositionAndActor,
+                    TargetPosition = npc.Position,
+                    TargetGuid = npc.Guid,
                 });
 
             // Damageable hostiles (quest kill targets, world combat NPCs) need their attack cursor

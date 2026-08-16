@@ -95,6 +95,8 @@ public static class BaseMiniGamePacketHandler
         // all right now).
         if (player.Zone is CombatEncounterZone encounter)
             encounter.NotifyRewardWheelStopped(player);
+        else if (player.Zone is Sanctuary.Game.Zones.SnowballArenaZone snowballArena)
+            snowballArena.NotifyRewardWheelStopped(player); // same deferred-return contract, non-combat zone
 
         var prize = player.PendingWheelPrize;
         var coins = player.PendingWheelCoins;

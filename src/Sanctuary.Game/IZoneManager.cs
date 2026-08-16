@@ -24,6 +24,10 @@ public interface IZoneManager
 
     CombatTutorialZone GetOrCreateCombatTutorial();
 
+    // INSTANCE (Snowball Battles): the sh_snowball_battle team-PvP arena — same lazy shared-instance
+    // model as the combat arenas above, which also means one match at a time server-wide for now.
+    SnowballArenaZone GetOrCreateSnowballArena();
+
     DebugWorldZone GetOrCreateDebugWorld(string worldName, System.Numerics.Vector4 spawn);
 
     // INSTANCE (data-driven combat dungeons): the shared EncounterArenaZone for a DungeonCatalog

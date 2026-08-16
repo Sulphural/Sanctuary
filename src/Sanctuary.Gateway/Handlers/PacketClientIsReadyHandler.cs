@@ -34,6 +34,16 @@ public static class PacketClientIsReadyHandler
     {
         _logger.LogTrace("Received {name} packet.", nameof(PacketClientIsReady));
 
+        // ★ ZONE FLAGS, RE-SENT ONCE THE CLIENT IS ACTUALLY READY. PacketSendZoneDetails carries
+        // IsInArena / IsInStartingSocialZone / IsInSnowballFight, which the client exposes to its scripts
+        // as IsInArena()/IsInHub()/IsInSnowballFight(). Sent alongside ClientBeginZoning they are applied
+        // mid-load and do NOT stick - a live read showed IsInSnowballFight still 1 in the overworld while
+        // the server was hardcoding false, which is what kept the GameDock locked.
+        //
+        // Done HERE rather than in BaseZone.OnClientIsReady because not one of the seven zones that
+        // override that method calls base, so a default implementation would never run.
+        connection.Player.SendZoneDetails();
+
         connection.Player.Zone.OnClientIsReady(connection.Player);
 
         // Publish today's daily-wheel spins, which is what un-greys Spin For The Win's Play button in the

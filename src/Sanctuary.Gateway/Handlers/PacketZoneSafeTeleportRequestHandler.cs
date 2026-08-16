@@ -39,7 +39,10 @@ public static class PacketZoneSafeTeleportRequestHandler
 
         _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(PacketZoneSafeTeleportRequest), packet);
 
-        var safeOrigin = connection.Player.CurrentHouseGuid == 0
+        // "Nearest hub" only means anything measured from an OVERWORLD spot: inside a house or an instance
+        // the live position is in that world's own coordinate space, so use the overworld point the player
+        // left from instead of whatever the instance happens to call (0,0).
+        var safeOrigin = connection.Player.CurrentHouseGuid == 0 && connection.Player.Zone == _zoneManager.StartingZone
             ? connection.Player.Position
             : connection.Player.StartingZonePosition;
         var pointOfInterest = FindNearestSafePointOfInterest(safeOrigin);
@@ -59,7 +62,13 @@ public static class PacketZoneSafeTeleportRequestHandler
         HousingPlacementSession.TakeAll(connection.Player.Guid);
         HousingFixtureActorService.RemoveAllForPlayer(connection.Player);
 
-        if (connection.Player.CurrentHouseGuid != 0)
+        // ★ THIS IS THE CLIENT'S "I'm stuck" BUTTON, i.e. the last way out of anywhere - so it has to be
+        // able to leave an INSTANCE, not just move within one. It used to change zones only for a house,
+        // and the plain UpdateLocation path below cannot: a player stranded in an arena/dungeon/tutorial
+        // instance got shuffled to an overworld POI's coordinates while still inside the instanced world,
+        // which rescues nobody (and those coords are meaningless there). Anywhere that is not the starting
+        // zone now teleports properly back to it.
+        if (connection.Player.CurrentHouseGuid != 0 || connection.Player.Zone != _zoneManager.StartingZone)
         {
             connection.Player.TeleportToZone(_zoneManager.StartingZone, position, rotation);
             connection.Player.CurrentHouseGuid = 0;

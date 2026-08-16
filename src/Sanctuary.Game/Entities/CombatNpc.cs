@@ -84,6 +84,30 @@ public class CombatNpc : Npc
     // ARRIVES does the destination become its real home.
     public Vector4? MarchTarget { get; set; }
 
+    // Movement state broadcast while this npc is moving; 2 = run (the default the client animates from).
+    // Set to 0 to stop the client forcing a locomotion clip - see BroadcastPositionUpdate's note.
+    public byte MovingAnimationState { get; set; } = 2;
+
+    // Send the movement heading in the DIRECTION form the zones use when placing npcs, rather than as a
+    // half-angle quaternion - required for CONTROLLER actors, which are oriented only by what we send.
+    public bool DirectionStyleRotation { get; set; }
+
+    // Radians added to the computed movement heading before it is sent. 0 for everything that already faces
+    // correctly; see the note where it is applied.
+    public float HeadingOffset { get; set; }
+
+    // ★ GROUND CLAMP FOR CONTROLLER ACTORS. A PHYSICS actor is stuck to the ground by the client; a
+    // CONTROLLER actor is not - it sits at exactly the height the server sends, so it floats over any
+    // terrain the mover's own Y easing doesn't track. Zones that spawn controller npcs supply their own
+    // ground-height lookup here and the mover uses it verbatim.
+    public Func<Vector4, float>? GroundHeight { get; set; }
+
+    // ★ Suppress the streamed ExpectedSpeed. A PHYSICS actor animates its own run because the server tells
+    // it how fast it is going; with the speed pinned at 0 the client has no reason to enter a locomotion
+    // state, so a held clip (the Snowman Invaders' run-WITH-present ambient loop) can survive being moved.
+    // Position updates still go out, so it still travels - it just glides rather than animating a run.
+    public bool SuppressExpectedSpeed { get; set; }
+
     // RELENTLESS: the march is the point, not an entrance. A relentless marcher never abandons its
     // destination to chase - it keeps walking and swings at whatever steps into AttackRange, so the fight is
     // "stop it reaching the tree" rather than "kite it around a field". Non-relentless marchers drop the
@@ -729,12 +753,29 @@ public class CombatNpc : Npc
             1f
         );
 
+        // Stick to the ground when the zone knows where it is - see GroundHeight.
+        if (GroundHeight is { } ground)
+            newPos.Y = ground(newPos);
+
         // Face the way we're actually walking, not straight at the target — matters when a blocked route
         // steps sideways or around a corner. Identical to the old behavior whenever the straight line is
         // clear, since dir is then exactly the vector to the target.
-        var angle = MathF.Atan2(nx, nz);
-        var halfAngle = angle / 2f;
-        var newRot = new Quaternion(0, MathF.Sin(halfAngle), 0, MathF.Cos(halfAngle));
+        //
+        // ★ HeadingOffset exists because a CONTROLLER actor is oriented purely by what the server sends -
+        // nothing derives facing from motion for it the way a physics actor does - and the convention the
+        // client applies to that rotation is not the same one. Rather than guess it, the offset is tunable.
+        var angle = MathF.Atan2(nx, nz) + HeadingOffset;
+
+        // ★ TWO ROTATION CONVENTIONS EXIST IN THIS CODEBASE, and which one is right depends on who applies
+        // it. A PHYSICS actor is faced by the CLIENT from its own motion, so whatever we send is ignored and
+        // the half-angle quaternion below was never wrong in a way anyone could see. A CONTROLLER actor is
+        // oriented purely by this value - and every place the zones set an npc's heading directly (Bruce,
+        // the snowball referees, Calvin) uses the DIRECTION form `(sin h, 0, cos h, 0)`, not a quaternion.
+        //
+        // So controller-driven npcs get the direction form; everything else keeps the existing behaviour.
+        var newRot = DirectionStyleRotation
+            ? new Quaternion(MathF.Sin(angle), 0f, MathF.Cos(angle), 0f)
+            : new Quaternion(0f, MathF.Sin(angle / 2f), 0f, MathF.Cos(angle / 2f));
 
         UpdatePosition(newPos, newRot);
 
@@ -743,12 +784,20 @@ public class CombatNpc : Npc
         var sentDz = newPos.Z - LastSentPosition.Z;
         var sentDist = MathF.Sqrt(sentDx * sentDx + sentDz * sentDz);
 
-        if (sentDist >= 0.3f)
+        // Tighter while the speed stream is suppressed: the client snaps to each update instead of
+        // interpolating, so smaller, more frequent steps are the only thing that keeps it smooth.
+        if (sentDist >= (SuppressExpectedSpeed ? 0.05f : 0.3f))
         {
             // Always the run state while actively moving — chase and evade are both sprints, so flipping
             // walk<->run at the old 7.0 speed cutoff just churned the animation. ExpectedSpeed above drives
             // the actual interpolation pace.
-            BroadcastPositionUpdate(2);
+            //
+            // ★ OVERRIDABLE. The movement state picks the client's locomotion clip, and it is reasserted on
+            // every position broadcast - so it beats any SetAnimation, at any re-send rate. An npc that must
+            // move while HOLDING a clip (the Snowman Invaders running off with a present, whose carry
+            // animation is a separate slot from plain loc_run) sets this to 0 so the client stops forcing
+            // its run cycle. ExpectedSpeed still drives interpolation, so it keeps moving normally.
+            BroadcastPositionUpdate(MovingAnimationState);
             LastSentPosition = newPos;
         }
     }
@@ -757,6 +806,9 @@ public class CombatNpc : Npc
     // PHYSICS actor interpolates a smooth grounded run without re-sending the same pace every tick.
     private void SendExpectedSpeed(float speed)
     {
+        if (SuppressExpectedSpeed)
+            speed = 0f;
+
         if (LastSentExpectedSpeed == speed)
             return;
         LastSentExpectedSpeed = speed;

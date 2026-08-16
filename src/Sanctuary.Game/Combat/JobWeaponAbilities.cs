@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 
@@ -31,34 +32,179 @@ public static class JobWeaponAbilities
     // again, instead of trying to find and patch every individual toolbar-send call site.
     public static AbilityPacketSetDefinition? BuildToolbar(Player player, IResourceManager resources)
     {
+        // Snowball Battles overrides the bar entirely - see BuildSnowballArenaToolbar.
+        if (BuildSnowballArenaToolbar(player) is { } arenaBar)
+            return arenaBar;
+
         var def = JobKits.Active(player)?.BuildToolbar(player, resources);
         if (def is not null)
             ApplyThirdSlot(player, def);
         return def;
     }
 
-    // Slot index 2 - the "3" key - sitting on top of the job's own attack (0) and special (1). Two things
-    // want it, so they take precedence rather than fight: a HELD POWER-UP wins while the player has one
-    // (transient and combat-critical, and it's gone the moment it's pressed), otherwise the SNOWBALL TOOL
-    // shows for anyone who has picked one up in Snowhill.
+    // ★ THE ARENA BAR IS FIXED AND JOB-INDEPENDENT: 0 = throw a snowball, 1 = guard, 2 = the pile
+    // power-up - i.e. the "1", "2" and "3" keys, which is retail's layout (the first-time-event text says
+    // "Hit the [1] key to throw snowballs", and the fanbyte wiki puts the pile power on "3").
+    //
+    // This is why it can't just be the normal bar plus extras: outside the arena the snowball tool sits on
+    // slot 2 alongside a job's attack/special, but in here the job is forced to Adventurer (no kit, so no
+    // attack or special of its own) and the throw has to move to slot 0. Returns null when the player
+    // isn't in the arena, so every other zone is untouched.
+    private static AbilityPacketSetDefinition? BuildSnowballArenaToolbar(Player player)
+    {
+        if (player.Zone is not Zones.SnowballArenaZone)
+            return null;
+
+        var def = AbilityPacketSetDefinition.CreateEmpty(player.ActiveProfileId);
+
+        // ★ THE ARENA SLOTS CARRY REAL ABILITY-DEFINITION IDS. They used to be 0 (copying
+        // PowerupSystem's held slot), which means the client has NO op36/13 definition behind them - and
+        // the cooldown radial is driven off that definition, so a slot with none can't render one at all.
+        // The definitions themselves are seeded by SendArenaAbilityDefinitions, BEFORE the toolbar: the
+        // client asks for a def the instant it reads a slot and won't re-check.
+        SendArenaAbilityDefinitions(player);
+
+        // Positional serialization: every slot up to the highest one used has to exist, so an unheld
+        // power-up leaves an empty placeholder rather than shifting guard onto the "3" key.
+        var throwSlot = SnowballTool.MakeToolbarSlot(player) ?? EmptySlot();
+        throwSlot.AbilityDefinitionId = ArenaThrowAbilityId;
+        // The last slot is the PILE SPECIAL (Power or Freezing), not the generic combat power-up:
+        // in this minigame the piles ARE the power-ups.
+        var specialSlot = SnowballSpecials.MakeToolbarSlot(player) ?? EmptySlot();
+        specialSlot.AbilityDefinitionId = ArenaSpecialAbilityId;
+
+        def.Slots.Add(throwSlot);                       // 0 - the "1" key
+        var guardSlot = SnowballGuard.MakeToolbarSlot();
+        guardSlot.AbilityDefinitionId = ArenaGuardAbilityId;
+
+        def.Slots.Add(guardSlot);                       // 1 - the "2" key
+        def.Slots.Add(specialSlot);                     // 2 - the "3" key
+
+        return def;
+    }
+
+    private static AbilityPacketSetDefinition.Slot EmptySlot() => new() { Type = 0 };
+
+    // Ability-definition ids for the three arena slots. Arbitrary but stable, and well clear of any real
+    // ability id.
+    public const int ArenaThrowAbilityId = 990001;
+    public const int ArenaGuardAbilityId = 990002;
+    public const int ArenaSpecialAbilityId = 990003;
+
+    // ★ THE COOLDOWN-RADIAL EXPERIMENT. Which op36/13 field feeds the ability button's sweep end-time was
+    // never pinned down - the candidates were narrowed to these float offsets and the packet already
+    // exposes them as Probe* for exactly this. Each is set to the ability's cooldown IN SECONDS.
+    //
+    // ★★ SETTLED 2026-08-15: NONE OF THE EIGHT DRIVE IT. Tested one at a time at 15s against a zeroed
+    // baseline, on a guard button that was verifiably receiving its cooldown (i.e. AFTER the StartCasting
+    // slot-naming fix - the earlier all-eight-at-once test predated that and was invalid, which is why it
+    // was worth re-running). Every field: still the same ~1s sweep. No field suppressed it either.
+    //
+    // That closes the last server-side lever this codebase had identified for the sweep's LENGTH. What the
+    // server CAN do is already done and correct: MeleeRefresh sets the true cooldown-end (so the button
+    // greys for the real duration), StartCasting names the slot, LaunchAndLand renders the sweep. Only the
+    // sweep's ~1s animation length is beyond reach, and it is a client-side constant.
+    //
+    // DO NOT re-run this probe. If it is ever revisited, the only untried lever left is LaunchAndLand's
+    // empty list field (+0x18) - which has a client-crash history - and past that it is an exe change,
+    // which the standing no-client-patches rule bars.
+    //
+    // ProbeField: null = every field (the old blunt behaviour), "none" = leave them all zero, otherwise the
+    // hex offset name of the single field to set ("44", "48", "6c", "78", "7c", "8c", "90", "a8").
+    public static string? ProbeField { get; set; } = "none";
+
+    // Overrides the per-ability cooldown when probing, so a 2s throw can be given an obviously-long value.
+    public static float? ProbeSeconds { get; set; }
+
+    public static readonly string[] ProbeFields = ["44", "48", "6c", "78", "7c", "8c", "90", "a8"];
+
+    private static void SendArenaAbilityDefinitions(Player player)
+    {
+        Send(ArenaThrowAbilityId, SnowballTool.ToolNameId, SnowballTool.ToolIconId, SnowballTool.ThrowCooldownMs / 1000f);
+        Send(ArenaGuardAbilityId, SnowballGuard.NameId, SnowballGuard.IconId, SnowballGuard.CooldownMs / 1000f);
+
+        if (SnowballSpecials.TryGetHeld(player, out var kind))
+        {
+            Send(ArenaSpecialAbilityId,
+                SnowballSpecials.NameIdFor(kind),
+                SnowballSpecials.IconIdFor(kind),
+                SnowballSpecials.CooldownMs / 1000f);
+        }
+
+        void Send(int abilityId, int nameId, int iconId, float cooldownSeconds)
+        {
+            var seconds = ProbeSeconds ?? cooldownSeconds;
+
+            var definition = new AbilityPacketAbilityDefinition
+            {
+                AbilityId = abilityId,
+                NameId = nameId,
+                IconId = iconId,
+            };
+
+            void Set(string field, float value)
+            {
+                switch (field)
+                {
+                    case "44": definition.Probe44 = value; break;
+                    case "48": definition.Probe48 = value; break;
+                    case "6c": definition.Probe6c = value; break;
+                    case "78": definition.Probe78 = value; break;
+                    case "7c": definition.Probe7c = value; break;
+                    case "8c": definition.Probe8c = value; break;
+                    case "90": definition.Probe90 = value; break;
+                    case "a8": definition.ProbeA8 = value; break;
+                }
+            }
+
+            if (ProbeField is null)
+            {
+                foreach (var field in ProbeFields)
+                    Set(field, seconds);
+            }
+            else if (!string.Equals(ProbeField, "none", StringComparison.OrdinalIgnoreCase))
+            {
+                Set(ProbeField.ToLowerInvariant(), seconds);
+            }
+
+            player.SendTunneled(definition);
+        }
+    }
+
+    // Two EXTRA slots on top of the job's own attack (0) and special (1):
+    //   index 2 - the "3" key - a held combat POWER-UP (transient; gone the moment it's pressed)
+    //   index 3 - the "4" key - the SNOWBALL TOOL, for anyone who has picked one up in Snowhill
+    //
+    // They used to share index 2 and take precedence over each other, which meant picking up a power-up
+    // hid the snowball tool. They're separate keys now, so both can be held at once.
     //
     // ★ Assigned BY INDEX, not appended. Slots serialize positionally (see AbilityPacketSetDefinition), so
-    // appending only lands on index 2 when the kit happens to have contributed exactly 2 slots - on the
-    // empty no-kit toolbar an append would put it on index 0, i.e. the "1" key.
+    // appending only lands on the right index when the kit happens to have contributed exactly that many
+    // slots - on the empty no-kit toolbar an append would put it on index 0, i.e. the "1" key.
     private static void ApplyThirdSlot(Player player, AbilityPacketSetDefinition def)
     {
-        var slot = PowerupSystem.MakeHeldSlot(player.Guid) ?? SnowballTool.MakeToolbarSlot(player);
-        if (slot is null)
-            return;
+        Assign(PowerupSystem.MakeHeldSlot(player.Guid), PowerupSlotIndex);
+        Assign(SnowballTool.MakeToolbarSlot(player), SnowballTool.ToolbarSlotIndex);
 
-        while (def.Slots.Count < SnowballTool.ToolbarSlotIndex)
-            def.Slots.Add(new AbilityPacketSetDefinition.Slot { Type = 0 });
+        void Assign(AbilityPacketSetDefinition.Slot? slot, int index)
+        {
+            if (slot is null)
+                return;
 
-        if (def.Slots.Count == SnowballTool.ToolbarSlotIndex)
-            def.Slots.Add(slot);
-        else
-            def.Slots[SnowballTool.ToolbarSlotIndex] = slot;
+            // Positional serialization: every slot up to this one has to exist, or a gap shifts everything
+            // after it onto the wrong key.
+            while (def.Slots.Count < index)
+                def.Slots.Add(new AbilityPacketSetDefinition.Slot { Type = 0 });
+
+            if (def.Slots.Count == index)
+                def.Slots.Add(slot);
+            else
+                def.Slots[index] = slot;
+        }
     }
+
+    // The "3" key - held combat power-ups.
+    public const int PowerupSlotIndex = 2;
 
     // Same toolbar; BuildToolbar above already carries the third slot whenever a job kit exists, so this
     // only needs its own fallback for the no-kit case. Kept as a separate method (rather than folding call

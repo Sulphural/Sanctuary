@@ -45,8 +45,14 @@ public static class SnowballTool
     public const int PileSparkleFxId = 15932;        // PFX_heal_sparkles_small_loop_world
     public const int PileSparkleTagId = 91010;
 
-    // Where the tool lands on the HUD: the combat toolbar's third slot, i.e. the "3" key.
-    public const int ToolbarSlotIndex = 2;
+    // Where the tool lands on the HUD: the combat toolbar's FOURTH slot, i.e. the "4" key. It used to sit
+    // on index 2 and fight a held combat power-up for that spot; they have a key each now.
+    public const int ToolbarSlotIndex = 3;
+
+    // ★ ...but INSIDE the arena the bar is rebuilt as 0 = throw, 1 = guard, 2 = power-up, so the throw moves
+    // to the FIRST slot. Two different slots for the same action - kept because the toolbar build needs it,
+    // even though the cooldown can't be pointed at a specific slot (see the StartCasting note in TryThrow).
+    public const int ArenaToolbarSlotIndex = 0;
 
     // ★ RAW IMAGE id (Resources/Images/Images.txt), NOT the item definition's Icon.Id - the ability
     // toolbar's slot icons live in the same raw-image space the job kits' weapon icons do (verified: the
@@ -82,11 +88,22 @@ public static class SnowballTool
     // .dma) - it has no skeleton, and these props are authored for a lighting/material path that an NPC
     // actor doesn't give them.
     //
-    // That is now the THIRD prop to fail this way, after 1982 (dark untextured ball) and 793 (chunky red
-    // arrow) in the archer pass. Treat it as settled: real prop models do not work as projectile carriers in
-    // this client, the attached PRJ_ trail IS the retail look. Don't spend another round on it.
+    // ★★ CORRECTION (2026-08-15) - the old conclusion here ("real prop models do not work as projectile
+    // carriers in this client, don't spend another round on it") WAS WRONG, and wrong in a way worth
+    // recording: the common factor in all three failures was not "prop model", it was **NO SKELETON**.
+    // Decompressing the .adr files shows it directly - a working carrier names a .dsk:
     //
-    // Still tunable via `/snowball model <id>` / `/snowball scale <f>` if a future model is worth a look.
+    //   1056 invisible_cube_with_skeleton   - the carrier in use, skeleton in the name
+    //   1980 sg_snowball_bbe                - mesh only, no .dsk        -> rendered as a black ball
+    //   1942 giantsnowball                  - **meatball.dsk** + snowball_m_lod0.dme + snowball.dds
+    //   1994 sg_cannonball_boned_bbe        - **sg_cannonball_boned_bbe.dsk** ("boned" is literal)
+    //
+    // So 1942 IS a real snowball mesh with a real skeleton - the "Illusion: Giant Snowball" transform -
+    // and it carries its own snow trail FX (snow_white_st_sphere_med_loop_w_giant-snowball-trail). It is
+    // PLAYER-SIZED, so it needs a small scale to read as a thrown snowball. 1994 is the same idea in the
+    // ball family SOE boned specifically so it could be flown as an actor, but it is a cannonball.
+    //
+    // Try it live, no rebuild: `/snowball model 1942` then `/snowball scale 0.1` (and 1056 / 1 to revert).
     public static int ProjectileModelId { get; set; } = 1056; // invisible_cube_with_skeleton
     public static float ProjectileScale { get; set; } = 1f;
 
@@ -135,11 +152,23 @@ public static class SnowballTool
 
     private const int StunMs = 2500;
 
+    // ★ THE ARENA KNOCKS DOWN FOR MUCH LESS TIME, and it has to. A downed player is skipped as a target
+    // (see FindTarget - so a repeat hit can't pin them), which means the knockdown length IS the window
+    // where snowballs pass straight through them. At Snowhill's 2.5s that reads as "I hit him and then my
+    // next few throws did nothing", and in a race to 80 hits it throttles scoring badly. Short enough to
+    // stay a real interruption, short enough that the fight keeps flowing.
+    //
+    // Tunable live with `/snowball stun <ms>`; the overworld event keeps its own 2.5s either way.
+    public static int ArenaStunMs { get; set; } = 1_000;
+
     // What a snowball does to an NPC: a brief hitch, not the 2.5s player knockdown. The Snowmen Invaders
     // event is built on this - snowballs SLOW the Abominable Snowman on his march without ever stopping him,
     // so the stagger has to be short enough that a crowd only delays him.
     private const int NpcStaggerMs = 900;
     private const int CooldownMs = 2000;
+
+    // Exposed so the arena bar can run its cooldown sweep for the right length.
+    public static int ThrowCooldownMs => CooldownMs;
 
     // Snowballs DAMAGE hostile npcs - the Snowmen Invaders event is played by throwing them ("grab some
     // snowballs from a nearby pile and help out your friends as you knock these snowmen down"), so a throw
@@ -159,7 +188,14 @@ public static class SnowballTool
     // anyway, so a stale heading costs nothing.
     // 30 threw halfway across the clearing and made aiming meaningless - a snowball should be a short lob
     // you have to close in for, not a sniper shot.
-    private const float ThrowRange = 16f;
+    public static float ThrowRange { get; set; } = 16f;
+
+    // Aim cone for target selection. ~35 degrees each side counts as "pointing at it"; anything past 90
+    // degrees is behind the thrower and never eligible. AimAngleWeight converts an angle miss into an
+    // effective distance penalty, so among several snowmen the one you are actually facing wins.
+    public static float AimConeCos { get; set; } = 0.82f;      // cos 35 deg
+    private const float AimBackstopCos = 0.10f;  // just inside 90 deg
+    private const float AimAngleWeight = 14f;
 
     private const float ProjectileSpeed = 45f;
 
@@ -176,8 +212,62 @@ public static class SnowballTool
     // without it, the FIRST grab's timer would still fire and take the refill away with it.
     private static readonly ConcurrentDictionary<ulong, int> _grantTickets = new();
 
+    // ★ INSIDE THE ARENA THE BASIC THROW IS ALWAYS AVAILABLE. Snowhill's piles hand out a temporary armful
+    // because there the tool is a toy you keep going back for; in Snowball Battles the piles hand out the
+    // SPECIALS instead (Power / Freezing), and the plain snowball is the always-on slot-0 attack you fight
+    // with between them. Without this the arena bar's first slot would be empty and there'd be no way to
+    // fill it, since no basic pile exists in there.
     public static bool IsEquipped(Player player) =>
-        _expiry.TryGetValue(player.Guid, out var until) && DateTime.UtcNow < until;
+        player.Zone is SnowballArenaZone ||
+        (_expiry.TryGetValue(player.Guid, out var until) && DateTime.UtcNow < until);
+
+    // Whether a throw would be refused purely because the last one was too recent. Only used to tell the
+    // two failure cases apart when logging - a press during the cooldown is normal, and reporting it as
+    // "nothing on that slot" sent me looking for a bug that wasn't there.
+    // ★ THE COOLDOWN SWEEP, WITHOUT THE ANIMATION. MeleeRefresh alone sets the cooldown-end but renders
+    // nothing; LaunchAndLand is what draws the sweep - and its processor a33760 branches:
+    //     if (Unknown1 == 0 || no target) { ANIMATION branch - PlayerAnimationEvent 958220 }
+    //     else                            { projectile launcher b84190 }
+    // Sending it with Unknown1 = 0 is what left players dancing after every throw. Unknown1 = 1 takes the
+    // OTHER branch, and inside b84190 the visible projectile is spawned only when 007c4710(Unknown4)
+    // resolves - so Unknown4 = 0 means that branch runs and spawns nothing. Net effect: the sweep, no
+    // animation, no projectile.
+    //
+    // Guid2/Guid3 still have to be a REAL enemy or the client rejects the target and the whole processor
+    // no-ops (which is the state where nothing rendered at all). The +0x18 list stays empty - a non-zero
+    // count is the documented client crash.
+    //
+    // ★ SEND THIS EXACTLY AS IT WAS. MeleeRefresh greys the button, LaunchAndLand draws the sweep, and
+    // LaunchAndLand renders ONLY when it carries the guids + Position and nothing else. Populating its
+    // other fields while hunting the sweep's LENGTH (Unknown3/+0x30 from a since-disproved note, then
+    // Unknown1 to dodge the animation branch) is what stopped it rendering at all - the field meanings are
+    // unresolved, so anything non-zero is a guess that can silently break the packet.
+    //
+    // The sweep's ~1s length is a client-side constant. That is the accepted state; do not trade a working
+    // refresh for another attempt at it.
+    public static bool SendCooldownSweep { get; set; } = true;
+
+    public static void SendCooldown(Player player, int cooldownMs, ulong targetGuid)
+    {
+        player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = cooldownMs });
+
+        if (!SendCooldownSweep)
+            return;
+
+        if (targetGuid == 0)
+            targetGuid = player.Guid;
+
+        player.SendTunneled(new AbilityPacketLaunchAndLand
+        {
+            Guid = player.Guid,
+            Guid2 = targetGuid,
+            Guid3 = targetGuid,
+            Position = player.Position,
+        });
+    }
+
+    public static bool IsOnCooldown(Player player) =>
+        _cooldowns.TryGetValue(player.Guid, out var readyAt) && DateTime.UtcNow < readyAt;
 
     // The combat-toolbar slot, or null when this player has no snowballs left. Mirrors
     // PowerupSystem.MakeHeldSlot's shape (Type 3, no AbilityDefinition behind it - slot 2 is dispatched by
@@ -255,16 +345,26 @@ public static class SnowballTool
     // False = nothing happened (no tool, still on cooldown, no zone), which the caller reports back as an
     // ability failure. Note that a throw that hits NOTHING still returns true: the wind-up, the projectile and
     // the splat all play, it just doesn't knock anyone down. A snowball fight is mostly misses.
-    public static bool TryThrow(Player player, IResourceManager resourceManager, ulong selectedGuid = 0)
+    public static bool TryThrow(Player player, IResourceManager resourceManager, ulong selectedGuid = 0,
+        SnowballSpecials.SpecialKind? special = null)
     {
-        if (!IsEquipped(player) || player.Zone is not { } zone)
+        // A SPECIAL carries its own charge, so it doesn't need a basic armful behind it.
+        if ((special is null && !IsEquipped(player)) || player.Zone is not { } zone)
             return false;
 
+        // ★ A SPECIAL IS NOT GATED BY THE BASIC THROW'S COOLDOWN, and does not start it. They used to
+        // share this one 2-second timer, which is why a special "only worked the second time you pressed
+        // it": throw a plain snowball, press the special straight after, and it was silently refused by
+        // the basic's cooldown. The special carries its own, much longer one - see SnowballSpecials.
         var now = DateTime.UtcNow;
-        if (_cooldowns.TryGetValue(player.Guid, out var readyAt) && now < readyAt)
-            return false;
 
-        _cooldowns[player.Guid] = now.AddMilliseconds(CooldownMs);
+        if (special is null)
+        {
+            if (_cooldowns.TryGetValue(player.Guid, out var readyAt) && now < readyAt)
+                return false;
+
+            _cooldowns[player.Guid] = now.AddMilliseconds(CooldownMs);
+        }
 
         // Lag-compensate the launch point the same way the ranged jobs do: the client renders the thrower
         // ahead of the server's last-known position, so a moving player's snowball would otherwise appear
@@ -288,7 +388,15 @@ public static class SnowballTool
             forwardZ = 1f; // never thrown into their own feet
         }
 
-        var victim = FindTarget(zone, player, selectedGuid, muzzle);
+        var victim = FindTarget(zone, player, selectedGuid, muzzle, forwardX, forwardZ);
+
+        // ★ SNOWBALLS STOP ON GEOMETRY. Without this a throw passes straight through the snow forts, the
+        // fence and every prop, which reads as broken the moment two players duck behind opposite forts.
+        // The zone already carries the collision data the mob AI navigates by - the real per-model mesh
+        // when it has been built, else the placement-derived obstacle map - so the throw just asks it
+        // whether the line to the target is clear.
+        if (victim is not null && !HasClearShot(zone, muzzle, victim.Position))
+            victim = null; // blocked: it still flies, it just splats on whatever is in the way
 
         // Land it ON the victim's chest when there is one, otherwise out at the end of the throw.
         // A free throw flies LEVEL - same height it left the hand. It used to aim a metre BELOW the muzzle,
@@ -303,18 +411,14 @@ public static class SnowballTool
         if (aimLength > 0.001f)
             muzzle = new Vector4(muzzle.X + aimDx / aimLength * 1.2f, muzzle.Y, muzzle.Z + aimDz / aimLength * 1.2f, 1f);
 
-        var targetGuid = victim?.Guid ?? player.Guid;
+        // ★ NO AbilityPacketStartCasting ON THIS PATH - it was tried and REVERTED. It was added purely to
+        // name the toolbar slot for the cooldown grey (MeleeRefresh carries no slot field), but the client
+        // plays an animation off it that cannot be suppressed: Animation = -1 emoted, and passing the real
+        // throw id or reordering it ahead of the throw clip did not stop it either. The throw's motion comes
+        // from SetSynchronizedAnimations below and nothing else may touch it.
+        var throwAnimationId = ThrowAnimationFor(player, resourceManager);
 
-        // ★ The wind-up rides SetSynchronizedAnimations - the packet the BOOMBOX DANCES use, which is the
-        // proof that it animates a player's OWN character and not just other people's view of them. Those
-        // dance ids (emo_dance_01 3211, emo_dance_freestyle_01 3501, ...) are type-4 Emote slots, exactly like
-        // emo_shoo, so an emote sent this way is a known-working combination.
-        //
-        // The earlier attempts failed on the ANIMATION ID, not the packet: 6219 is soccer-only and would
-        // never have played through any vector. AbilityPacketStartCasting (how weapon abilities animate) was
-        // then tried as a replacement and is NOT used here - a type-4 emote is not a combat animation, and
-        // this path is already proven for exactly this kind of clip.
-        var throwAnimation = BuildAnimation(player.Guid, ThrowAnimationFor(player, resourceManager));
+        var throwAnimation = BuildAnimation(player.Guid, throwAnimationId);
 
         player.SendTunneled(throwAnimation);
         foreach (var watcher in player.VisiblePlayers.Values)
@@ -329,19 +433,9 @@ public static class SnowballTool
             PlayType = 1
         }, ThrowGestureMs, sendToSelf: true);
 
-        // Toolbar cooldown, exactly as a combat job does it: MeleeRefresh greys the button out and
-        // LaunchAndLand (op36/4) is what actually starts the spinning radial sweep - live-traced 2026-07-25 as
-        // the only packet the client's AbilityProcessor takes its cooldown-end/UI state from. The sweep only
-        // RENDERS when Guid2/Guid3 resolve to a real enemy, so a throw that hits nothing greys without
-        // sweeping - same as swinging a sword at air.
-        player.SendTunneled(new AbilityPacketMeleeRefresh { CooldownMs = CooldownMs });
-        player.SendTunneled(new AbilityPacketLaunchAndLand
-        {
-            Guid = player.Guid,
-            Guid2 = targetGuid,
-            Guid3 = targetGuid,
-            Position = player.Position,
-        });
+        // Grey the toolbar button and sweep it - see SendCooldown for why this can't just be the plain
+        // LaunchAndLand the combat kits send.
+        SendCooldown(player, special is null ? CooldownMs : SnowballSpecials.CooldownMs, victim?.Guid ?? 0);
 
         // The throw sound + snow puff, delayed to the release frame so it lands with the arm rather than at
         // the start of the wind-up. Sent to everyone who can see the thrower so other players hear it too.
@@ -363,15 +457,39 @@ public static class SnowballTool
         var thrower = player;
         var hit = victim;
 
-        ProjectileNpc.Fire(zone, player, muzzle, aim, hit?.Guid ?? 0,
+        // ★ A snowball TRACKS whoever it was thrown at. Aiming once at where they stood is fine for a
+        // long-range arrow but reads as badly thrown at snowball distances - the victim takes two steps
+        // and it visibly sails past them even though the hit still lands. Opt-in per projectile, so the
+        // archer/wizard shots are untouched.
+        var projectile = ProjectileNpc.Fire(zone, player, muzzle, aim, hit?.Guid ?? 0,
             trailEffId: TrailFxId,
             impactEffId: ImpactFxId,
             speed: ProjectileSpeed,
             modelId: ProjectileModelId,
             scale: ProjectileScale,
             lingerMs: 800,
-            onImpact: hit is null ? null : () => KnockDown(thrower, hit),
+            onImpact: hit is null ? null : () => KnockDown(thrower, hit, special),
             launchDelayMs: ThrowReleaseMs); // leaves the hand on the throw, not before it
+
+        if (projectile is not null)
+            projectile.HomingTarget = hit;
+
+        return true;
+    }
+
+    // Whether a thrown snowball can actually reach a point, or whether a fort/fence/prop is in the way.
+    // Prefers the real per-model mesh (MeshObstacleMap) and falls back to the placement obstacle map;
+    // a zone with neither (nothing built) lets everything through, which is the old behaviour.
+    private static bool HasClearShot(IZone zone, Vector4 from, Vector4 to)
+    {
+        if (zone is not BaseZone baseZone)
+            return true;
+
+        if (baseZone.NavMesh is { } mesh)
+            return mesh.IsLineWalkable(from, to);
+
+        if (baseZone.NavObstacles is { } obstacles)
+            return obstacles.IsLineWalkable(from, to);
 
         return true;
     }
@@ -397,15 +515,45 @@ public static class SnowballTool
     // Who the snowball lands on. The client's selected enemy wins outright when it's a live hostile in range;
     // otherwise it's whoever is actually standing in the throw - the closest PLAYER or hostile NPC inside the
     // cone. Anyone already knocked down is skipped so a downed target isn't pinned indefinitely by repeat hits.
-    private static IEntity? FindTarget(IZone zone, Player thrower, ulong selectedGuid, Vector4 muzzle)
+    private static IEntity? FindTarget(IZone zone, Player thrower, ulong selectedGuid, Vector4 muzzle,
+        float forwardX, float forwardZ)
     {
-        if (selectedGuid != 0 && selectedGuid != thrower.Guid &&
-            zone.TryGetNpc(selectedGuid, out var selected) && IsThrowable(selected))
+        // ★ THE SELECTED TARGET CAN BE A PLAYER, NOT JUST AN NPC. This only ever resolved the selection
+        // against npcs, which is fine in Snowhill (you throw at snowmen) but silently broke the arena: a
+        // PvP throw at the enemy you had actually clicked on fell through to "nearest in range" instead,
+        // so it went at whoever happened to be closest rather than who you were aiming at. That is the
+        // "it doesn't throw straight" case.
+        if (selectedGuid != 0 && selectedGuid != thrower.Guid)
         {
-            var sdx = selected.Position.X - muzzle.X;
-            var sdz = selected.Position.Z - muzzle.Z;
-            if (sdx * sdx + sdz * sdz <= ThrowRange * ThrowRange)
-                return selected;
+            IEntity? selected = null;
+
+            if (zone.TryGetNpc(selectedGuid, out var selectedNpc) && IsThrowable(selectedNpc))
+            {
+                selected = selectedNpc;
+            }
+            else
+            {
+                foreach (var candidate in zone.Players)
+                {
+                    if (candidate.Guid != selectedGuid || candidate.IsDead)
+                        continue;
+                    if (StatusEffects.BlocksAbilities(candidate.Guid))
+                        break; // already down - fall through to the nearest-target search
+                    if (zone is SnowballArenaZone selectionArena && selectionArena.SameTeam(thrower, candidate))
+                        break; // team-mate: friendly fire is off, so this isn't a valid pick
+
+                    selected = candidate;
+                    break;
+                }
+            }
+
+            if (selected is not null)
+            {
+                var sdx = selected.Position.X - muzzle.X;
+                var sdz = selected.Position.Z - muzzle.Z;
+                if (sdx * sdx + sdz * sdz <= ThrowRange * ThrowRange)
+                    return selected;
+            }
         }
 
         // While the Snowmen Invaders battle is running, snowballs only land on SNOWMEN. Players are skipped
@@ -413,8 +561,21 @@ public static class SnowballTool
         // the moment the battle ends, everyone is fair game again.
         var playersAreTargets = zone is not StartingZone { SnowmenBattleActive: true };
 
+        // In the Snowball Battles arena, friendly fire is off - a snowball never picks out someone on your
+        // own side, so the only players in the running are the other team's.
+        var arena = zone as SnowballArenaZone;
+
+        // ★ AIM MATTERS. This used to pick the NEAREST throwable in range and ignore which way the thrower
+        // was facing, so during the Snow Days invasion - where a dozen snowmen are converging on one tree -
+        // a throw at the one you were looking at snapped to whichever happened to be closest, including
+        // ones behind you. Candidates are scored on ANGLE FROM FACING first and distance second.
+        //
+        // Two passes so aiming is rewarded without ever making a throw feel dead: anything inside the tight
+        // cone wins on aim, and only if the cone is empty does it fall back to the old nearest-in-range
+        // behaviour (widened, but still forward-biased).
         IEntity? best = null;
-        var bestDistance = ThrowRange;
+        var bestScore = float.MaxValue;
+        var bestInCone = false;
 
         void Consider(IEntity candidate)
         {
@@ -422,10 +583,37 @@ public static class SnowballTool
             var dz = candidate.Position.Z - muzzle.Z;
             var distance = MathF.Sqrt(dx * dx + dz * dz);
 
-            if (distance < 0.001f || distance >= bestDistance)
+            if (distance < 0.001f || distance >= ThrowRange)
                 return;
 
-            bestDistance = distance;
+            // cos of the angle between "where I'm looking" and "where they are"
+            var dot = (dx / distance) * forwardX + (dz / distance) * forwardZ;
+
+            if (dot < AimBackstopCos)
+                return; // behind the thrower - never a target
+
+            var inCone = dot >= AimConeCos;
+
+            // A cone hit always beats a non-cone hit; within the same class, nearest wins but a better
+            // angle is worth a couple of units, so the one you are actually pointing at is preferred over
+            // one slightly closer off to the side.
+            var score = distance + (1f - dot) * AimAngleWeight;
+
+            if (bestInCone && !inCone)
+                return;
+
+            if (inCone && !bestInCone)
+            {
+                bestInCone = true;
+                bestScore = score;
+                best = candidate;
+                return;
+            }
+
+            if (score >= bestScore)
+                return;
+
+            bestScore = score;
             best = candidate;
         }
 
@@ -435,6 +623,8 @@ public static class SnowballTool
                 continue;
             if (StatusEffects.BlocksAbilities(candidate.Guid))
                 continue; // already flat on their back
+            if (arena is not null && arena.SameTeam(thrower, candidate))
+                continue; // team-mate
             Consider(candidate);
         }
 
@@ -462,7 +652,7 @@ public static class SnowballTool
     // the mechanical half for both kinds of victim (StatusEffects.BlocksAbilities gates every ability behind
     // it, the client's own movement controller halts on the IsStunned bit for a player, and the NPC AI
     // already honours it - it's what the Earth Shard power-up inflicts). The animations are the visual.
-    private static void KnockDown(Player thrower, IEntity victim)
+    private static void KnockDown(Player thrower, IEntity victim, SnowballSpecials.SpecialKind? special = null)
     {
         // showFx: false - the Stun kind's own FX is the Flabbergast Sphere's big yellow star explosion, which
         // is the right burst for the ORB that inflicts it and completely wrong for a snowball. The splat
@@ -470,8 +660,27 @@ public static class SnowballTool
         //
         // NPCs are NOT stunned - a full stun would freeze a marching boss, and the event wants him slowed,
         // never stopped. They take a short stagger instead (see CombatNpc.Stagger).
+        // ★ GUARDED: the shield eats it. The projectile has already played its splat against the bubble,
+        // which is the whole visual - but no stun, no knockdown, and no point for the thrower (see
+        // OnSnowballHit). FIRST, before the stun below, or a blocked snowball would still freeze them.
+        if (victim is Player guarded && SnowballGuard.IsGuarding(guarded))
+            return;
+
         if (victim is Player)
-            StatusEffects.Apply(victim, StatusEffectKind.Stun, StunMs, source: thrower, showFx: false);
+        {
+            // A special replaces the plain knockdown: Power holds them down longer, Freezing freezes.
+            var (kind, durationMs) = special switch
+            {
+                SnowballSpecials.SpecialKind.Power => (StatusEffectKind.Stun, SnowballSpecials.PowerStunMs),
+                SnowballSpecials.SpecialKind.Freezing => (StatusEffectKind.Freeze, SnowballSpecials.FreezingStunMs),
+                _ => (StatusEffectKind.Stun, victim.Zone is SnowballArenaZone ? ArenaStunMs : StunMs),
+            };
+
+            StatusEffects.Apply(victim, kind, durationMs, source: thrower, showFx: false);
+
+            if (special is { } specialKind)
+                SnowballSpecials.PlayImpact((Player)victim, specialKind, durationMs);
+        }
 
         if (victim is Player hitPlayer)
         {
@@ -484,6 +693,12 @@ public static class SnowballTool
             // second fall. The client returns to its normal stance on its own once the one-shot finishes, so
             // the recovery clips were never needed.
             hitPlayer.SendTunneledToVisible(BuildAnimation(hitPlayer.Guid, KnockDownAnimationId), sendToSelf: true);
+
+            // In the arena a connecting hit is also a POINT. Everywhere else a player snowball is still
+            // just the knockdown - the overworld piles are a toy, not a scored match.
+            if (thrower.Zone is SnowballArenaZone arena)
+                arena.OnSnowballHit(thrower, hitPlayer);
+
             return;
         }
 

@@ -48,7 +48,9 @@ public static class EncounterParticipantRequestEntranceHandler
         // fall back to Frostfang (the pre-routing behavior).
         reader.TryRead(out int encounterId);
 
-        if (encounterId == TormentedSpiritsArenaZone.EncounterId)
+        if (encounterId == SnowballArenaZone.EncounterId)
+            EnterSnowballArena(connection);
+        else if (encounterId == TormentedSpiritsArenaZone.EncounterId)
             EnterSpiritArena(connection);
         else if (Sanctuary.Game.Dungeons.DungeonCatalog.ByActivity.ContainsKey(encounterId))
             EnterEncounterArena(connection, encounterId);
@@ -56,6 +58,30 @@ public static class EncounterParticipantRequestEntranceHandler
             EnterFrostfangArena(connection);
 
         return true;
+    }
+
+    // GO! on the Snowball Fighting start screen. Unlike the dungeons there is no group invite step here -
+    // the whole group was already pulled out of the matchmaking queue together, and each member got their
+    // own start screen, so this just puts whoever pressed it onto a team and into the arena.
+    private static void EnterSnowballArena(GatewayConnection connection)
+    {
+        var player = connection.Player;
+        var arena = _zoneManager.GetOrCreateSnowballArena();
+
+        // Belt and braces: the start screen already forces Adventurer, but this is the door every real
+        // entry goes through, and someone who changed job while the panel was up would otherwise carry a
+        // combat kit into a snowball fight.
+        AddMatchRequestPacketHandler.ForceAdventurerJob(player);
+
+        // Team is picked here rather than at launch: the spawn point and facing both depend on it, and a
+        // player who never presses GO! should not take up a side.
+        var (spawn, facing) = arena.PrepareEntry(player);
+
+        player.EncounterReturnPosition = player.Position;
+        player.TeleportToZone(arena, spawn, facing, sky: null, geometryId: 0);
+        player.SendTunneled(new MiniGameGameStartPacket(0, -1, -1));
+
+        _logger.LogInformation("Snowball enter: {name} -> {zone} ({id}).", player.Name, arena.Name, arena.Id);
     }
 
     // How long the leader waits for members to answer before the group launches anyway with whoever accepted.
