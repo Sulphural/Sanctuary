@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Collections.Generic;
@@ -31,6 +31,19 @@ public sealed class Player : ClientPcData, IEntity
     public ulong LastInteractNpcGuid { get; set; }
     public DateTime LastInteractAt { get; set; }
 
+    // ★ THE AUTO-INTERACT LATCH. CommandPacketFreeInteractionNpc (26/20) carries NO target guid - the
+    // server resolves the nearest interactable NPC itself - and the client does not send it only on a
+    // deliberate click: it also fires on UI events (opening or closing a panel, pressing a HUD button).
+    // Standing next to a dialog NPC therefore re-opened his conversation on every UI action, which is
+    // exactly what Calvin Coldcastle was doing after the matchmaking panel closed.
+    //
+    // This holds the NPC whose auto-interaction has already fired and has not re-armed yet. It re-arms
+    // when the player leaves that NPC's interact range, or when a different NPC becomes the nearest one -
+    // i.e. it makes 26/20 mean "the player has NEWLY come within reach of this NPC" rather than "click".
+    // See CommandPacketFreeInteractionNpcHandler. A deliberate mouse click is a different packet
+    // (CommandPacketInteractRequest, which does carry a guid) and is deliberately not latched.
+    public ulong AutoInteractLatchGuid { get; set; }
+
     // When the player last accepted a quest. Used to ignore a spurious CommandPacketQuestAbandon
     // (26/23) that the client can fire in the moments right after accepting - without this guard
     // that stray packet would immediately drop the quest the player just took.
@@ -57,7 +70,7 @@ public sealed class Player : ClientPcData, IEntity
     // sends MiniGameLootWheelSetItemToLandOn; consumed by the C2S LootWheelOnRotationStopped handler,
     // which grants it). Null = no spin pending. A null prize with PendingWheelCoins > 0 = the
     // COINS slice.
-    public Sanctuary.Packet.RewardEntry? PendingWheelPrize { get; set; }
+    public Sanctuary.Packet.Common.RewardBundleEntryItem? PendingWheelPrize { get; set; }
     public int PendingWheelCoins { get; set; }
 
     // XP already granted (AwardXp runs immediately at win) but whose GRANT BANNER is held until the wheel

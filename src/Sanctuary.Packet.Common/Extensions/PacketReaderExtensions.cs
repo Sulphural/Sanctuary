@@ -1279,6 +1279,13 @@ public static class PacketReaderExtensions
                 2 => "ProgressiveQuestRequestStartQuestPacket",
                 3 => "ProgressiveQuestRequestClaimSlotPacket",
                 4 => "ProgressiveQuestRequestClaimPrizePacket",
+                // ★ 5 and 6 were MISSING from this table, and 5 is the one that matters: the client's
+                // op207 dispatcher (0x00bdea00) only handles subs 1..7, and 5 is what invokes
+                // `MysteryRewardBrowser:Show` - i.e. the S2C packet that actually opens the 12 Days of
+                // Presents browser. Sub 0 is never dispatched on receive at all, so the "ShowWindow" name
+                // above can only be the C2S request direction.
+                5 => "ProgressiveQuestShowWindowPacket (S2C - opens MysteryRewardBrowser)",
+                6 => "ProgressiveQuestUnknown6Packet",
                 7 => "ProgressiveQuestNotifyRewardItemPacket",
                 _ => "BaseProgressiveQuestPacket"
             },

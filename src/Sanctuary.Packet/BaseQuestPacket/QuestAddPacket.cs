@@ -1,4 +1,6 @@
-using Sanctuary.Core.IO;
+﻿using Sanctuary.Core.IO;
+
+using Sanctuary.Packet.Common;
 
 namespace Sanctuary.Packet;
 
@@ -58,7 +60,7 @@ public class QuestAddPacket : BaseQuestPacket, ISerializablePacket
 
         // RewardBundleBase (RewardBundleBase::sub_8E7930's read order) - empty; the real reward bundle
         // is sent separately via QuestInfoPacket (offer) / QuestEndPacket (turn-in).
-        RewardBundleSerializer.Write(writer, 0, 0);
+        new RewardBundleBase { IconId = 0, NameId = 0 }.Serialize(writer);
 
         // Objectives list (sub_92B050): count, then per entry [int leadingId + sub_8FD770 103-byte body].
         if (IncludeObjective)
@@ -74,7 +76,7 @@ public class QuestAddPacket : BaseQuestPacket, ISerializablePacket
             writer.Write(false);                  // bool
 
             // RewardBundleBase (sub_8E7930) - empty, same as above.
-            RewardBundleSerializer.Write(writer, 0, 0);
+            new RewardBundleBase { IconId = 0, NameId = 0 }.Serialize(writer);
 
             // trailing objective fields: int, int, int, int, bool, int
             writer.Write(0); writer.Write(0); writer.Write(0); writer.Write(0); writer.Write(false); writer.Write(0);

@@ -313,9 +313,16 @@ public sealed class SnowballArenaZone : BaseZone
     private readonly ConcurrentDictionary<ulong, SnowballTeam> _teams = new();
     private readonly ConcurrentDictionary<SnowballTeam, int> _scores = new();
 
+    // Per-player landed snowballs. The team score is what wins the match, but the end-of-match card is a
+    // PERSONAL scoreboard - it tells one player what THEY did - so the team total can't fill it in.
+    private readonly ConcurrentDictionary<ulong, int> _hits = new();
 
     private readonly object _matchLock = new();
     private bool _matchOver;
+
+    // Bumped by every ResetMatch, and captured by anything that runs on a delay after the match is decided
+    // (the result card). A new match must never be interrupted by the last one's leftovers.
+    private int _matchRun;
 
     public SnowballArenaZone(IServiceProvider serviceProvider)
         : base(CreateDefinition(), serviceProvider)
@@ -835,6 +842,7 @@ public sealed class SnowballArenaZone : BaseZone
                 return false;
 
             score = _scores.AddOrUpdate(team, 1, (_, previous) => previous + 1);
+            _hits.AddOrUpdate(thrower.Guid, 1, (_, previous) => previous + 1);
 
             if (score >= HitsToWin)
             {
@@ -893,14 +901,173 @@ public sealed class SnowballArenaZone : BaseZone
 
         PlayVictoryFireworks(winner);
         SpawnExitDoor();
+        ShowResultCards(winner);
 
         // ★ NO AUTO-KICK. The exit door IS the way out now, the same as every combat encounter here -
         // players leave when they've finished looking at the fireworks. The Leave button on the minigame
         // HUD still works too, and an emptied arena resets itself on the zone tick.
     }
 
-    // The roster is dropped as each player leaves, but the card is drawn minutes later out in Snowhill and
-    // still needs to know which side they were on - so the winning line-up is snapshotted at EndMatch.
+    #endregion
+
+    #region The end-of-match result card
+
+    // ★★ THE WINNERS' SCORE SCREEN - the client's own minigame end card (scoreScreen.gfx), raised the way
+    // every combat encounter here raises its win card, and NOT the way the two earlier attempts did.
+    //
+    // What lands on screen: the big YOU WIN / TRY AGAIN letters (the SWF's own winLetter / loseLetter,
+    // picked off the "Won" byte that op39/18 GameOver stamps onto the MiniGameState) over the score rows
+    // carried by op39/47.
+    //
+    // ★ GAMEOVER FIRST, SCORE PACKET SECOND, and the order is not cosmetic. GameOver only sets a flag; the
+    // thing that actually DRAWS the persistent card is the score data arriving. Send them the other way
+    // round and the card renders as a loss for everyone. (Same ordering CombatEncounterZone and
+    // BaseZone.SendFailEndScreen already encode.)
+    //
+    // ★ AND IT DOES NOT DEPEND ON MiniGameType. That was the open risk here - every proven card in this
+    // codebase belongs to a type-4 COMBAT encounter, while this arena deliberately runs at type 1 (see
+    // MiniGameType). Settled by reading the client's own ScoreScreen.lua out of ScriptsBase.bin: SetStates()
+    // adds STATE_SCORE whenever score data exists and excludes only checkers/chess - the minigame type is
+    // never consulted. (The REWARDS pane is a different story: it is gated on m_ValidRewardGameTypes, which
+    // is why no loot wheel is armed here - see GrantWinnerPrize.)
+    //
+    // ★ WHY THE EARLIER TWO ATTEMPTS FAILED, and what is different now. Both tried to raise the card around
+    // the trip home - once by holding the player in the instance to read it, once by re-creating minigame
+    // context out in Snowhill - and got a card that dismissed itself or a Goals pane that would not go away.
+    // This one is raised WHERE AND WHEN THE MATCH ENDS and gates nothing at all: the exit door is still the
+    // only way out, and going through it tears the card down with the rest of the minigame UI. Nothing may
+    // ever WAIT on the card, because the client does not report it being dismissed - CommandPacket sub42
+    // ClosedMinigameEndScreen never arrives for cards like this one (see CombatEncounterZone's own note).
+
+    // How long the referee's call and the first volley of fireworks get before the card covers the arena.
+    // The card obscures the scene, so raising it instantly would throw away the show that was just built.
+    // `/snowball arena cardat <ms>` retunes it live.
+    public static int ResultCardDelayMs { get; set; } = 3_000;
+
+    // The two client score-row names this card uses.
+    //
+    // ★ THE ROW LABEL IS A CLIENT-SIDE CONSTANT, so only names the client already knows are usable. The
+    // row's leading string is a KEY rather than the text itself, and it does NOT go through the T4 locale -
+    // checked this session, "scoreEnemiesDefeated" and its three siblings hash to no CID in en_us_data.dat
+    // under any namespace tried. So an invented name like "scoreSnowballsLanded" has nothing behind it and
+    // would render blank or raw. That leaves the four names the real 2014-04-01 server was recorded sending,
+    // two of which happen to say something true about a snowball fight:
+    //
+    //   scorePlayerKnockouts - every landed snowball knocks its target flat (SnowballTool.KnockDown), so
+    //                          this is literally "opponents you put down", not a borrowed label.
+    //   scoreTotalScore      - the total line at the foot of the card.
+    //
+    // The team result needs no row of its own: it IS the card's headline (YOU WIN / TRY AGAIN) and the
+    // referee already called it in chat - which is fortunate, because there is no client row name for it.
+    private const string KnockdownsRowName = "scorePlayerKnockouts";
+    private const string TotalScoreRowName = "scoreTotalScore";
+
+    // The row field this codebase calls "Order" is really the SWF's "Score Type" column - a FORMAT selector,
+    // not a sort key (see MiniGameGameEndScorePacket, where the live column mapping is now written down).
+    // 3 renders "N of M"; 4 is the total line.
+    private const int CountOfMaxScoreType = 3;
+    private const int TotalScoreType = 4;
+
+    // Raise the card on everyone still standing in the arena, a beat after the match is called.
+    private void ShowResultCards(SnowballTeam winner)
+    {
+        var run = _matchRun;
+        var blueScore = ScoreFor(SnowballTeam.Blue);
+        var redScore = ScoreFor(SnowballTeam.Red);
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(ResultCardDelayMs);
+
+                // A player who used the exit door inside that beat is already home - and a card raised in
+                // Snowhill is exactly the failure the previous attempt died of, so re-check both the player
+                // and the match before sending anything.
+                if (run != _matchRun)
+                    return;
+
+                foreach (var player in Players)
+                {
+                    if (player.Zone != this)
+                        continue;
+
+                    ShowResultCard(player, winner, blueScore, redScore);
+                }
+            }
+            catch { }
+        });
+    }
+
+    // One player's card. Public so `/snowball arena card` can re-raise it while tuning the rows.
+    public void ShowResultCard(Player player, SnowballTeam winner, int blueScore, int redScore)
+    {
+        // Which side they were on. Read the SNAPSHOT first: a player who left and came back has already been
+        // dropped from the live roster, and their card still has to say what they did in the match.
+        SnowballTeam team;
+        lock (_matchLock)
+        {
+            if (!_finalTeams.TryGetValue(player.Guid, out team) && !_teams.TryGetValue(player.Guid, out team))
+                return;
+        }
+
+        // ★ STAND THEM UP FIRST. A snowball that landed on the final beat leaves its victim stunned, and the
+        // client wipes the end card the instant it draws a knocked-down player - the same trap
+        // BaseZone.SendFailEndScreen documents. Clearing the effect server-side sends the state change; the
+        // explicit None broadcast is the belt-and-braces half of the pairing that is already proven there.
+        Sanctuary.Game.Combat.StatusEffects.ClearAll(player);
+        player.SendTunneledToVisible(new PlayerUpdatePacketUpdateCharacterState
+        {
+            Guid = player.Guid,
+            Status = CharacterStatus.None,
+        }, sendToSelf: true);
+
+        var won = team == winner;
+        var hits = _hits.TryGetValue(player.Guid, out var landed) ? landed : 0;
+        var teamScore = team == SnowballTeam.Blue ? blueScore : redScore;
+        var points = hits * PointsPerHit;
+
+        // The flag the card's headline is drawn from. Must precede the score packet - see the header above.
+        player.SendTunneled(new MiniGameGameOverPacket(won));
+
+        var score = new MiniGameGameEndScorePacket();
+
+        // "N of M" - the opponents this player personally put down, out of their team's final score. It is
+        // their share of the result, which is the only per-player number a snowball fight produces.
+        score.Rows.Add(new MiniGameScoreRow
+        {
+            Name = KnockdownsRowName,
+            Order = CountOfMaxScoreType,
+            Value = hits,
+            Max = teamScore,
+            Points = points,
+        });
+
+        score.Rows.Add(new MiniGameScoreRow
+        {
+            Name = TotalScoreRowName,
+            Order = TotalScoreType,
+            Points = points,
+        });
+
+        player.SendTunneled(score);
+    }
+
+    // The current score, for the dev re-raise.
+    public void ShowResultCard(Player player)
+    {
+        if (_winner is not { } winner)
+            return;
+
+        ShowResultCard(player, winner, BlueScore, RedScore);
+    }
+
+    #endregion
+
+    #region Match state (continued)
+
+    // The roster is dropped as each player leaves, so the side a player was on is snapshotted at EndMatch -
+    // both the result card and the winner's payout still need it after they have left the roster.
     private readonly Dictionary<ulong, SnowballTeam> _finalTeams = [];
 
     // What one snowball hit is worth on the end-of-match score card. Invented - retail's per-hit value
@@ -991,14 +1158,14 @@ public sealed class SnowballArenaZone : BaseZone
         var home = _zoneManager.StartingZone;
         var returnPosition = player.EncounterReturnPosition ?? home.SpawnPosition;
 
-        // ★ NO END-OF-MATCH CARD. It was tried twice and neither shape held up: raising it in the arena
-        // meant holding the player in the instance to read it, and raising it in the overworld (by
-        // re-creating minigame context out there) either dismissed itself or left the Goals pane stuck.
-        // Dropped at the user's call - every exit is now the same plain teardown-and-go, which is also the
-        // one path that has never stranded anyone.
+        // ★ THE RESULT CARD IS NOT RAISED HERE, AND THAT IS THE POINT. It goes up back at EndMatch, in the
+        // arena, where the match was actually decided (see ShowResultCards) - the two shapes that failed
+        // before were both built around this moment, either holding the player in the instance to read the
+        // card or re-creating minigame context out in Snowhill. This path stays what it has always been: a
+        // plain teardown-and-go, the one exit that has never stranded anyone, and the teardown below takes
+        // the card down along with the rest of the minigame UI.
         //
-        // The winner's prize is granted directly below, because the loot wheel went with the card and the
-        // wheel-stopped signal was what used to pay it out.
+        // The winner's prize is still granted directly rather than through a loot wheel - see below.
         if (_winner is { } decided && playerTeam == decided)
             GrantWinnerPrize(player);
 
@@ -1009,8 +1176,17 @@ public sealed class SnowballArenaZone : BaseZone
         SendUiTeardownAfterArrival(player);
     }
 
-    // The winner's payout. Straight to the character row + the standard grant banner - no loot wheel, since
-    // that only ever appeared as part of the end card. No chat line: the banner IS the feedback.
+    // The winner's payout. Straight to the character row + the standard grant banner. No chat line: the
+    // banner IS the feedback.
+    //
+    // ★ STILL NO LOOT WHEEL, even though the end card is back - the two are not the same thing. The wheel
+    // lives on the card's REWARDS pane, and that pane alone IS type-gated: ScoreScreen.lua's
+    // ValidateForGameType checks the minigame type against m_ValidRewardGameTypes before adding
+    // STATE_REWARDS, where the score pane (STATE_SCORE) has no such check. Every encounter whose wheel is
+    // known to work here runs at type 4; this arena runs at type 1 (see MiniGameType), so a wheel armed here
+    // could silently never appear - and the wheel is what pays out, so the prize would go with it. A direct
+    // grant cannot fail that way. If the reward pane is ever confirmed for type 1, this is the place to
+    // switch back to MiniGameLootWheelSetItemToLandOnPacket + PendingWheelCoins.
     private void GrantWinnerPrize(Player player)
     {
         player.PendingWheelPrize = null;
@@ -1031,7 +1207,7 @@ public sealed class SnowballArenaZone : BaseZone
         player.Coins = dbCharacter.Coins;
 
         player.SendTunneled(new ClientUpdatePacketCoinCount { Coins = player.Coins });
-        player.SendTunneled(new RewardBundlePacket { Coins = WinnerPrizeCoins, Unknown15 = 957 });
+        player.SendTunneled(new RewardBundlePacket { RewardBundle = { Coins = WinnerPrizeCoins, Trailing = 957 } });
     }
 
     // The wheel-stopped signal no longer gates anything: the player is already home by the time the wheel
@@ -1102,6 +1278,13 @@ public sealed class SnowballArenaZone : BaseZone
                 return null;
 
             _scores[team] = HitsToWin;
+
+            // Credit the caller with the hits the command just handed their team, so the result card has
+            // real numbers to draw. Without this a force-win shows "0 of 80" and a 0 total, which is the one
+            // thing that can't be told apart from the rows failing to render at all - and this command
+            // exists precisely to check that they do. Only tops up: a tester who really threw keeps theirs.
+            _hits[player.Guid] = Math.Max(_hits.TryGetValue(player.Guid, out var thrown) ? thrown : 0, HitsToWin);
+
             _matchOver = true;
         }
 
@@ -1125,6 +1308,11 @@ public sealed class SnowballArenaZone : BaseZone
         {
             _matchOver = false;
             _scores.Clear();
+            _hits.Clear();
+
+            // Invalidates any result card still waiting on its delay - a card from the last match must not
+            // land on someone who has already started the next one.
+            _matchRun++;
         }
 
         RemoveExitDoor();

@@ -69,6 +69,20 @@ public static class BaseCommandPacketHandler
             if (reader.TryRead(out int responseId) && choices.TryGetValue(responseId, out var choice))
                 choice();
 
+            // ★★ A MULTI-CHOICE DIALOG CAN RUN MORE THAN ONE TURN, and this used to make that impossible:
+            // the teardown below went out unconditionally, so an answer that opened a FOLLOW-UP dialog had
+            // it freed by the EndDialog arriving right behind it. The second panel of Trina Turtledove's
+            // 12 Days introduction simply never appeared - the server sent it, the client built it, and the
+            // teardown killed it in the same breath.
+            //
+            // A choice that continues the conversation installs the next set of buttons as it sends the
+            // next panel, so a non-null value here means "the NPC is still talking". Same rule the quest
+            // path below already follows via QuestDialogue.TryAdvance - this just gives the multi-choice
+            // path the equivalent. A choice that ends the conversation installs nothing and still gets its
+            // teardown.
+            if (connection.Player.PendingDialogChoices is not null)
+                return true;
+
             connection.Player.SendTunneled(new CommandPacketEndDialog());
             return true;
         }

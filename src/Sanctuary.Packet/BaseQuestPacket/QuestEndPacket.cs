@@ -1,8 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 using Sanctuary.Core.IO;
+using Sanctuary.Packet.Common;
 
 namespace Sanctuary.Packet;
+
 
 // Server -> client quest turn-in / completion screen (case 13: FUN_00c7cd40 -> FUN_00c7bbd0 ->
 // FUN_00c7b990). Drives the client's "Quest Complete" end screen (QuestHandler:ShowEndScreen) and
@@ -27,10 +29,9 @@ public class QuestEndPacket : BaseQuestPacket, ISerializablePacket
     public int DescriptionId;    // obj+0x20
     public float Percent = 1f;   // obj+0xe0
 
-    public int RewardCoins;      // RewardBundleBase +0x50
-    public int RewardExperience; // RewardBundleBase +0x48 - job/profile experience (XP)
-    // Item rewards shown as icons in the turn-in "Show Details" reward preview.
-    public List<RewardBundleItem> RewardItems = new();
+    // Coins, XP and the item-reward icons shown in the turn-in "Show Details" reward preview. Preview
+    // only, so no inventory guid tails; IconId/NameId stay 0 as this packet has always sent.
+    public RewardBundleBase RewardBundle { get; } = new() { IconId = 0, NameId = 0 };
 
     public QuestEndPacket() : base(SubOpCode)
     {
@@ -48,7 +49,7 @@ public class QuestEndPacket : BaseQuestPacket, ISerializablePacket
         writer.Write(DescriptionId);
 
         // RewardBundleBase - coins/XP + item-reward entries (icons in the turn-in preview).
-        RewardBundleSerializer.Write(writer, RewardCoins, RewardExperience, RewardItems);
+        RewardBundle.Serialize(writer);
 
         writer.Write(Percent);
 

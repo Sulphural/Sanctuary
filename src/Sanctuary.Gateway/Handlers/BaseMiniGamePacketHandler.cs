@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -116,31 +116,31 @@ public static class BaseMiniGamePacketHandler
             // COINS slice (+ whatever XP the encounter win already granted — same combined banner).
             if (coins > 0)
                 GrantCoins(connection, coins);
-            connection.SendTunneled(new RewardBundlePacket { Coins = coins, Xp = xp, Unknown15 = 957 });
+            connection.SendTunneled(new RewardBundlePacket { RewardBundle = { Coins = coins, Experience = xp, Trailing = 957 } });
             SendReceiveText(connection, coins, xp);
             _logger.LogInformation("Loot wheel payout: {coins} coins, {xp} xp -> {name}.", coins, xp, player.Name);
             return true;
         }
 
-        if (prize.ItemDefId == MysteryPackDefId)
+        if (prize.DefinitionId == MysteryPackDefId)
         {
             OpenMysteryPack(connection);
             // The wheel-prize banner itself (pack icon/name — live sent it AFTER the contents banner).
-            connection.SendTunneled(new RewardBundlePacket { IconId = prize.IconId, NameId = prize.NameId, Xp = xp, Unknown15 = 957 });
+            connection.SendTunneled(new RewardBundlePacket { RewardBundle = { IconId = prize.IconId, NameId = prize.NameId, Experience = xp, Trailing = 957 } });
             SendReceiveItemText(connection, prize.DisplayName);
             return true;
         }
 
         // Plain item prize.
-        var granted = GrantItem(connection, prize.ItemDefId, prize.Quantity);
+        var granted = GrantItem(connection, prize.DefinitionId, prize.Quantity);
         if (granted is not null)
         {
-            connection.SendTunneled(new RewardBundlePacket { IconId = prize.IconId, NameId = prize.NameId, Xp = xp, Unknown15 = 957 });
+            connection.SendTunneled(new RewardBundlePacket { RewardBundle = { IconId = prize.IconId, NameId = prize.NameId, Experience = xp, Trailing = 957 } });
             SendReceiveItemText(connection, prize.DisplayName);
         }
 
         _logger.LogInformation("Loot wheel payout: item def {def} x{qty}, {xp} xp -> {name} ({ok}).",
-            prize.ItemDefId, prize.Quantity, xp, player.Name, granted is not null ? "granted" : "FAILED");
+            prize.DefinitionId, prize.Quantity, xp, player.Name, granted is not null ? "granted" : "FAILED");
 
         return true;
     }
@@ -186,19 +186,25 @@ public static class BaseMiniGamePacketHandler
         {
             connection.SendTunneled(new RewardBundlePacket
             {
-                Entries =
-                [
-                    new RewardEntry
+                RewardBundle =
+                {
+                    // A real grant: the entry references a row the player now owns, so the bundle's lead
+                    // byte is set and each entry writes its inventory ItemGuid tail.
+                    CarriesItemGuids = true,
+                    Trailing = MysteryPackTableId, // live banner carried the pack's loot-table id
+                    Entries =
                     {
-                        IconId = contents.Definition?.Icon.Id ?? 0,
-                        TintId = contents.Definition?.Icon.TintId ?? 0,
-                        NameId = contents.Definition?.NameId ?? 0,
-                        Quantity = MysteryPackContentsCount,
-                        ItemDefId = sphereDefId,
-                        TailItemGuid = contents.ItemGuid,
+                        new RewardBundleEntryItem
+                        {
+                            IconId = contents.Definition?.Icon.Id ?? 0,
+                            TintId = contents.Definition?.Icon.TintId ?? 0,
+                            NameId = contents.Definition?.NameId ?? 0,
+                            Quantity = MysteryPackContentsCount,
+                            DefinitionId = sphereDefId,
+                            ItemGuid = contents.ItemGuid,
+                        }
                     }
-                ],
-                Unknown15 = MysteryPackTableId, // live banner carried the pack's loot-table id (Param1)
+                }
             });
             SendReceiveItemText(connection, MysteryPackSphereNames.GetValueOrDefault(sphereDefId, "Sphere"), MysteryPackContentsCount);
         }

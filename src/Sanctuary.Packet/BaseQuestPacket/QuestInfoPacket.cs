@@ -1,8 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 using Sanctuary.Core.IO;
+using Sanctuary.Packet.Common;
 
 namespace Sanctuary.Packet;
+
 
 // Field layout verified LIVE via debugger (IDA local Windows debugger, breakpoint on entry,
 // single-stepped through the client's actual deserializer): ClientPcData::sub_A107F0 case 1
@@ -35,12 +37,11 @@ public class QuestInfoPacket : BaseQuestPacket, ISerializablePacket
     public bool Unknown11;
     public bool Unknown12;
 
-    // RewardBundleBase +0x50 - coins shown in the offer's reward preview.
-    public int RewardCoins;
-    // RewardBundleBase +0x48 - job/profile experience (XP) shown in the offer's reward preview.
-    public int RewardExperience;
-    // Item rewards shown as icons in the offer's "Show Details" reward preview.
-    public List<RewardBundleItem> RewardItems = new();
+    // Coins, XP and the item-reward icons shown in the offer's "Show Details" reward preview.
+    // A preview describes items the player does not own yet, so CarriesItemGuids stays false and the
+    // entries write no inventory guid tail. IconId/NameId are 0 rather than the -1 "defer to entry[0]"
+    // sentinel, matching what this packet has always sent.
+    public RewardBundleBase RewardBundle { get; } = new() { IconId = 0, NameId = 0 };
 
     public QuestInfoPacket() : base(SubOpCode)
     {
@@ -61,7 +62,7 @@ public class QuestInfoPacket : BaseQuestPacket, ISerializablePacket
         writer.Write(Unknown7);
 
         // RewardBundleBase - coins/XP + item-reward entries (icons in the offer preview).
-        RewardBundleSerializer.Write(writer, RewardCoins, RewardExperience, RewardItems);
+        RewardBundle.Serialize(writer);
 
         writer.Write(NpcGuid);
         writer.Write(Unknown10);

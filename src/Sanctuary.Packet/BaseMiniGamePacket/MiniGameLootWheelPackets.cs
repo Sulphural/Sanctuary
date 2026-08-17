@@ -1,8 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 using Sanctuary.Core.IO;
+using Sanctuary.Packet.Common;
 
 namespace Sanctuary.Packet;
+
 
 // LOOT WHEEL (Frostfang Fury victory screen) — the real end-of-encounter flow, fully ground-truthed
 // 2026-07-04/05 from the 2014-04-01 capture (idx 37834/37838/38115) + the client binary:
@@ -27,7 +29,7 @@ public class MiniGameLootWheelSetItemToLandOnPacket : BaseMiniGamePacket, ISeria
 
     // The landed prize (single entry; only NameId matters for slice selection — the rest is
     // display data). Leave EMPTY and set Coins to land on the coins slice.
-    public List<RewardEntry> Entries = [];
+    public List<RewardBundleEntryItem> Entries = [];
 
     public int Coins;
 
@@ -44,22 +46,52 @@ public class MiniGameLootWheelSetItemToLandOnPacket : BaseMiniGamePacket, ISeria
 
         Write(writer); // [op39][sub45][StateId][GroupId][GameId] — all -1 = "current state"
 
-        var iconOverride = Entries.Count > 0 ? Entries[0].IconId : -1;
-        var nameOverride = Entries.Count > 0 ? Entries[0].NameId : -1;
-        RewardBundle.Write(writer, Entries, Coins, 0, iconOverride, nameOverride, Unknown15);
+        var bundle = new RewardBundleBase
+        {
+            Coins = Coins,
+            IconId = Entries.Count > 0 ? Entries[0].IconId : -1,
+            NameId = Entries.Count > 0 ? Entries[0].NameId : -1,
+            Trailing = Unknown15
+        };
+        bundle.Entries.AddRange(Entries);
+        bundle.Serialize(writer);
 
         return writer.Buffer;
     }
 }
 
+// One row of the end-of-game score card.
+//
+// ★ THE COLUMN MAPPING, ground-truthed 2026-08-16 against the client's own scoreScreen.gfx. Its sample
+// data sources spell the row out in full - `Name^Total Score::Icon ID^-1::Score Type^4::Score Count^-1::
+// Score Max^-1::Score Points^0` - which is six columns lining up 1:1, in order, with the six wire fields.
+// So two of the field names below were guesses and are wrong; they are kept only because renaming them
+// would churn every caller:
+//
+//     Name   -> Name          the label
+//     NameId -> "Icon ID"     NOT a text id. -1 on every live row, which is what "no icon" looks like.
+//     Order  -> "Score Type"  a FORMAT selector, not a sort key (see below)
+//     Value  -> Score Count
+//     Max    -> Score Max
+//     Points -> Score Points
+//
+// Score Type values seen in the SWF's own sample rows: 2 renders as a TIME (mm:ss), 3 as "N of M", 4 is the
+// total line at the foot of the card, 101 a plain counter. The live capture's 0 (enemies defeated) renders
+// as a bare count.
+//
+// ★ `Name` IS A CLIENT-SIDE KEY, NOT TEXT. It does not resolve through the T4 locale - "scoreEnemiesDefeated"
+// and its siblings hash to no CID in en_us_data.dat under any namespace - so only names the client already
+// knows will render. The four the real 2014-04-01 server was recorded sending are the safe set:
+// scoreEnemiesDefeated, scorePlayerKnockouts, scoreTimeBonus, scoreTotalScore. Inventing one is not an
+// option; pick whichever of the four is closest to what the game being scored actually did.
 public sealed class MiniGameScoreRow
 {
     public string Name = "";    // client string key, e.g. "scoreEnemiesDefeated" (live rows use these)
-    public int NameId = -1;     // -1 on every live row (the string key carries the label)
-    public int Order;           // live: 0 enemies, 2 time bonus, 3 knockouts, 4 total
-    public int Value = -1;      // e.g. enemies defeated count; -1 = none (total row)
-    public int Max = -1;        // e.g. knockouts 5 of Max 5; -1 = no max
-    public int Points;          // score contribution shown right-aligned
+    public int NameId = -1;     // really "Icon ID" - -1 on every live row
+    public int Order;           // really "Score Type" - live: 0 enemies, 2 time bonus, 3 knockouts, 4 total
+    public int Value = -1;      // "Score Count" - e.g. enemies defeated; -1 = none (total row)
+    public int Max = -1;        // "Score Max" - e.g. knockouts 5 of Max 5; -1 = no max
+    public int Points;          // "Score Points" - score contribution shown right-aligned
 }
 
 // S2C op39/sub47 — the victory screen's SCORE ROWS ("MiniGame:EndScore"). Reader = client sub_9B82D0 ->

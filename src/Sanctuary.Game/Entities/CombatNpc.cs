@@ -92,6 +92,18 @@ public class CombatNpc : Npc
     // half-angle quaternion - required for CONTROLLER actors, which are oriented only by what we send.
     public bool DirectionStyleRotation { get; set; }
 
+    // ★ A clip that must survive MOVEMENT. Re-sent immediately after every position broadcast, because the
+    // broadcast is what makes the client resolve its own locomotion clip - so the only way to keep a custom
+    // animation up is to restate it AFTER that, every time, not on an independent timer. A timer loses the
+    // race whenever a position update happens to land after it, which is why 400ms and 150ms both failed.
+    // 0 = normal behaviour (the client animates the npc's locomotion itself).
+    public int StickyAnimationId { get; set; }
+
+    // How often a sticky clip may be restated. Long enough that a looping animation actually gets to play,
+    // short enough to beat the client's locomotion resolve.
+    private const int StickyAnimationIntervalMs = 700;
+    private DateTime _lastStickyAnimation = DateTime.MinValue;
+
     // Radians added to the computed movement heading before it is sent. 0 for everything that already faces
     // correctly; see the note where it is applied.
     public float HeadingOffset { get; set; }
@@ -799,6 +811,29 @@ public class CombatNpc : Npc
             // its run cycle. ExpectedSpeed still drives interpolation, so it keeps moving normally.
             BroadcastPositionUpdate(MovingAnimationState);
             LastSentPosition = newPos;
+
+            // Restate the held clip AFTER the movement update - see StickyAnimationId.
+            //
+            // ★ THROTTLED. Position broadcasts fire ~9x/sec at a walking pace, and re-sending a LOOPING
+            // clip that often RESTARTS it every time, so the cycle never advances and the npc looks frozen
+            // mid-stride. It only has to be restated often enough to win the race against the client's own
+            // locomotion resolve, not on every single update.
+            var sinceAnimation = DateTime.UtcNow - _lastStickyAnimation;
+
+            if (StickyAnimationId > 0 && sinceAnimation.TotalMilliseconds >= StickyAnimationIntervalMs)
+            {
+                _lastStickyAnimation = DateTime.UtcNow;
+
+                var frame = new PlayerUpdatePacketSetAnimation
+                {
+                    Guid = Guid,
+                    AnimationId = StickyAnimationId,
+                    PlayType = 1,
+                };
+
+                foreach (var player in VisiblePlayers.Values)
+                    player.SendTunneled(frame);
+            }
         }
     }
 

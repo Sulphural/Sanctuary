@@ -58,6 +58,14 @@ public sealed partial class StartingZone
     // Called once a second from the zone tick. NOT from Npc.UpdateEverySecondAction: that hook never fires
     // for Bruce, because the entity loop skips Static npcs outright - and for most of the time there is no
     // Bruce to tick anyway.
+    // ★★ ONE ACT AT A TIME, AND THEY TAKE TURNS. Bruce and the Snow Days band each bring their OWN music -
+    // his MX_Bruce_ItsYourWorld one-shot, and Jingle Bell Rock riding the drummer's animation - and both
+    // carry a ~72-180 unit audible radius that lives in client data and cannot be turned down from the
+    // server. Played together they simply overlap into noise, and neither can be stopped early (there is no
+    // "stop this sound" packet on this wire), so the only way to keep the stage clean is to never have both
+    // on it. The stage therefore runs ONE set per slot and alternates who gets it.
+    private bool _bandPerformsNext;
+
     private void UpdateBrucePerformance()
     {
         var now = DateTime.UtcNow;
@@ -70,6 +78,15 @@ public sealed partial class StartingZone
             return;
         }
 
+        // The band's set runs on the same clock, and while it is up nobody else takes the stage.
+        if (IsBandOnStage)
+        {
+            if (now >= _bruceShowEnds)
+                EndSnowDaysBandShow();
+
+            return;
+        }
+
         if (now < _bruceNextShow)
             return;
 
@@ -78,7 +95,10 @@ public sealed partial class StartingZone
         if (!AnyPlayersNearBruce())
             return;
 
-        StartBruceShow();
+        if (_bandPerformsNext)
+            StartSnowDaysBandShow();
+        else
+            StartBruceShow();
     }
 
     private bool AnyPlayersNearBruce()
@@ -130,6 +150,8 @@ public sealed partial class StartingZone
             });
         }
 
+        // ★ THE BAND DOES NOT COME ON WITH HIM - they alternate, see UpdateBrucePerformance. Two acts on
+        // the stage at once means two soundtracks at once, and neither can be stopped early.
         _logger.LogInformation("Bruce turned up for a set in front of {count} player(s).",
             bruce.VisiblePlayers.Count);
     }
@@ -153,6 +175,10 @@ public sealed partial class StartingZone
         bruce.Dispose();
         _bruce = null;
 
-        _logger.LogInformation("Bruce packed up; next set in {mins} minute(s).", BruceShowIntervalSeconds / 60);
+        // The band gets the next slot.
+        _bandPerformsNext = true;
+
+        _logger.LogInformation("Bruce packed up; the band is up next in {mins} minute(s).",
+            BruceShowIntervalSeconds / 60);
     }
 }

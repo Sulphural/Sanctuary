@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -957,7 +957,7 @@ public sealed class TormentedSpiritsArenaZone : CombatEncounterZone
         killer.Coins = dbCharacter.Coins;
 
         killer.SendTunneled(new ClientUpdatePacketCoinCount { Coins = killer.Coins });
-        killer.SendTunneled(new RewardBundlePacket { Coins = coins, Unknown15 = 957 });
+        killer.SendTunneled(new RewardBundlePacket { RewardBundle = { Coins = coins, Trailing = 957 } });
         killer.SendTunneled(new ChatPacketDebugChat
         {
             Message = $"<font color='#0000FF'>You receive {coins} coins.</font>",

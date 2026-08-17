@@ -245,8 +245,7 @@ public static class CommandPacketInteractRequestHandler
 
         try
         {
-            var roll = Random.Shared.Next(node.TypeDefinition.TotalDropWeight);
-            var drop = node.TypeDefinition.SelectDrop(roll);
+            var drop = node.TypeDefinition.Table.SelectRandom();
             var itemDefinitionId = drop.ItemDefinitionId;
 
             if (!_resourceManager.ClientItemDefinitions.TryGetValue(itemDefinitionId, out var itemDefinition))
@@ -350,27 +349,32 @@ public static class CommandPacketInteractRequestHandler
         }
     }
 
-    // Upstream built this against its own RewardBundlePacket (flat Entry* fields + a SourceGuid XORed
-    // with Environment.TickCount). Ours is the IDA-verified 50/1 serializer instead: the banner icon and
-    // name ride in U13/U14, and the granted row goes in the entry list carrying the player's inventory
-    // item id as the ItemGuid tail (the bundle's lead byte is set automatically from that).
+    // A real grant, not a preview: the banner icon/name ride in the bundle's IconId/NameId, and the
+    // granted row goes in the entry list carrying the player's inventory item id, gated by the bundle's
+    // lead byte. Upstream's own version XORed the node guid with Environment.TickCount into SourceGuid;
+    // that produces neither a valid guid nor a stable id, so it is deliberately not carried over.
     private static void SendCollectionRewardToast(GatewayConnection connection, ClientItem clientItem,
         ClientItemDefinition itemDefinition)
     {
         connection.SendTunneled(new RewardBundlePacket
         {
-            IconId = itemDefinition.Icon.Id,
-            NameId = itemDefinition.NameId,
-            Entries =
+            RewardBundle =
             {
-                new RewardEntry
+                CarriesItemGuids = true,
+                PlayerGuid = connection.Player.Guid,
+                IconId = itemDefinition.Icon.Id,
+                NameId = itemDefinition.NameId,
+                Entries =
                 {
-                    IconId = itemDefinition.Icon.Id,
-                    TintId = clientItem.Tint,
-                    NameId = itemDefinition.NameId,
-                    Quantity = 1,
-                    ItemDefId = clientItem.Definition,
-                    TailItemGuid = clientItem.Id
+                    new RewardBundleEntryItem
+                    {
+                        IconId = itemDefinition.Icon.Id,
+                        TintId = clientItem.Tint,
+                        NameId = itemDefinition.NameId,
+                        Quantity = 1,
+                        DefinitionId = clientItem.Definition,
+                        ItemGuid = clientItem.Id
+                    }
                 }
             }
         });

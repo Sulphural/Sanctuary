@@ -1,0 +1,124 @@
+[
+    {
+        "Key": "dev-test-reward",
+        "DropTable": [
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 205,
+                "Weight": 1,
+                "Tints": [
+                    {
+                        "TintId": 227,
+                        "Weight": 1
+                    },
+                    {
+                        "TintId": 231,
+                        "Weight": 1
+                    }
+                ]
+            },
+            {
+                "RewardType": "Currency",
+                "CurrencyType": "Coins",
+                "Amount": 50,
+                "Weight": 1
+            }
+        ]
+    },
+    {
+        "Key": "gifting-tree-presents",
+        "DropTable": [
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 76538,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Tacky Gift Wrapped Sweater (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 76536,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Tacky Gingerbread Sweater (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 76541,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Tacky Holiday Tree Sweater (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 76539,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Tacky Reindeer Sweater (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 76540,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Tacky Snowman Sweater (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 76537,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Tacky Stockings Sweater (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 76620,
+                "Quantity": 1,
+                "Weight": 4,
+                "Comment": "Bell Cut-Out Cookie"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 76621,
+                "Quantity": 1,
+                "Weight": 4,
+                "Comment": "Candy Cane"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 76624,
+                "Quantity": 1,
+                "Weight": 4,
+                "Comment": "Eggnog"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 76627,
+                "Quantity": 1,
+                "Weight": 4,
+                "Comment": "Fruit Cake"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 76622,
+                "Quantity": 1,
+                "Weight": 4,
+                "Comment": "Gingerbread Cookie"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 76625,
+                "Quantity": 1,
+                "Weight": 4,
+                "Comment": "Ornament Cut-Out Cookie"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 76626,
+                "Quantity": 1,
+                "Weight": 4,
+                "Comment": "Tree Cut-Out Cookie"
+            }
+        ]
+    }
+]

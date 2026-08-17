@@ -110,6 +110,21 @@ public sealed partial class StartingZone
     // The boss's entrance line, spoken by HIM (so the client prefixes "Abominable Snowman:") and coloured
     // RED. 421212 = "Buhahaha! Soon all of your gifts will be MINE!" - again retail's own string, and again
     // the reason it has to be a string id rather than typed text.
+    // ★ The invaders' own barks, said as they take a gift off the tree. Real retail lines, recovered by
+    // reverse-hashing the locale data: they sit in one block at 421097-421101 (421099 is unused), directly
+    // alongside the Abominable's 421103/421104 which this event already speaks.
+    private static readonly int[] SnowmanInvaderGiftLines =
+    [
+        421097, // "Arg... Grr..."
+        421098, // "Mmm... gifts... *nom nom*"
+        421100, // "Take giiifts... mooore gifts..."
+        421101, // "Gifts for maaasters..."
+    ];
+
+    // Not every one of them pipes up - a dozen snowmen all barking at once would be noise rather than
+    // flavour. Roughly one in three.
+    public static int SnowmanInvaderBarkPercent { get; set; } = 35;
+
     private const int AbominableSnowmanTauntId = 421212;
     private const int AbominableSnowmanDefeatId = 421104; // "Nooo! You can't stop me! NOOO!"
     private const int AbominableSnowmanStoleGiftId = 421103; // "Buahahaha! One more gift for ME!"
@@ -123,6 +138,7 @@ public sealed partial class StartingZone
     private static readonly int[] SnowmanBarkLineIds = [421168, 421169]; // "Grr!", "Arg!"
     private const int ChatColorRed = 1;   // ChatPacketFromStringId.ColorId: 0 white, 1 red, 2 yellow, 3 green, 4 blue
     private const int ChatColorGreen = 3;
+    private const int ChatColorWhite = 0;
 
     // Where he comes in - measured in game with !pos, well south-west of the tree, so he has a walk-up rather
     // than popping into the middle of the fight. He then heads for the Gifting Tree (see SpawnAbominableSnowman).
@@ -202,7 +218,7 @@ public sealed partial class StartingZone
     // ★ Settable, and lowered from 4 - a raid of snowmen walking to the tree reads much better with a few
     // than with a crowd, and every one of them is now on a scripted route rather than milling about.
     // `/snowmen perpile <n>` retunes it live.
-    public static int InvadersPerPile { get; set; } = 2;
+    public static int InvadersPerPile { get; set; } = 3;
     private const float InvaderPileRadius = 6f;
 
     // How far an invader wanders from its post while idle. Kept well inside the default 40-unit leash so
@@ -213,7 +229,10 @@ public sealed partial class StartingZone
     private const float InvaderAggroRange = 14f;
 
     // How far out from the tree the invaders gather once they arrive.
-    private const float TreeGatherRadius = 14f;
+    // How far out from the tree's centre an invader stops to take its gift. Small enough that they are
+    // clearly AT the tree rather than loitering at the edge of the clearing, big enough that they don't
+    // stand inside the trunk. `/snowmen gatherradius <n>` retunes it live.
+    public static float TreeGatherRadius { get; set; } = 8f;
 
     // A snowman shuffle. The CombatNpc defaults (6.0 walk / 2.5 roam) are a jog; these should look like they
     // are lumbering toward the tree, and it keeps them in range of a thrower for longer.
@@ -1310,6 +1329,13 @@ public sealed partial class StartingZone
 
     // NPC speech shown to the whole zone: spoken BY the npc (the client prefixes its name) and optionally
     // coloured. IsChatLogged stays false - retail keeps event barks out of the chat log.
+    // ★ BUBBLE ONLY - no chat-log line. AnnounceSpeech is for the event's ANNOUNCEMENTS (the referee's
+    // victory call, the Abominable's taunts), which are deliberately coloured and belong in the chat log.
+    // An invader muttering as it grabs a gift is ambient flavour: it should appear over its head and
+    // nowhere else, or a wave of snowmen fills the chat window.
+    //
+    // The difference is HasColor. A coloured line is treated as an announcement and logged; a plain one is
+    // just speech, and with IsChatLogged=false it renders as the overhead bubble alone.
     private void AnnounceSpeech(ulong speakerGuid, int stringId, int colorId)
     {
         foreach (var player in Players)
@@ -1395,7 +1421,9 @@ public sealed partial class StartingZone
     // update and the client answers with its locomotion clip - which on this model is loc_run =
     // snowman_loc_run_WITHOUT_present, stripping the gift. 0 asks it not to force one. Which value actually
     // preserves the carry clip is not established, so `/snowmen movestate <n>` switches it live.
-    public static byte InvaderFleeMovingState { get; set; }
+    // 1 = WALK. Deliberate: the model has no loc_walk, so the client must fall back - and loc_stand, the
+    // likeliest fallback, is the with-present pose. 2 = run resolves to the without-present clip.
+    public static byte InvaderFleeMovingState { get; set; } = 1;
 
     // ★ MovementType while carrying a present. 2 = PHYSICS (grounded) is what they normally use, and a
     // physics actor animates its OWN locomotion client-side - which is what replaces the carry clip with
@@ -1420,21 +1448,23 @@ public sealed partial class StartingZone
     //
     // Known risk: CONTROLLER is not ground-clamped ("leaves them flying"). The server drives Y from its own
     // pathing so it should sit right on this flat ground; `/snowmen movetype 2` puts them back to PHYSICS.
-    // ★ 1 = CONTROLLER. This is the only mode in which the present stays in the snowman's hand while it
-    // moves: a controller actor is server-interpolated and does NOT animate its own locomotion, so the
-    // server owns the clip at every stage instead of losing it to `loc_run` (= run WITHOUT present).
-    //     approach -> 3    loc_run        (run without present)
-    //     grab     -> 2001 amb_oneshot_01 (pick up present)
-    //     getaway  -> 2100 amb_loop_01    (run WITH present)
+    // ★ 2 = PHYSICS. Settled after a long run of attempts at the alternative.
     //
-    // MUST be set at spawn: MovementType is an AddNpc field, so changing it on a live npc never reaches the
-    // client. What a controller does not get for free, and is supplied here instead:
-    //   * ground contact - CombatNpc.GroundHeight, fed the SMOOTHED clearing surface so they neither float
-    //     nor sink between measured samples;
-    //   * facing - CombatNpc.HeadingOffset, since it is oriented purely by the rotation we send.
+    // CONTROLLER (1) is the only mode where the present stays in hand while moving - a controller actor is
+    // server-interpolated and does not animate its own locomotion, so the server owns the clip. It was
+    // live-confirmed working for the GIFT. But it never looked right: the snowmen floated or sank, and
+    // their facing was wrong regardless of what was sent. Fixed along the way and still not enough:
+    //   * RiderGuid was unset, so the client was DISCARDING every position update (see Npc.RiderGuid) -
+    //     a real bug, now fixed, and the reason several earlier attempts appeared to do nothing;
+    //   * ground height was snapping between measured samples (now smoothed, SmoothGroundHeightNear);
+    //   * rotation was sent as a half-angle quaternion where the zones use a direction vector;
+    //   * movement was streamed per-tick instead of ProjectileNpc's single-destination glide.
+    // Even with all four corrected the result was still floating and mis-facing, so PHYSICS wins on looks.
     //
-    // `/snowmen movetype 2` returns to PHYSICS (better movement, no visible gift).
-    public static int InvaderMovementType { get; set; } = 1;
+    // The cost is the gift: a physics actor animates its own `loc_run` (= run WITHOUT present) over
+    // anything we send, so it is not visible on the way back. Everything for the controller route is still
+    // here and one command away - `/snowmen movetype 1` - if it is ever worth revisiting.
+    public static int InvaderMovementType { get; set; } = 2;
 
     // The clip held while walking IN, now that we own the animation instead of the client.
     public static int InvaderApproachAnimationId { get; set; } = 3;
@@ -1463,8 +1493,9 @@ public sealed partial class StartingZone
     // arrives as visible ~0.65-unit jumps. Halving the pace halves the jump, which reads as a glide rather
     // than teleporting; the clip itself is a run cycle, so it still looks like running.
     // `/snowmen fleespeed <n>` retunes it.
-    // They amble in and RUN out. Normal physics movement, so this is a real speed again.
-    public static float InvaderFleeSpeed { get; set; } = 6f;
+    // ★ Slowed to a walk. Partly because it suits a walk state rather than a sprint, and partly because a
+    // fallback-to-idle pose looks far more natural at walking pace than at a run. `/snowmen fleespeed <n>`.
+    public static float InvaderFleeSpeed { get; set; } = 3.2f;
 
     private const int InvaderVanishFxId = 15799;   // PFX_snow_explosion_large, same as the boss's exit
     private const int InvaderVanishFadeMs = 1_200;
@@ -1472,6 +1503,30 @@ public sealed partial class StartingZone
     // How close counts as arrived. Matches the boss's own march test - HORIZONTAL only, because the tree
     // point carries the tree's height while they walk on the ground below it.
     private const float InvaderArriveDistance = 6f;
+
+    // ★ Where an invader runs off to: its spawn post, pushed FURTHER out along the line away from the tree.
+    // Stopping at the post looked like it was just going home; carrying on past it reads as making off with
+    // the loot and leaving the clearing. `/snowmen fleedistance <n>` retunes how far past.
+    public static float InvaderFleeExtraDistance { get; set; } = 30f;
+
+    private Vector4 FleePointFrom(Vector4 post)
+    {
+        var dx = post.X - GiftingTreeCenter.X;
+        var dz = post.Z - GiftingTreeCenter.Z;
+        var length = MathF.Sqrt(dx * dx + dz * dz);
+
+        if (length < 0.001f)
+            return post;
+
+        // Straight out from the tree, through the post, and onward.
+        var distance = length + InvaderFleeExtraDistance;
+
+        return new Vector4(
+            GiftingTreeCenter.X + dx / length * distance,
+            post.Y,
+            GiftingTreeCenter.Z + dz / length * distance,
+            1f);
+    }
 
     // Where at the tree this invader stops - on its own side, so a wave fans around the trunk instead of
     // stacking on one spot.
@@ -1499,7 +1554,7 @@ public sealed partial class StartingZone
             Stage = InvaderStage.Approaching,
             StageAt = DateTime.UtcNow,
             GatherAt = GatherPointNearTree(invader.Position),
-            FleeTo = invader.Position,   // back the way it came, i.e. out past the snowball piles
+            FleeTo = FleePointFrom(invader.Position),
         };
 
         _invaderRaids[invader.Guid] = raid;
@@ -1516,6 +1571,13 @@ public sealed partial class StartingZone
         walker.CombatSpeed = InvaderMoveSpeed;
         walker.ReturnSpeed = InvaderMoveSpeed;
         walker.RoamRadius = 0f;   // no milling about - they have somewhere to be
+        // ★ Hold the RUN clip on the way in too. Left to itself the client blends its own locomotion off
+        // the npc's pace, which at the invaders' amble reads as a trudge rather than a charge on the tree.
+        // Same sticky mechanism the carry clip uses - re-sent right after each position broadcast.
+        // 3 = loc_run = snowman_loc_run_without_present, correct for the approach: no gift yet.
+        walker.StickyAnimationId = InvaderApproachAnimationId;
+        walker.BaseAnimationId = InvaderApproachAnimationId;
+        SendInvaderAnimation(walker, InvaderApproachAnimationId);
         // Both of these exist for CONTROLLER actors only: physics npcs are ground-clamped and faced by the
         // client already, and forcing our own values on them just fights it.
         if (InvaderMovementType != 2)
@@ -1528,13 +1590,7 @@ public sealed partial class StartingZone
             walker.DirectionStyleRotation = true;
         }
 
-        // Under PHYSICS the client animates the walk itself, so nothing is held here - see
-        // InvaderMovementType. (Only a CONTROLLER actor needs the approach clip set explicitly.)
-        if (InvaderMovementType != 2)
-        {
-            walker.BaseAnimationId = InvaderApproachAnimationId;
-            SendInvaderAnimation(walker, InvaderApproachAnimationId);
-        }
+
     }
 
     private void UpdateInvaderRaids(DateTime now)
@@ -1597,28 +1653,69 @@ public sealed partial class StartingZone
                         walker.MovingAnimationState = 2;
                         walker.SuppressExpectedSpeed = false;
 
-                        // ★★ ONE GLIDE, NOT A STREAM OF STEPS. This is how ProjectileNpc - the one
-                        // CONTROLLER actor in this codebase that demonstrably moves smoothly - does it:
-                        // send ExpectedSpeed, then a SINGLE position update to the final destination, and
-                        // let the client interpolate the whole way.
+                        // ★ THE GETAWAY MOVES THE SAME WAY THE APPROACH DOES - by MARCHING. Under PHYSICS
+                        // that is the only thing that produces an actual walk: the client animates and
+                        // interpolates it step by step, exactly as it does on the way in.
                         //
-                        // Streaming per-tick positions at a controller actor (what this did before) makes
-                        // the client restart its interpolation ten times a second, which is what produced
-                        // the jerky facing and the height that never settled. The march mover is therefore
-                        // switched off for the getaway and the client is simply told where they end up.
-                        walker.MarchTarget = null;
-                        walker.MovingAnimationState = InvaderFleeMovingState;
+                        // It must NOT use the single-destination glide. That is the CONTROLLER technique
+                        // (ProjectileNpc's: one position update to the end point, client interpolates the
+                        // whole way) and on a physics actor it just relocates them - which is the "they
+                        // teleport to spawn without moving" symptom.
+                        if (InvaderMovementType == 2)
+                        {
+                            // ★ WALK STATE, NOT RUN. The client picks its locomotion clip from this byte,
+                            // and this model has NO `loc_walk` - snowman_present.adr declares only
+                            // loc_stand, loc_run, the two deaths, com_spawn and the two ambient slots. Ask
+                            // for a walk and the client has to fall back, and the likeliest fallback is
+                            // loc_stand = snowman_loc_stand_WITH_present.
+                            //
+                            // Run state (2) resolves to loc_run = run WITHOUT present, which is what has
+                            // been stripping the gift all along. `/snowmen movestate <n>` to compare 0/1/2.
+                            walker.MovingAnimationState = InvaderFleeMovingState;
+                            walker.BaseAnimationId = InvaderFleeAnimationId;
 
-                        walker.BaseAnimationId = InvaderFleeAnimationId;
-                        SendInvaderAnimation(walker, InvaderFleeAnimationId);
+                            // ★ Held THROUGH the movement: re-sent right after every position broadcast,
+                            // which is the only ordering that beats the client's own locomotion resolve.
+                            // `/snowmen testanim 2100` proved the clip itself renders fine - it was only
+                            // ever being overwritten.
+                            walker.StickyAnimationId = InvaderFleeAnimationId;
+                            SendInvaderAnimation(walker, InvaderFleeAnimationId);
 
-                        GlideInvaderHome(walker, raid.FleeTo);
+                            // ★ Backstop. The sticky re-send rides the MOVEMENT broadcast, which only fires
+                            // once the npc has actually travelled far enough - so one that sets off slowly,
+                            // or is briefly blocked, can go several ticks with nothing restating the clip
+                            // and shows the client's own run instead. That is the "some of them walk back
+                            // without a present" case. A few early re-sends cover the gap.
+                            ReassertInvaderAnimation(walker, InvaderFleeAnimationId);
+
+                            walker.MarchTarget = raid.FleeTo;
+                            walker.AlwaysRoute = true;
+                            walker.CombatSpeed = InvaderFleeSpeed;
+                            walker.ReturnSpeed = InvaderFleeSpeed;
+                        }
+                        else
+                        {
+                            walker.MarchTarget = null;
+                            walker.MovingAnimationState = InvaderFleeMovingState;
+
+                            walker.BaseAnimationId = InvaderFleeAnimationId;
+                            SendInvaderAnimation(walker, InvaderFleeAnimationId);
+
+                            GlideInvaderHome(walker, raid.FleeTo);
+                        }
                     }
 
                     break;
 
                 case InvaderStage.Fleeing:
-                    // GlideInvaderHome owns the getaway and vanishes them when the glide is done.
+                    // Only the MARCHING case is polled here; the controller glide vanishes them itself.
+                    if (InvaderMovementType == 2 &&
+                        walker.MarchTarget is null &&
+                        HorizontalDistance(walker.Position, raid.FleeTo) < InvaderArriveDistance)
+                    {
+                        VanishInvader(walker);
+                    }
+
                     break;
             }
         }
@@ -1687,6 +1784,32 @@ public sealed partial class StartingZone
             catch { }
         });
     }
+
+    // Restate a held clip a few times over the first couple of seconds, independently of the movement
+    // broadcast - see the note at the call site.
+    private void ReassertInvaderAnimation(Npc invader, int animationId)
+    {
+        _ = System.Threading.Tasks.Task.Run(async () =>
+        {
+            try
+            {
+                foreach (var delay in InvaderReassertMs)
+                {
+                    await System.Threading.Tasks.Task.Delay(delay);
+
+                    // Stop if it has moved on to something else (knocked down, vanished, new clip).
+                    if (!invader.IsAlive || invader.BaseAnimationId != animationId)
+                        return;
+
+                    SendInvaderAnimation(invader, animationId);
+                }
+            }
+            catch { }
+        });
+    }
+
+    // Cumulative: ~0.2s, ~0.6s, ~1.2s, ~2s after the clip is first set.
+    private static readonly int[] InvaderReassertMs = [200, 400, 600, 800];
 
     // Dev: play each id in a range on every live invader, one every few seconds, so a whole animation
     // family can be watched in one pass instead of typed out one at a time. The snowman's clip set is not
@@ -1758,15 +1881,36 @@ public sealed partial class StartingZone
         _logger.LogInformation("Snowmen: invader {guid} grabbing at the tree (anim {anim}).",
             invader.Guid, InvaderStealAnimationId);
 
+        // A bark as it takes the gift - spoken BY the snowman so it renders as its own line, and NOT
+        // chat-logged (these are ambient, not conversation - same treatment the boss's taunts get).
+        if (SnowmanInvaderGiftLines.Length > 0 && Random.Shared.Next(100) < SnowmanInvaderBarkPercent)
+        {
+            var line = SnowmanInvaderGiftLines[Random.Shared.Next(SnowmanInvaderGiftLines.Length)];
+            // ★ Npc.SayStringId - the codebase's OWN bubble path, and the one that actually works. It
+            // sets OwnerGuid (required) and sends NO colour; a hand-rolled ChatPacketFromStringId that
+            // omitted OwnerGuid rendered nothing without a colour and printed to the announcements with
+            // one. It also only sends to VisiblePlayers, which a bubble needs.
+            invader.SayStringId(line);
+        }
+
         // ★★ PlayType 1 IS A BASE ANIMATION, AND A BASE ANIMATION LOOPS UNTIL REPLACED. That is the whole
         // reason the grab "played twice": one send is enough to make it repeat for as long as it is left in
         // place. CombatNpc.PlaySwingAnimation documents the same thing and works around it exactly this way.
         //
         // So: send it once, then put the actor back to idle after one clip length. That is what fakes a
         // single play - the server log proves we only ever SENT it once per invader.
+        // ★ The grab OWNS the clip while it plays: the sticky run is cleared (nothing must restate it over
+        // the top) and BaseAnimationId records what is up, which is what the idle reset below checks before
+        // firing. Without that the reset bailed out every time and the one-shot looped - the grab playing
+        // twice.
+        if (invader is CombatNpc grabber)
+            grabber.StickyAnimationId = 0;
+
+        invader.BaseAnimationId = InvaderStealAnimationId;
         SendInvaderAnimation(invader, InvaderStealAnimationId);
 
         var guid = invader.Guid;
+        var animationIdAtGrab = InvaderStealAnimationId;
         var watchers = new List<Player>(invader.VisiblePlayers.Values);
 
         _ = System.Threading.Tasks.Task.Run(async () =>
@@ -1774,6 +1918,12 @@ public sealed partial class StartingZone
             try
             {
                 await System.Threading.Tasks.Task.Delay(InvaderGrabClipMs);
+
+                // ★ Don't clobber a getaway that has already begun. This is a fire-and-forget timer, so if
+                // the grab window is ever shortened (or the tick runs late) it can land AFTER the carry clip
+                // has been set - which would drop the present. Only reset if the grab is still what's up.
+                if (invader.BaseAnimationId != animationIdAtGrab)
+                    return;
 
                 var idle = new PlayerUpdatePacketSetAnimation
                 {

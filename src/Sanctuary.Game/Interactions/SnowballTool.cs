@@ -188,14 +188,29 @@ public static class SnowballTool
     // anyway, so a stale heading costs nothing.
     // 30 threw halfway across the clearing and made aiming meaningless - a snowball should be a short lob
     // you have to close in for, not a sniper shot.
-    public static float ThrowRange { get; set; } = 16f;
+    // ★ Widened from 16. The Snow Days invaders walk in from the snowball piles and are moving the whole
+    // time, so a short reach meant a lot of throws simply had nothing in range by the time they landed.
+    public static float ThrowRange { get; set; } = 24f;
 
     // Aim cone for target selection. ~35 degrees each side counts as "pointing at it"; anything past 90
     // degrees is behind the thrower and never eligible. AimAngleWeight converts an angle miss into an
     // effective distance penalty, so among several snowmen the one you are actually facing wins.
-    public static float AimConeCos { get; set; } = 0.82f;      // cos 35 deg
+    // ★ Widened from cos 35 to cos 50. The server aims from the player's SERVER-SIDE facing, which lags
+    // behind the client while you are running - so a tight cone kept missing targets that were visually
+    // dead ahead. This is the "it doesn't work well while moving" case.
+    public static float AimConeCos { get; set; } = 0.64f;      // cos 50 deg
     private const float AimBackstopCos = 0.10f;  // just inside 90 deg
     private const float AimAngleWeight = 14f;
+
+    // Inside this range a throw is never rejected for line of sight - see the note where it is used.
+    private const float PointBlankRange = 10f;
+
+    private static float HorizontalDistance(Vector4 a, Vector4 b)
+    {
+        var dx = a.X - b.X;
+        var dz = a.Z - b.Z;
+        return MathF.Sqrt(dx * dx + dz * dz);
+    }
 
     private const float ProjectileSpeed = 45f;
 
@@ -395,8 +410,17 @@ public static class SnowballTool
         // The zone already carries the collision data the mob AI navigates by - the real per-model mesh
         // when it has been built, else the placement-derived obstacle map - so the throw just asks it
         // whether the line to the target is clear.
-        if (victim is not null && !HasClearShot(zone, muzzle, victim.Position))
+        // ★ POINT-BLANK IGNORES GEOMETRY. The collision data is placement-derived, so a target standing
+        // right beside a prop - which is exactly where the invaders end up, clustered around the Gifting
+        // Tree - can register as "blocked" by the very thing it is next to. Close in, the throw should
+        // simply land; the check still applies at the ranges it was written for (shooting across the
+        // arena at someone behind a fort).
+        if (victim is not null &&
+            HorizontalDistance(muzzle, victim.Position) > PointBlankRange &&
+            !HasClearShot(zone, muzzle, victim.Position))
+        {
             victim = null; // blocked: it still flies, it just splats on whatever is in the way
+        }
 
         // Land it ON the victim's chest when there is one, otherwise out at the end of the throw.
         // A free throw flies LEVEL - same height it left the hand. It used to aim a metre BELOW the muzzle,

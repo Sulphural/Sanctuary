@@ -1,8 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 using Sanctuary.Core.IO;
+using Sanctuary.Packet.Common;
 
 namespace Sanctuary.Packet;
+
 
 // One inline objective inside MiniGameInfo.ObjectiveData[] (client reader ObjectiveData::sub_8FD770,
 // 103 B/record). GROUND TRUTH (2026-07-03, 04-01 capture): the real server DEFINES the encounter's goals
@@ -113,7 +115,7 @@ public class EncounterDetailsResponsePacket : BaseEncounterPacket, ISerializable
     // set: Tabi Boots / Power Shard / 1000 Storms sword / Vitality Necklace / Mystery Pack), matching
     // the player's ACTIVE JOB — the job selection is server-side; ProfileType just names the job
     // CATEGORY the set is for (2 = combat jobs, from Profiles.json Type).
-    public List<RewardEntry> PreviewRewards = [];
+    public List<RewardBundleEntryItem> PreviewRewards = [];
 
     // Coins/XP for the extra loot-wheel slices — IDA-verified DS mapping (bundle U2 = Num Coins,
     // U3 = Experience). Real preview: coins 10, XP 0 (the encounter's XP was granted by the GOAL's
@@ -169,8 +171,8 @@ public class EncounterDetailsResponsePacket : BaseEncounterPacket, ISerializable
         // discarding any coins/xp passed alongside it - fine for the preview bundle (always has real item
         // entries) but wrong here, where these two bundles carry ONLY a coins/xp value and no items. Call
         // RewardBundle.Write directly so RewardXp/MemberCoins actually make it onto the wire.
-        RewardBundle.Write(writer, [], 0, RewardXp);        // m_RewardBundleBase — win-screen "Stars" box
-        RewardBundle.Write(writer, [], MemberCoins, 0);     // m_RewardBundleBase_Member — "Members Only Bonus" Coins box
+        new RewardBundleBase { Experience = RewardXp }.Serialize(writer);  // m_RewardBundleBase — win-screen "Stars" box
+        new RewardBundleBase { Coins = MemberCoins }.Serialize(writer);   // m_RewardBundleBase_Member — "Members Only Bonus" Coins box
         WriteRewardBundle(writer, PreviewRewards, PreviewCoins, PreviewXp); // m_RewardBundleBase_Preview (the popup prizes + loot wheel)
         writer.Write(Objectives.Count);  // ObjectiveData array — goals defined inline (real server flow)
         foreach (var obj in Objectives)
@@ -212,7 +214,7 @@ public class EncounterDetailsResponsePacket : BaseEncounterPacket, ISerializable
         writer.Write(obj.DescriptionId);
         writer.Write(false);              // byte Unknown4
         if (obj.Xp > 0)
-            RewardBundle.Write(writer, [], xp: obj.Xp); // real per-goal XP (ground-truthed shape, no items)
+            new RewardBundleBase { Experience = obj.Xp }.Serialize(writer); // real per-goal XP (no items)
         else
             WriteEmptyRewardBundle(writer);   // RewardBundleBase (69-byte empty)
         writer.Write(obj.Status);
@@ -223,22 +225,16 @@ public class EncounterDetailsResponsePacket : BaseEncounterPacket, ISerializable
         writer.Write(obj.Unknown10);
     }
 
-    // RewardBundleBase with no entries — 69 fixed bytes (see header). All-zero is a valid empty bundle.
+    // RewardBundleBase with no entries. This site sends 0 rather than the -1 "defer to entry[0]"
+    // sentinel for the icon/name overrides, which is what it has always sent.
     private static void WriteEmptyRewardBundle(PacketWriter writer)
     {
-        writer.Write(false);                              // byte Unknown
-        for (var i = 0; i < 9; i++) writer.Write(0);      // int32 U2..U10
-        writer.Write(0); writer.Write(0);                 // int32 pairA (x,y)
-        writer.Write(0); writer.Write(0);                 // int32 pairB (x,y)
-        writer.Write(0);                                  // int32 U13
-        writer.Write(0);                                  // int32 U14
-        writer.Write(0);                                  // int32 entryCount = 0
-        writer.Write(0);                                  // int32 U15
+        new RewardBundleBase { IconId = 0, NameId = 0 }.Serialize(writer);
     }
 
-    // RewardBundleBase with entries — the shared ground-truthed serializer (RewardBundle.cs). Falls back
-    // to the proven all-zero empty shape when no entries. U13/U14 mirror entry[0] like the real preview.
-    private static void WriteRewardBundle(PacketWriter writer, List<RewardEntry> entries, int coins, int xp)
+    // RewardBundleBase with entries. Falls back to the proven empty shape when there are none; otherwise
+    // the icon/name overrides mirror entry[0] like the real preview does. Preview only, so no guid tails.
+    private static void WriteRewardBundle(PacketWriter writer, IReadOnlyList<RewardBundleEntryItem> entries, int coins, int xp)
     {
         if (entries.Count == 0)
         {
@@ -246,6 +242,14 @@ public class EncounterDetailsResponsePacket : BaseEncounterPacket, ISerializable
             return;
         }
 
-        RewardBundle.Write(writer, entries, coins, xp, entries[0].IconId, entries[0].NameId);
+        var bundle = new RewardBundleBase
+        {
+            Coins = coins,
+            Experience = xp,
+            IconId = entries[0].IconId,
+            NameId = entries[0].NameId
+        };
+        bundle.Entries.AddRange(entries);
+        bundle.Serialize(writer);
     }
 }

@@ -485,6 +485,8 @@ public class SnowballChatCommand : GatewayChatCommand
     //   /snowball arena target <n>   hits to win (retail's own number isn't recorded anywhere in the
     //                                client data - the goal strings only say "enough")
     //   /snowball arena score        read the current score
+    //   /snowball arena card         re-raise the end-of-match result card (after a win)
+    //   /snowball arena cardat <ms>  how long the fireworks run before the card covers them
     private bool Arena(Player invoker, string[] args)
     {
         var arena = CommandSupport.ZoneManager.GetOrCreateSnowballArena();
@@ -524,6 +526,27 @@ public class SnowballChatCommand : GatewayChatCommand
                     ? $"[snowball] {winningTeam} Team wins - referee call, fireworks and exit door incoming. " +
                       "/snowball arena reset to play again."
                     : "[snowball] Couldn't force a win (no team assigned, or the match is already over).");
+                return true;
+
+            // Re-raise the end-of-match card on demand, so the rows can be looked at again without playing
+            // (or force-winning) another match. Only does anything once a match has been decided - the card
+            // reads its winner from the finished match.
+            case "card":
+                if (invoker.Zone != arena)
+                {
+                    Reply(invoker, "[snowball] You have to be in the arena to see its result card.");
+                    return true;
+                }
+
+                arena.ShowResultCard(invoker);
+                Reply(invoker, "[snowball] Re-raised the result card. Nothing appeared? The match hasn't been " +
+                               "decided yet - /snowball arena win first.");
+                return true;
+
+            // How long the referee's call and the fireworks get before the card covers the arena.
+            case "cardat" when args.Length >= 3 && int.TryParse(args[2], out var cardDelay):
+                SnowballArenaZone.ResultCardDelayMs = Math.Clamp(cardDelay, 0, 60_000);
+                Reply(invoker, $"[snowball] Result card goes up {SnowballArenaZone.ResultCardDelayMs}ms after the match is called.");
                 return true;
 
             case "target" when args.Length >= 3 && int.TryParse(args[2], out var target):

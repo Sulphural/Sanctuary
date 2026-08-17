@@ -1,6 +1,8 @@
-using Sanctuary.Core.IO;
+﻿using Sanctuary.Core.IO;
+using Sanctuary.Packet.Common;
 
 namespace Sanctuary.Packet;
+
 
 // Wire format traced AND wire-verified from the client's real deserializer (case 7:
 // FUN_00c7cd40 -> FUN_00c7bd30 -> FUN_00c7acd0 for the header + one int, then FUN_008fd770
@@ -51,7 +53,7 @@ public class QuestObjectiveAddedPacket : BaseQuestPacket, ISerializablePacket
         writer.Write(false); // bool
 
         // RewardBundleBase (FUN_008e7930) - empty (mirrors QuestAddPacket).
-        RewardBundleSerializer.Write(writer, 0, 0);
+        new RewardBundleBase { IconId = 0, NameId = 0 }.Serialize(writer);
 
         // trailing objective fields
         writer.Write(0); // int

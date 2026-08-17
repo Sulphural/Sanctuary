@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -260,13 +260,13 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
     // Job dependence is server-side: live picks the set for the player's ACTIVE job and stamps
     // MiniGameInfo.ProfileType with the job CATEGORY (2 = combat jobs, Profiles.json Type).
     public const int CombatProfileType = 2;
-    public static List<RewardEntry> NinjaPrizePreview() =>
+    public static List<RewardBundleEntryItem> NinjaPrizePreview() =>
     [
-        new() { Hidden = true,  IconId = 2483, TintId = 234, NameId = 133217, ItemDefId = 76209, DisplayName = "Kusa Ninja Tabi Boots" },
-        new() {                 IconId = 3717, TintId = 264, NameId = 131152, ItemDefId = 75408, DisplayName = "Ninja's Power Shard of Regeneration I" },
-        new() {                 IconId = 3229, TintId = 247, NameId = 131975, ItemDefId = 75091, DisplayName = "Ninja's Training Sword of 1000 Storms" },
-        new() {                 IconId = 1198, TintId = 0,   NameId = 131129, ItemDefId = 75385, DisplayName = "Ninja's Necklace of Vitality I" },
-        new() { Hidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   ItemDefId = 10482, DisplayName = "Battle Item Mystery Pack" },
+        new RewardBundleEntryItem { IsHidden = true,  IconId = 2483, TintId = 234, NameId = 133217, DefinitionId = 76209, DisplayName = "Kusa Ninja Tabi Boots" },
+        new RewardBundleEntryItem {                 IconId = 3717, TintId = 264, NameId = 131152, DefinitionId = 75408, DisplayName = "Ninja's Power Shard of Regeneration I" },
+        new RewardBundleEntryItem {                 IconId = 3229, TintId = 247, NameId = 131975, DefinitionId = 75091, DisplayName = "Ninja's Training Sword of 1000 Storms" },
+        new RewardBundleEntryItem {                 IconId = 1198, TintId = 0,   NameId = 131129, DefinitionId = 75385, DisplayName = "Ninja's Necklace of Vitality I" },
+        new RewardBundleEntryItem { IsHidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   DefinitionId = 10482, DisplayName = "Battle Item Mystery Pack" },
     ];
     // Real preview bundle values, IDA-verified 2026-07-04 (bundle U2 = Num Coins, U3 = Experience):
     // 10 coins, 0 XP. The encounter's XP was granted by the GOAL's own reward bundle on live — that's
@@ -291,13 +291,13 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
     // costume family's TIER 2, archer tier 2 = Hen Feather; 11 tiers in both families) and the
     // Mystery Pack slot is the shared consumable prize.
     public const int ArcherProfileId = 35; // Profiles.json "Archer" (Type 2 = combat category)
-    public static List<RewardEntry> ArcherPrizePreview() =>
+    public static List<RewardBundleEntryItem> ArcherPrizePreview() =>
     [
-        new() { Hidden = true,  IconId = 4939, TintId = 247, NameId = 132741, ItemDefId = 75733, DisplayName = "Hen Feather Archer Boots" },
-        new() {                 IconId = 3721, TintId = 230, NameId = 130968, ItemDefId = 75224, DisplayName = "Archer's Power Shard of Vitality I" },
-        new() {                 IconId = 547,  TintId = 0,   NameId = 130924, ItemDefId = 75180, DisplayName = "Archer's Ring of Regeneration I" },
-        new() {                 IconId = 3104, TintId = 228, NameId = 131884, ItemDefId = 75000, DisplayName = "Archer's Bow of Volleys" },
-        new() { Hidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   ItemDefId = 10482, DisplayName = "Battle Item Mystery Pack" },
+        new RewardBundleEntryItem { IsHidden = true,  IconId = 4939, TintId = 247, NameId = 132741, DefinitionId = 75733, DisplayName = "Hen Feather Archer Boots" },
+        new RewardBundleEntryItem {                 IconId = 3721, TintId = 230, NameId = 130968, DefinitionId = 75224, DisplayName = "Archer's Power Shard of Vitality I" },
+        new RewardBundleEntryItem {                 IconId = 547,  TintId = 0,   NameId = 130924, DefinitionId = 75180, DisplayName = "Archer's Ring of Regeneration I" },
+        new RewardBundleEntryItem {                 IconId = 3104, TintId = 228, NameId = 131884, DefinitionId = 75000, DisplayName = "Archer's Bow of Volleys" },
+        new RewardBundleEntryItem { IsHidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   DefinitionId = 10482, DisplayName = "Battle Item Mystery Pack" },
     ];
 
     // WARRIOR/WIZARD/BRAWLER sets (2026-07-26) — filled in following the exact pattern documented above
@@ -310,40 +310,40 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
     // necklace) rather than Archer's opposite pairing, since Ninja is the majority pattern among the two
     // known-real examples - genuinely a guess, flagged rather than silently presented as confirmed.
     public const int WarriorProfileId = 32; // Profiles.json "Warrior" (Type 2 = combat category)
-    public static List<RewardEntry> WarriorPrizePreview() =>
+    public static List<RewardBundleEntryItem> WarriorPrizePreview() =>
     [
-        new() { Hidden = true,  IconId = 5432, TintId = 228, NameId = 133327, ItemDefId = 76319, DisplayName = "Standard Action Warrior Hightops" },
-        new() {                 IconId = 3717, TintId = 232, NameId = 131217, ItemDefId = 75473, DisplayName = "Warrior's Power Shard of Regeneration I" },
-        new() {                 IconId = 3120, TintId = 228, NameId = 132004, ItemDefId = 75120, DisplayName = "Warrior's Cudgel of Spinning" },
-        new() {                 IconId = 1198, TintId = 0,   NameId = 131194, ItemDefId = 75450, DisplayName = "Warrior's Necklace of Vitality I" },
-        new() { Hidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   ItemDefId = 10482, DisplayName = "Battle Item Mystery Pack" },
+        new RewardBundleEntryItem { IsHidden = true,  IconId = 5432, TintId = 228, NameId = 133327, DefinitionId = 76319, DisplayName = "Standard Action Warrior Hightops" },
+        new RewardBundleEntryItem {                 IconId = 3717, TintId = 232, NameId = 131217, DefinitionId = 75473, DisplayName = "Warrior's Power Shard of Regeneration I" },
+        new RewardBundleEntryItem {                 IconId = 3120, TintId = 228, NameId = 132004, DefinitionId = 75120, DisplayName = "Warrior's Cudgel of Spinning" },
+        new RewardBundleEntryItem {                 IconId = 1198, TintId = 0,   NameId = 131194, DefinitionId = 75450, DisplayName = "Warrior's Necklace of Vitality I" },
+        new RewardBundleEntryItem { IsHidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   DefinitionId = 10482, DisplayName = "Battle Item Mystery Pack" },
     ];
 
     public const int WizardProfileId = 12; // Profiles.json "Wizard" (Type 2 = combat category)
-    public static List<RewardEntry> WizardPrizePreview() =>
+    public static List<RewardBundleEntryItem> WizardPrizePreview() =>
     [
         // Tier-2 boots are gender-split for this job (unlike every other job here, a single unisex record) -
         // this is the male variant (76387/icon 5080); female = 76388/icon 5014, same NameId 133395.
-        new() { Hidden = true,  IconId = 5080, TintId = 228, NameId = 133395, ItemDefId = 76387, DisplayName = "Novice Wizard Shoes" },
-        new() {                 IconId = 3717, TintId = 264, NameId = 131282, ItemDefId = 75538, DisplayName = "Wizard's Power Shard of Regeneration I" },
-        new() {                 IconId = 3158, TintId = 242, NameId = 132034, ItemDefId = 75150, DisplayName = "Wizard's Sparkle Twig of Shock" },
-        new() {                 IconId = 1198, TintId = 0,   NameId = 131259, ItemDefId = 75515, DisplayName = "Wizard's Necklace of Vitality I" },
-        new() { Hidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   ItemDefId = 10482, DisplayName = "Battle Item Mystery Pack" },
+        new RewardBundleEntryItem { IsHidden = true,  IconId = 5080, TintId = 228, NameId = 133395, DefinitionId = 76387, DisplayName = "Novice Wizard Shoes" },
+        new RewardBundleEntryItem {                 IconId = 3717, TintId = 264, NameId = 131282, DefinitionId = 75538, DisplayName = "Wizard's Power Shard of Regeneration I" },
+        new RewardBundleEntryItem {                 IconId = 3158, TintId = 242, NameId = 132034, DefinitionId = 75150, DisplayName = "Wizard's Sparkle Twig of Shock" },
+        new RewardBundleEntryItem {                 IconId = 1198, TintId = 0,   NameId = 131259, DefinitionId = 75515, DisplayName = "Wizard's Necklace of Vitality I" },
+        new RewardBundleEntryItem { IsHidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   DefinitionId = 10482, DisplayName = "Battle Item Mystery Pack" },
     ];
 
     public const int BrawlerProfileId = 43; // Profiles.json "Brawler" (Type 2 = combat category)
-    public static List<RewardEntry> BrawlerPrizePreview() =>
+    public static List<RewardBundleEntryItem> BrawlerPrizePreview() =>
     [
         // CORRECTED 2026-07-26: the wiki's real "Bonus Rewards" table (freerealms.fandom.com, Cracked Claw
         // Caverns) names Brawler's set "Saved by the Bell", not "Bum Rush" - the old entry here was an
         // inferred guess (tier-2 by TextureAlias "-L2" match) that turned out wrong on both the set AND the
         // tier (ClientItemDefinitions confirms "Saved by the Bell Brawler Boots" is TextureAlias "...-L1",
         // Id 75854, NameId 132862, Icon 4974/228 - a real, verified entry, not a guess like before).
-        new() { Hidden = true,  IconId = 4974, TintId = 228, NameId = 132862, ItemDefId = 75854, DisplayName = "Saved by the Bell Brawler Boots" },
-        new() {                 IconId = 3717, TintId = 264, NameId = 131022, ItemDefId = 75278, DisplayName = "Brawler's Power Shard of Regeneration I" },
-        new() {                 IconId = 3131, TintId = 242, NameId = 131914, ItemDefId = 75030, DisplayName = "Brawler's Mallet of Sweeps" },
-        new() {                 IconId = 1198, TintId = 0,   NameId = 130999, ItemDefId = 75255, DisplayName = "Brawler's Necklace of Vitality I" },
-        new() { Hidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   ItemDefId = 10482, DisplayName = "Battle Item Mystery Pack" },
+        new RewardBundleEntryItem { IsHidden = true,  IconId = 4974, TintId = 228, NameId = 132862, DefinitionId = 75854, DisplayName = "Saved by the Bell Brawler Boots" },
+        new RewardBundleEntryItem {                 IconId = 3717, TintId = 264, NameId = 131022, DefinitionId = 75278, DisplayName = "Brawler's Power Shard of Regeneration I" },
+        new RewardBundleEntryItem {                 IconId = 3131, TintId = 242, NameId = 131914, DefinitionId = 75030, DisplayName = "Brawler's Mallet of Sweeps" },
+        new RewardBundleEntryItem {                 IconId = 1198, TintId = 0,   NameId = 130999, DefinitionId = 75255, DisplayName = "Brawler's Necklace of Vitality I" },
+        new RewardBundleEntryItem { IsHidden = true,  IconId = 973,  TintId = -1,  NameId = 6666,   DefinitionId = 10482, DisplayName = "Battle Item Mystery Pack" },
     ];
 
     // The reward set for the player's ACTIVE JOB — live behavior: the interact/launch packets
@@ -355,7 +355,7 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
     // their own job's gear, despite the comment above already documenting the intended per-job pattern.
     // The SAME set must be used at offer, launch, AND the win-time wheel packet — the client resolves
     // the wheel's landing slice by matching NameId against the launch packet's stored preview rows.
-    public static List<RewardEntry> GetPrizePreviewFor(Player player) =>
+    public static List<RewardBundleEntryItem> GetPrizePreviewFor(Player player) =>
         player.ActiveProfileId switch
         {
             ArcherProfileId => ArcherPrizePreview(),
@@ -1346,7 +1346,7 @@ public sealed class FrostfangArenaZone : CombatEncounterZone
         killer.Coins = dbCharacter.Coins;
 
         killer.SendTunneled(new ClientUpdatePacketCoinCount { Coins = killer.Coins });
-        killer.SendTunneled(new RewardBundlePacket { Coins = coins, Unknown15 = 957 });
+        killer.SendTunneled(new RewardBundlePacket { RewardBundle = { Coins = coins, Trailing = 957 } });
         killer.SendTunneled(new ChatPacketDebugChat
         {
             Message = $"<font color='#0000FF'>You receive {coins} coins.</font>",

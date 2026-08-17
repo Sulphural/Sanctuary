@@ -1,10 +1,11 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 
 using Microsoft.Extensions.Logging;
 
 using Sanctuary.Game.Resources;
+using Sanctuary.Game.Resources.Definitions.Rewards;
 
 namespace Sanctuary.Game;
 
@@ -55,6 +56,8 @@ public class ResourceManager : IResourceManager
     public static readonly string NpcVendorsFile = Path.Combine(BaseDirectory, "NpcVendors.json");
     public static readonly string NpcsFile = Path.Combine(BaseDirectory, "Npcs.json");
     public static readonly string MapsDirectory = Path.Combine(BaseDirectory, "Maps");
+    public static readonly string RewardTablesFile = Path.Combine(BaseDirectory, "Rewards.json");
+
 
     public static readonly string ConsumablesFile = Path.Combine(BaseDirectory, "Consumables.jsonc");
 
@@ -109,6 +112,8 @@ public class ResourceManager : IResourceManager
 
     public DailyWheelDefinitionCollection DailyWheels { get; }
 
+    public RewardTableDefinitionCollection RewardTables { get; }
+
     public ResourceManager(ILogger<ResourceManager> logger)
     {
         _logger = logger;
@@ -162,6 +167,7 @@ public class ResourceManager : IResourceManager
         Consumables = new(_logger);
         Quests = new(_logger);
         DailyWheels = new(_logger);
+        RewardTables = new(_logger);
     }
 
     public bool Load()
@@ -236,6 +242,20 @@ public class ResourceManager : IResourceManager
             if (!CollectionNodeTypes.ContainsKey(pool.NodeType))
             {
                 _logger.LogError("Collection node pool {pool} references an unknown node type.", pool.Key);
+                return false;
+            }
+        }
+
+        if (!RewardTables.Load(RewardTablesFile))
+            return false;
+
+        foreach (var table in RewardTables.Values)
+        {
+            // NOTE: We may need to fiddle with this if we ever extend past just items and currencies,
+            // though isn't everything technically an item? Didn't think that far ahead.
+            if (table.DropTable.OfType<ItemRewardDropDefinition>().Any(drop => !ClientItemDefinitions.ContainsKey(drop.ItemDefinitionId)))
+            {
+                _logger.LogError("Reward table {key} references an unknown item definition.", table.Key);
                 return false;
             }
         }
@@ -415,6 +435,8 @@ public class ResourceManager : IResourceManager
                 loaded = Consumables.Load(ConsumablesFile);
             else if (e.FullPath == DailyWheelFile)
                 loaded = DailyWheels.Load(DailyWheelFile);
+            else if (e.FullPath == RewardTablesFile)
+                loaded = RewardTables.Load(RewardTablesFile);
             else
                 _logger.LogWarning("Unknown file changed. File: {filepath}", e.FullPath);
 

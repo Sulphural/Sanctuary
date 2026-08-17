@@ -1364,7 +1364,8 @@
         "DialogueId": 419837,
         "TargetGuid": 100000032813
       }
-    ]
+    ],
+    "RewardTable": "gifting-tree-presents"
   },
   {
     "Comment": "Trick-or-Treat - Super Spooktacular: scare 10 costumed townsfolk in Sanctuary, then talk to each for candy",

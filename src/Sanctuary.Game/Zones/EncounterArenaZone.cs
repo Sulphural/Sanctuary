@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -1668,8 +1668,8 @@ public sealed class EncounterArenaZone : CombatEncounterZone
             if (reward is null)
                 continue;
 
-            GrantItem(player, reward.ItemDefId);
-            player.SendTunneled(new RewardNonBundledItemPacket { ItemDefinitionId = reward.ItemDefId, Quantity = 1 });
+            GrantItem(player, reward.DefinitionId);
+            player.SendTunneled(new RewardNonBundledItemPacket { ItemDefinitionId = reward.DefinitionId, Quantity = 1 });
             SendReceiveItemText(player, reward.DisplayName);
         }
     }
@@ -1775,7 +1775,7 @@ public sealed class EncounterArenaZone : CombatEncounterZone
         killer.Coins = dbCharacter.Coins;
 
         killer.SendTunneled(new ClientUpdatePacketCoinCount { Coins = killer.Coins });
-        killer.SendTunneled(new RewardBundlePacket { Coins = coins, Unknown15 = 957 });
+        killer.SendTunneled(new RewardBundlePacket { RewardBundle = { Coins = coins, Trailing = 957 } });
         killer.SendTunneled(new ChatPacketDebugChat
         {
             Message = $"<font color='#0000FF'>You receive {coins} coins.</font>",

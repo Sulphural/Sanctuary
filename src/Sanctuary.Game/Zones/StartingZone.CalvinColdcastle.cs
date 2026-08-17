@@ -103,14 +103,25 @@ public sealed partial class StartingZone
     // Clicked: he offers to set a match up, and you say yes or no.
     private void OfferSnowballMatch(Player player)
     {
-        // ★ NOT WHILE THEY'RE ALREADY QUEUED. The client re-sends FreeInteractionNpc periodically the whole
-        // time a player stands near an interactable NPC - it is a proximity ping, not a click - and the
-        // handler fires the interaction again on a 3-second debounce. Joining a queue takes longer than
-        // that and leaves you standing right next to Calvin, so his offer kept popping straight back up
-        // the moment the matchmaking panel closed. Offering a match to someone who is already waiting for
-        // one is wrong anyway.
+        // ★ NOT WHILE THEY'RE ALREADY QUEUED. Offering a match to someone who is already waiting for one
+        // is wrong on its own terms, and it also stopped one shape of the re-opening bug below.
         if (player.MatchmakingQueueId != 0)
             return;
+
+        // ★ AND NOT WHILE HIS OWN DIALOG IS STILL UP. PendingDialogChoices is cleared the moment either
+        // button is answered, so a non-null value here means the offer is on screen right now and this is
+        // a duplicate trigger, not a new conversation.
+        if (player.PendingDialogChoices is not null)
+            return;
+
+        // ★★ THE REAL FIX FOR "CALVIN KEEPS TALKING TO ME" IS NOT HERE - it is in
+        // CommandPacketFreeInteractionNpcHandler, and it is worth knowing why. The client's 26/20
+        // auto-interact carries no target guid and is fired on UI EVENTS as well as on proximity, so
+        // every panel closed or HUD button pressed while standing next to Calvin resolved to him and
+        // re-ran this method. The two guards above only cover the cases where he happens to know
+        // something is in progress; a player who simply opened his offer, declined it and then touched
+        // the interface was caught by neither. That packet is now acted on once per approach, which fixes
+        // it for every dialog NPC rather than just this one. These guards stay as cheap insurance.
 
         var dialog = new CommandPacketShowDialog
         {

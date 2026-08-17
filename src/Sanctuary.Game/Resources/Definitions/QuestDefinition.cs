@@ -62,6 +62,12 @@ public class QuestDefinition
     // Holiday Mystery Gift works: the preview is the gift, the payout is a sweater or a cookie.
     public List<int> RandomRewardItems { get; set; } = new();
 
+    // The WEIGHTED version of the above: a key into Resources/Rewards.json. When set it takes precedence
+    // over RandomRewardItems, and the payout is rolled from that table's drop weights instead of picked
+    // uniformly - so a mystery gift can make sweaters rarer than cookies. RewardItems still drives the
+    // preview. Empty = use RandomRewardItems / RewardItems as before.
+    public string RewardTable { get; set; } = string.Empty;
+
     // Icons this quest uses on the NPC's radial interaction menu, overriding the generic "!"/"?" discs.
     // 0 = the default (ContextIcons.QuestOffer / QuestTurnIn). These are RAW IMAGE ids (Images.txt) - the
     // SAME space ContextIcons uses and NOT the space NotificationAvailable/NotificationActive live in, so

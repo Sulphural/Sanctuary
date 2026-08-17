@@ -54,5 +54,7 @@ public interface IResourceManager
     // Loaded ".map" waypoint graphs, keyed by zone name - see MapGraphCollection.
     MapGraphCollection Maps { get; }
 
+    RewardTableDefinitionCollection RewardTables { get; }
+
     bool Load();
 }

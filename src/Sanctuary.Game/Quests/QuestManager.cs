@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -24,12 +24,15 @@ namespace Sanctuary.Game.Quests;
 public sealed class QuestManager : IQuestManager
 {
     private readonly IResourceManager _resourceManager;
+    private readonly IRewardManager _rewardManager;
     private readonly IDbContextFactory<DatabaseContext> _dbContextFactory;
 
-    public QuestManager(IResourceManager resourceManager, IDbContextFactory<DatabaseContext> dbContextFactory)
+    public QuestManager(IResourceManager resourceManager, IDbContextFactory<DatabaseContext> dbContextFactory,
+        IRewardManager rewardManager)
     {
         _resourceManager = resourceManager;
         _dbContextFactory = dbContextFactory;
+        _rewardManager = rewardManager;
     }
 
     // Clears out DAILY quests finished on an earlier UTC day so they can be taken again. Called before
@@ -989,7 +992,7 @@ public sealed class QuestManager : IQuestManager
         // The giver gestures as it makes its pitch, same as it does mid-conversation.
         QuestDialogue.PlayTalkAnimation(player, quest.GiverGuid);
 
-        player.SendTunneled(new QuestInfoPacket
+        var questInfoPacket = new QuestInfoPacket
         {
             QuestId = quest.QuestId,
             // TitleId is the ONLY field that drives the visible NPCText speech bubble (confirmed live
@@ -1016,24 +1019,41 @@ public sealed class QuestManager : IQuestManager
             // Unknown12=true removes the decline option (accept-only quest) - ruled out 2026-08-02,
             // not chat-related.
             Unknown12 = false,
-            RewardCoins = quest.RewardCoins,
-            RewardExperience = quest.RewardExperience, // job XP shown in the reward preview
-            RewardItems = BuildRewardItems(quest) // item icons in the "Show Details" reward preview
-        });
+            RewardBundle =
+            {
+                Coins = quest.RewardCoins,
+                Experience = quest.RewardExperience, // job XP shown in the reward preview
+            }
+        };
+
+        // Item icons in the "Show Details" reward preview.
+        AddRewardItems(questInfoPacket.RewardBundle, quest);
+
+        player.SendTunneled(questInfoPacket);
     }
 
     // Resolves a quest's RewardItems def ids into reward-preview entries
     // (icon + name + count) by looking up each item's ClientItemDefinition. Shown as icons in the offer
     // and turn-in "Show Details" panels.
-    private List<RewardBundleItem> BuildRewardItems(QuestDefinition quest)
+    private void AddRewardItems(RewardBundleBase bundle, QuestDefinition quest)
     {
-        var items = new List<RewardBundleItem>();
+        // A RewardTable quest with no authored RewardItems lets the table describe its own preview, so
+        // the icons and counts shown come from the drops that will actually be rolled instead of a
+        // parallel display-only list nothing keeps in step. An authored RewardItems list still wins: it
+        // is the literal payout for an ordinary quest, and the deliberate wrapped-gift stand-in for a
+        // mystery one (a table can now carry that stand-in itself via PreviewItemDefinitionId).
+        if (quest.RewardItems.Count == 0 && !string.IsNullOrWhiteSpace(quest.RewardTable))
+        {
+            _rewardManager.TryBuildPreview(quest.RewardTable, bundle); // logs its own failures
+            return;
+        }
+
         for (int i = 0; i < quest.RewardItems.Count; i++)
         {
             if (!_resourceManager.ClientItemDefinitions.TryGetValue(quest.RewardItems[i], out var itemDef))
                 continue;
 
-            items.Add(new RewardBundleItem
+            bundle.Entries.Add(new RewardBundleEntryItem
             {
                 // ClientItemDefinition.Icon.Id, passed through UNCHANGED. This field takes the image-SET
                 // id, NOT a flat image id - resolving it through ImageSetMappings broke every reward
@@ -1042,10 +1062,9 @@ public sealed class QuestManager : IQuestManager
                 NameId = itemDef.NameId,
                 // Show what the player will actually get; 1 hides the "xN" label, which is what a
                 // quantity-less reward wants anyway.
-                Count = i < quest.RewardItemQuantities.Count ? Math.Max(1, quest.RewardItemQuantities[i]) : 1
+                Quantity = i < quest.RewardItemQuantities.Count ? Math.Max(1, quest.RewardItemQuantities[i]) : 1
             });
         }
-        return items;
     }
 
     // Ticks off the goal at goalIndex: sends the objective checkmark, advances the
@@ -1126,7 +1145,7 @@ public sealed class QuestManager : IQuestManager
         // The NPC handing the quest in speaks over the end screen, so it gestures there too.
         QuestDialogue.PlayTalkAnimation(player, GoalTargetGuid(quest, quest.EffectiveGoals.Count - 1));
 
-        player.SendTunneled(new QuestEndPacket
+        var questEndPacket = new QuestEndPacket
         {
             // Camera focus = the LAST goal's NPC (where hand-in happens). For single-goal quests this is
             // quest.TargetGuid; for multi-goal it's the final goal's target (e.g. back at the giver).
@@ -1139,10 +1158,17 @@ public sealed class QuestManager : IQuestManager
             // col1=TitleId title, col2=ObjectiveDescriptionId objective), independent of this packet.
             TitleId = quest.TurnInDialogueId, // -> showEndText -> speech bubble = the NPC's turn-in line
             DescriptionId = quest.TitleId,    // -> showEndId (not rendered as text); harmless
-            RewardCoins = quest.RewardCoins,
-            RewardExperience = quest.RewardExperience, // job XP shown in the reward preview
-            RewardItems = BuildRewardItems(quest) // item icons in the "Show Details" reward preview
-        });
+            RewardBundle =
+            {
+                Coins = quest.RewardCoins,
+                Experience = quest.RewardExperience, // job XP shown in the reward preview
+            }
+        };
+
+        // Item icons in the "Show Details" reward preview.
+        AddRewardItems(questEndPacket.RewardBundle, quest);
+
+        player.SendTunneled(questEndPacket);
 
         // Reward/completion is applied when the player clicks "Complete" (QuestEndReply invokes this).
         player.PendingQuestEndAction = () => CompleteQuest(player, quest.QuestId);
@@ -1708,7 +1734,20 @@ public sealed class QuestManager : IQuestManager
 
         // Reward-earned celebration (coins + XP fly-in with sound).
         if (coins > 0 || experience > 0)
-            player.SendTunneled(new RewardBundlePacket { Coins = coins, Xp = experience });
+            player.SendTunneled(new RewardBundlePacket { RewardBundle = { Coins = coins, Experience = experience } });
+
+        // WEIGHTED mystery gift: roll the quest's reward table and let the reward manager grant it. The
+        // table decides both what drops and how likely it is, so a rare sweater can sit alongside common
+        // cookies - unlike RandomRewardItems below, which is a flat pick. The reward manager sends its own
+        // grant banner (50/1), so this path skips the 50/2 celebration.
+        if (!string.IsNullOrWhiteSpace(quest.RewardTable))
+        {
+            // Both calls log their own failures.
+            if (_rewardManager.TryRollReward(quest.RewardTable, out var drop) && drop is not null)
+                _rewardManager.TryGrantReward(player, drop);
+
+            return;
+        }
 
         // Item rewards - defined per quest in Resources/Quests.json ("RewardItems": [id, ...]).
         // A quest with a RandomRewardItems pool pays out ONE item drawn from it instead; its RewardItems

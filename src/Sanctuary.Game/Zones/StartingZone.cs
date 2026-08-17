@@ -130,6 +130,10 @@ public sealed partial class StartingZone : BaseZone
         // quest target and the minigame's entrance.
         SpawnCalvinColdcastle();
 
+        // Trina Turtledove, the Snow Days Cheer Specialist - permanent for the same reason: she is the
+        // event's hub and the giver of the 12 Days of Holidays.
+        SpawnTrinaTurtledove();
+
         // Bruce is NOT spawned here - he only exists while performing, and the zone tick brings him in for
         // each show (see UpdateBrucePerformance).
     }
