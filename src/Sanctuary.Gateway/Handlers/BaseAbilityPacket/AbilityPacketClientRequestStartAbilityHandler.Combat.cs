@@ -62,8 +62,27 @@ public static partial class AbilityPacketClientRequestStartAbilityHandler
     // 1080; only the low-tier Cudgel/Axe are 1-handed) - an unintentional per-job/per-weapon-tier speed gap,
     // not a deliberate design choice. SwingMsByAnim is kept (empty) as the mechanism for if a REAL per-
     // animation pace number ever turns up, rather than deleting the pacing seam entirely.
+    //
+    // WIZARD CAST EXCEPTION 2026-08-18 (live feedback: "wizard basic attack should be able to work right after
+    // the animation finishes - it's too spammy right now"): 660ms is a SWING number (sword/fist capture). The
+    // Wizard's basic isn't a swing, it's a full CAST - com_cast_01 / anim 1111, which every wand basic in
+    // WizardWeaponAbilities uses (MeleeAnimFor returns CastAnim unconditionally) - and that clip runs
+    // noticeably longer than a sword swing, so the shared 660ms gate let a second cast start while the first
+    // was still playing: the "spammy" part. 1200ms is not a newly invented number - it's the SAME window
+    // WizardWeaponAbilities already assigns every basic bolt as CastEffectStopMs (the cast-trail lifetime,
+    // i.e. how long that file already treats a wand cast as lasting), reused here so the pace gate and the
+    // cast visual agree instead of disagreeing. Still a tuned value, not a capture: no per-animation duration
+    // table for com_cast_01 has turned up (clip lengths live in the client's .mrn animation data, not in
+    // AnimationGroups.xml, which only names the clips) - so it's the one number here to re-tune if the cast
+    // still reads as early/late in game. Keyed per-ANIMATION, so only casts are affected: every melee job
+    // stays on the shared 660ms, preserving the "attack speed should match for all combat jobs" correction
+    // above (that was about melee weapon tiers differing from each other, not about casters vs. melee).
     private const int BasicSwingMs = 660;
-    private static readonly System.Collections.Generic.Dictionary<int, int> SwingMsByAnim = new();
+    private const int CastSwingMs = 1200;
+    private static readonly System.Collections.Generic.Dictionary<int, int> SwingMsByAnim = new()
+    {
+        [1111] = CastSwingMs,   // com_cast_01 - Wizard wand basic cast (WizardWeaponAbilities.CastAnim)
+    };
     private static int SwingMsForAnimation(int anim) => SwingMsByAnim.GetValueOrDefault(anim, BasicSwingMs);
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, long> _nextBasicSwingTicks = new();
 
@@ -228,6 +247,24 @@ public static partial class AbilityPacketClientRequestStartAbilityHandler
             return SendFailure(connection);
         }
 
+        // A held YO-YO owns the "1" and "2" keys for its two tricks, for ANY job - the moves come with the
+        // prop, not with a profile, so this is gated on the equipped item rather than on ActiveProfileId.
+        // Only slots 0/1 are claimed, leaving the power-up and snowball slots below untouched.
+        if (packet.Data.Slot is YoYoTricks.ThrowDownSlotIndex or YoYoTricks.AroundTheWorldSlotIndex &&
+            YoYoTricks.IsEquipped(player))
+        {
+            return YoYoTricks.TryPerform(player, packet.Data.Slot, _resourceManager) || SendFailure(connection);
+        }
+
+        // The Light Strand Whip, same two keys. packet.Guid is the SELECTED player - "Ability 1 will turn
+        // other players into a Christmas light bulb critter", so this one needs a victim (see the item's
+        // own description, text 441922, which is where both abilities are documented).
+        if (packet.Data.Slot is LightStrandWhip.TargetSlotIndex or LightStrandWhip.SelfSlotIndex &&
+            LightStrandWhip.IsEquipped(player))
+        {
+            return LightStrandWhip.TryPerform(player, packet.Data.Slot, packet.Guid, _resourceManager) || SendFailure(connection);
+        }
+
         // The two extra slots the job kits don't own - see JobWeaponAbilities.ApplyThirdSlot. They used to
         // share the "3" key and fall through to each other; they have a key each now, so each press only
         // does its own thing.
@@ -336,7 +373,11 @@ public static partial class AbilityPacketClientRequestStartAbilityHandler
         // and refills exactly as before (the UI grey-out feed, op38/13, doesn't change); the per-ability
         // cooldown is what actually stops Sniper Shot from blocking Rain of Arrows (or vice versa) the way a
         // single shared pool did.
-        var meleeRefreshMs = BasicSwingMs;
+        // The button's own grey/sweep has to run as long as the SERVER gate actually holds the slot, or the
+        // slot reads "ready" while every press still gets dropped mid-swing - exactly what the Wizard's 1200ms
+        // cast did while this reported the melee 660ms. Basic = this animation's own pace; specials overwrite
+        // it with their real cooldown below.
+        var meleeRefreshMs = isBasicMelee ? swingMs : BasicSwingMs;
         if (!isBasicMelee)
         {
             if (TryGetAbilityCooldownRemainingMs(player, ability.Name, out var remainingMs))

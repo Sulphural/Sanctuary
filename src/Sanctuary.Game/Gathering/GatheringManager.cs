@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
 
+using Sanctuary.Game.Collections;
 using Sanctuary.Game.Entities;
 using Sanctuary.Game.Quests;
 using Sanctuary.Packet;
@@ -65,12 +66,14 @@ public sealed class GatheringManager : IGatheringManager
     }
 
     private readonly IQuestManager _questManager;
+    private readonly ICollectionManager _collectionManager;
     private readonly ILogger<GatheringManager> _logger;
     private readonly ConcurrentDictionary<ulong, NodeState> _nodes = new();
 
-    public GatheringManager(IQuestManager questManager, ILogger<GatheringManager> logger)
+    public GatheringManager(IQuestManager questManager, ICollectionManager collectionManager, ILogger<GatheringManager> logger)
     {
         _questManager = questManager;
+        _collectionManager = collectionManager;
         _logger = logger;
     }
 
@@ -175,6 +178,9 @@ public sealed class GatheringManager : IGatheringManager
 
         // Quests can ask for harvested goods, so a successful gather is reported the same way a kill is.
         _questManager.OnItemGathered(player, state.ItemDefinitionId);
+
+        // Harvested goods are collection entries too - pay the collection out if that pickup was its last.
+        _collectionManager.OnItemCollected(player, state.ItemDefinitionId);
 
         // Same "you earned an item" HUD celebration (icon + "received N") quest item rewards already use -
         // a fixed-position popup, not attached to the node's world position.

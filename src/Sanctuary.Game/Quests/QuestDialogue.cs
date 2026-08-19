@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -106,6 +107,13 @@ public static class QuestDialogue
     // ticket/reset machinery, so a spooked NPC settles back to idle on its own.
     private const int AfraidAnimationId = 3339;
 
+    // ★ THE REACTION IS BOTH A JUMP AND A YELP. Retail's two scare exclamations are 416769 "Ahh!" and
+    // 416770 "Scary!" - they sit together in the trick-or-treat block, immediately before the Ghost
+    // Hunter's own strings, which is what identifies them as this event's reaction lines rather than
+    // generic chatter. Spoken as a bubble with IsChatLogged FALSE, the retail no-chat-log path (see
+    // project_npc_chat_bubble) - a townsperson yelping should not fill up the chat window.
+    private static readonly int[] ScareExclamationIds = [416769, 416770];
+
     public static void PlayScareReaction(Player player, ulong npcGuid)
     {
         if (npcGuid == 0)
@@ -119,6 +127,23 @@ public static class QuestDialogue
             Guid = npcGuid,
             AnimationId = AfraidAnimationId,
             PlayType = SetBaseAnimation
+        });
+
+        // ★★ OwnerGuid IS WHAT MAKES IT DRAW; HasColor IS WHAT MAKES IT AN ANNOUNCEMENT. Both were added
+        // at once when the line wasn't appearing, which showed the bubble but also put a copy on screen -
+        // so the two were separated by dropping the colour, and the bubble survived on its own. That
+        // matches StartingZone.SnowmenInvaders' own note: a COLOURED line is treated as an announcement,
+        // a plain one is just speech. The wave announcement there sets both because it WANTS the on-screen
+        // copy; an ambient yelp does not.
+        //
+        // So: OwnerGuid alongside SpeakerGuid (the client drops a line whose speaker it cannot resolve),
+        // no colour, and IsChatLogged=false - which leaves the bubble over their head and nothing else.
+        player.SendTunneled(new ChatPacketFromStringId
+        {
+            SpeakerGuid = npcGuid,
+            OwnerGuid = npcGuid,
+            StringId = ScareExclamationIds[Random.Shared.Next(ScareExclamationIds.Length)],
+            IsChatLogged = false,
         });
 
         _ = Task.Run(async () =>

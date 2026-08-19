@@ -227,7 +227,7 @@ public static class PowerupSystem
                     return false;
                 }
                 _held[player.Guid] = kind;
-                JobWeaponAbilities.SendToolbarWithPowerup(player, resources);
+                JobWeaponAbilities.SendToolbar(player, resources);
                 SendPickupText(player, $"You receive a {DisplayName(kind)}! Press 3 to use it.");
                 return true;
         }
@@ -261,7 +261,7 @@ public static class PowerupSystem
         if (!_held.TryRemove(player.Guid, out var kind))
             return false;
 
-        JobWeaponAbilities.SendToolbarWithPowerup(player, resources); // clear the slot-2 icon immediately
+        JobWeaponAbilities.SendToolbar(player, resources); // clear the slot-2 icon immediately
 
         var (fxId, damage, stunMs) = kind switch
         {

@@ -586,7 +586,7 @@ public sealed partial class StartingZone : BaseZone
             // No weapon-ability kit on the active job - but the third slot (held power-up / snowball tool)
             // isn't the job's, and a player standing in Snowhill in a non-combat job should still see the
             // snowball they picked up. This send carries just that.
-            JobWeaponAbilities.SendToolbarWithPowerup(player, _resourceManager);
+            JobWeaponAbilities.SendToolbar(player, _resourceManager);
             return;
         }
 

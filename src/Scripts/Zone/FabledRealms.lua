@@ -4303,6 +4303,9 @@ function onStart(zone)
     zone.spawnNpcWithGuid(32900, 100000032900, 327.15, 27.6, 477.47, 2.827)
     zone.spawnNpcWithGuid(32901, 100000032901, 200.12, 28.73, 427.89, 2.513)
     zone.spawnNpcWithGuid(32902, 100000032902, 455.56, 76.97, 515.97, -3.002)
+    zone.spawnNpcWithGuid(40040, 100000040040, -1006.1, 6.32, 196.9, 1.1)
+    zone.spawnNpcWithGuid(40041, 100000040041, -1028.4, 5.6, 191.6, -0.9)
+    zone.spawnNpcWithGuid(40042, 100000040042, -1486.9, -35.05, 405.4, 2.2)
 
     -- Miner job ore veins (Resources/MiningNodes.json). Gather/respawn is GatheringManager's.
     zone.spawnGatheringNode(612, 2739, "Copper Vein", -1885.94, 43.54, 385.11)
@@ -4354,6 +4357,15 @@ function onStart(zone)
     zone.spawnQuestCollectible(700000000028, 254.86, 27.58, 410.38)
     zone.spawnQuestCollectible(700000000029, 244.7, 26.62, 403.94)
     zone.spawnQuestCollectible(700000000030, 245.1, 26.85, 408.6)
+    -- quest 3095
+    zone.spawnQuestCollectible(700000000031, -1271.28, -14.36, 302.18)
+    zone.spawnQuestCollectible(700000000032, -1251.59, -14.34, 400.46)
+    zone.spawnQuestCollectible(700000000033, -1238.19, -14.34, 402.61)
+    zone.spawnQuestCollectible(700000000034, -1266.86, -14.34, 421.39)
+    zone.spawnQuestCollectible(700000000035, -1255.84, -14.34, 434.57)
+    zone.spawnQuestCollectible(700000000036, -1184.59, 5.57, 358.12)
+    zone.spawnQuestCollectible(700000000037, -1158.01, 6.35, 311.15)
+    zone.spawnQuestCollectible(700000000038, -1183.09, 5.25, 232.77)
 
     -- Walk-up dungeon entrances (Resources/PointOfInterests.json, NotificationType 3). Keyed by
     -- POI id; the zone resolves which dungeon that marker belongs to, and skips markers with none.

@@ -174,6 +174,11 @@ public sealed class Player : ClientPcData, IEntity
     // pickup the player hasn't taken yet. Cleared when the pickups are re-spawned (relog / re-accept).
     public HashSet<ulong> CollectedPickups { get; } = new();
 
+    // Collections.json ids this character has already been PAID for (mirrors DbCharacterCollection, loaded
+    // at login). Collection items are kept after a collection completes, so "do I own every entry?" stays
+    // true forever - this set is what stops the reward re-paying on the next pickup or the next relog.
+    public HashSet<int> CompletedCollections { get; } = new();
+
     // Guids of the NPCs THIS player has already talked to for an active COUNTED TalkToNpc goal
     // ("Talk to Freewheelers - 0/3"), so re-talking to the same one can't credit the counter twice and
     // the objective marker can point at the next one they haven't reached. The talk-goal twin of
@@ -187,6 +192,12 @@ public sealed class Player : ClientPcData, IEntity
     // goal with RequiresScare only credits an NPC that is in here, which is how trick-or-treating works:
     // scare first, then talk for the candy. Cleared alongside TalkedQuestNpcs on accept/abandon.
     public HashSet<ulong> ScaredNpcs { get; } = new();
+
+    // Which NPCs currently wear this player's scare spotlight. The beam is an effect TAG, i.e. state on
+    // the actor for one recipient, so the server has to remember what it has attached - re-sending an
+    // attach would stack a second beam, and a remove for one that was never attached does nothing.
+    // Per-player because the spotlight marks what YOU still have to scare (see RefreshScareSpotlights).
+    public HashSet<ulong> SpotlitNpcs { get; } = new();
 
     // Turns of an NPC conversation still to play after the one on screen (see QuestDialogue): each
     // response-button click pops one. Empty = the bubble currently up is the last, so the click ends the
@@ -1055,14 +1066,58 @@ public sealed class Player : ClientPcData, IEntity
         ApplyXp(xp);
     }
 
-    // Accrue XP, level up, and send the client-facing feedback.
-    private void ApplyXp(int xp)
+    // Grants XP to a SPECIFIC job, which may not be the one the player is wearing. Collections feed the
+    // Adventurer this way: the freestyle job levels off collections whatever you're dressed as, so its XP
+    // can't ride the active profile. Returns true when that job levelled.
+    //
+    // ★ A background job gets the accrual and the rank update, but NOT the level-up presentation: the
+    // full-screen JobLevelUp packet re-serializes the ACTIVE profile (wrong job entirely) and its stat
+    // rescale/toolbar-clearing side effects belong to the job actually being played.
+    public bool AwardXpToProfile(int xp, int profileId)
     {
-        var profile = ActiveProfile;
-        if (profile.Rank >= JobLeveling.MaxLevel)
-            return;
+        if (xp <= 0)
+            return false;
 
-        int startLevel = profile.Rank;
+        if (profileId == ActiveProfileId)
+        {
+            var startRank = ActiveProfile.Rank;
+            AwardXp(xp);
+            return ActiveProfile.Rank != startRank;
+        }
+
+        var profile = Profiles.FirstOrDefault(candidate => candidate.Id == profileId);
+        if (profile is null || profile.Rank >= JobLeveling.MaxLevel)
+            return false;
+
+        var startLevel = profile.Rank;
+        AccrueXp(profile, xp);
+
+        SendTunneled(new ClientUpdatePacketUpdateProfileExperience
+        {
+            ProfileId = profile.Id,
+            XpGained = xp,
+            TotalXpInLevel = profile.LevelXpRaw,
+            CurrentLevel = profile.Rank
+        });
+
+        if (profile.Rank == startLevel)
+            return false;
+
+        SendTunneled(new ClientUpdatePacketUpdateProfileRank
+        {
+            ProfileId = profile.Id,
+            NewRank = profile.Rank,
+            ProfileIconId = profile.Icon,
+            ProfileNameId = profile.NameId
+        });
+
+        return true;
+    }
+
+    // Accrue XP into a profile's level, rolling levels over on the curve. No client feedback - callers
+    // send whatever presentation suits the job being levelled.
+    private static void AccrueXp(ClientPcProfile profile, int xp)
+    {
         profile.LevelXpRaw += xp;
 
         while (profile.Rank < JobLeveling.MaxLevel && profile.LevelXpRaw >= JobLeveling.XpForLevel(profile.Rank))
@@ -1076,6 +1131,17 @@ public sealed class Player : ClientPcData, IEntity
             profile.LevelXpRaw = 0;
 
         profile.RankPercent = JobLeveling.RankPercent(profile.Rank, profile.LevelXpRaw);
+    }
+
+    // Accrue XP, level up, and send the client-facing feedback.
+    private void ApplyXp(int xp)
+    {
+        var profile = ActiveProfile;
+        if (profile.Rank >= JobLeveling.MaxLevel)
+            return;
+
+        int startLevel = profile.Rank;
+        AccrueXp(profile, xp);
 
         bool leveled = profile.Rank != startLevel;
 
@@ -1125,9 +1191,11 @@ public sealed class Player : ClientPcData, IEntity
     // or the ranged auto-fire has no ability to repeat and wedges — the same toolbar restore a job-swap does.
     private void RestoreWeaponToolbar()
     {
-        var toolbar = JobWeaponAbilities.BuildToolbar(this, _resourceManager);
-        if (toolbar is not null)
-            SendTunneled(toolbar);
+        // ★ SENDS FOR A NO-KIT JOB TOO. This used to skip the send when BuildToolbar returned null, which
+        // is every freestyle job - so an Adventurer earning XP got the profile re-send (bar cleared) with
+        // nothing to put a bar back, taking their held power-up / snowball tool with it. It only stayed
+        // invisible while those jobs had no XP source; collections gave the Adventurer one.
+        JobWeaponAbilities.SendToolbar(this, _resourceManager);
     }
 
     // The level-up presentation — stat rescale + HP/mana refill, the particle celebration, and the
@@ -1840,6 +1908,37 @@ public sealed class Player : ClientPcData, IEntity
             }
         }
 
+        // ★ COUNTED-TALK TARGETS WEAR THE BADGE TOO. A quest whose active goal is "talk to N of these
+        // people" - trick-or-treat's costumed townsfolk - needs every one of them marked, or the player is
+        // hunting ten unmarked NPCs across the world with no way to tell them apart. Only while the goal is
+        // the CURRENT one, and only until that NPC has been collected from, so the badges go out as the
+        // player works through them.
+        foreach (var (questId, completed) in Quests)
+        {
+            if (completed || !quests.TryGet(questId, out var activeQuest))
+                continue;
+
+            int goalIndex = QuestGoalProgress.TryGetValue(questId, out var progress) ? progress : 0;
+            var goals = activeQuest.EffectiveGoals;
+            if (goalIndex >= goals.Count)
+                continue;
+
+            var goal = goals[goalIndex];
+            if (!goal.IsCountedTalk)
+                continue;
+
+            // ★ THE BADGE MEANS "YOU STILL HAVE BUSINESS WITH THIS ONE", so it survives the scare and only
+            // clears once they have actually handed over the candy. A scared-but-not-yet-collected NPC
+            // still needs a second visit, and dropping the badge at the scare would hide exactly the ones
+            // the player is in the middle of. The SPOTLIGHT is the "needs scaring" marker and does come off
+            // at the scare - the two signals mean different things (see RefreshScareSpotlights).
+            if (TalkedQuestNpcs.Contains(npc.Guid))
+                continue;
+
+            if (goal.AllTalkTargetGuids().Contains(npc.Guid))
+                return activeQuest.NotificationActive;
+        }
+
         // Daily quest already done today: the giver wears the greyed "repeatable, not right now" badge
         // instead of going bare, so it still reads as a quest NPC you should come back to.
         if (quests.ByGiver.TryGetValue(npc.Guid, out var dailyQuestIds))
@@ -2300,6 +2399,9 @@ public sealed class Player : ClientPcData, IEntity
 
     public void Dispose()
     {
+        // Drop the prop-animation ticket so the table does not grow across sessions.
+        Interactions.PropAnimation.Forget(Guid);
+
         foreach (var visiblePlayer in VisiblePlayers)
             visiblePlayer.Value.OnRemoveVisiblePlayers([this]);
 

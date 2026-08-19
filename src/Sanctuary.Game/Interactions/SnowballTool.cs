@@ -306,7 +306,7 @@ public static class SnowballTool
         _expiry[player.Guid] = DateTime.UtcNow.AddMilliseconds(ToolDurationMs);
         var ticket = _grantTickets.AddOrUpdate(player.Guid, 1, (_, previous) => previous + 1);
 
-        JobWeaponAbilities.SendToolbarWithPowerup(player, resourceManager);
+        JobWeaponAbilities.SendToolbar(player, resourceManager);
         PreloadEffects(player);
 
         _ = Task.Run(async () =>
@@ -323,7 +323,7 @@ public static class SnowballTool
 
                 // Re-send the toolbar with the slot gone. IsEquipped is already false, so ApplyThirdSlot
                 // simply doesn't draw it (and a held power-up, if they picked one up meanwhile, stays put).
-                JobWeaponAbilities.SendToolbarWithPowerup(player, resourceManager);
+                JobWeaponAbilities.SendToolbar(player, resourceManager);
             }
             catch { }
         });

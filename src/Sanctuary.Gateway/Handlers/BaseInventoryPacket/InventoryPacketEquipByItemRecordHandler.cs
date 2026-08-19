@@ -8,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using Sanctuary.Core.Helpers;
 using Sanctuary.Database;
 using Sanctuary.Game;
+using Sanctuary.Game.Combat;
+using Sanctuary.Game.Interactions;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
 using Sanctuary.Packet.Common.Attributes;
@@ -155,9 +157,20 @@ public static class InventoryPacketEquipByItemRecordHandler
             return true;
         }
 
-        playerUpdatePacketEquipItemChange.WieldType = itemClass.WieldType;
+        // Props report wield 0 so the client stays in the ordinary locomotion branch - see
+        // PropAnimation.SuppressPropWieldType for why (their own branch interrupts every one-shot).
+        playerUpdatePacketEquipItemChange.WieldType =
+            PropAnimation.EffectiveWieldType(clientItemDefinition.Id, itemClass.WieldType);
 
         connection.Player.SendTunneledToVisible(playerUpdatePacketEquipItemChange);
+
+        // The OTHER equip path (see InventoryPacketEquipByGuidHandler, which does the same): a new weapon
+        // means a new bar, and for a no-kit job holding a yo-yo that bar is its two tricks.
+        if (packet.Slot == 7)
+        {
+            if (!JobWeaponAbilities.SendToolbarWithFxPreload(connection.Player, _resourceManager))
+                JobWeaponAbilities.SendToolbar(connection.Player, _resourceManager);
+        }
 
         return true;
     }

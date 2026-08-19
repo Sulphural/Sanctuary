@@ -212,7 +212,7 @@ public class SnowballChatCommand : GatewayChatCommand
                 // Re-send definitions + toolbar so the change takes effect without re-entering the arena.
                 // The client reads a slot's definition when it first sees the slot and won't re-check, so the
                 // toolbar has to be rebuilt, not just the definition re-sent.
-                JobWeaponAbilities.SendToolbarWithPowerup(invoker, _resourceManager);
+                JobWeaponAbilities.SendToolbar(invoker, _resourceManager);
 
                 Reply(invoker, field == "none"
                     ? "[snowball] All probe floats cleared. Press 2 - this is the baseline ~1s sweep."

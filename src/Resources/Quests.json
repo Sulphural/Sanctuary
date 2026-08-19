@@ -1296,6 +1296,7 @@
     "RadialCompletedIconId": 39988,
     "GiverGuid": 100000032813,
     "TargetGuid": 100000032813,
+    "SuppressTakeMeThere": true,
     "RewardCoins": 0,
     "RewardExperience": 0,
     "RewardItems": [
@@ -1374,27 +1375,49 @@
     "DescriptionId": 415370,
     "GiverDialogueId": 415049,
     "ObjectiveDescriptionId": 415370,
-    "SubGoalId": 415370,
+    "SubGoalId": 415821,
     "TargetDialogueId": 415052,
     "IconId": 43278,
+    "RadialOfferIconId": 21644,
+    "RadialTurnInIconId": 21644,
+    "RadialCompletedIconId": 39988,
     "GiverGuid": 100000032815,
     "TargetGuid": 100000032815,
     "RewardCoins": 0,
     "RewardExperience": 0,
-    "RewardItems": [
-      9099
-    ],
+    "RewardTable": "spooktacular-mystery-gift",
+    "IsDaily": true,
+    "SuppressTakeMeThere": true,
     "PrerequisiteQuestId": 0,
     "NextQuestId": 0,
     "NotificationAvailable": 237,
     "NotificationActive": 237,
+    "NotificationCompleted": 379,
     "Goals": [
       {
-        "NameId": 415370,
-        "DescriptionId": 415370,
+        "NameId": 415821,
+        "DescriptionId": 415822,
         "Type": 0,
         "RequiredCount": 10,
         "RequiresScare": true,
+        "ScareIntroDialogueIds": [
+          415797,
+          415692,
+          415710,
+          415702
+        ],
+        "ScareThanksDialogueIds": [
+          415799,
+          415696,
+          415716,
+          415704
+        ],
+        "TalkRewardItems": [
+          69818,
+          69845,
+          69846,
+          69847
+        ],
         "TargetGuids": [
           100000040011,
           100000002415,
@@ -1409,12 +1432,13 @@
         ]
       },
       {
-        "NameId": 415384,
-        "DescriptionId": 415384,
+        "NameId": 415823,
+        "DescriptionId": 415824,
         "DialogueId": 415052,
         "TargetGuid": 100000032815
       }
-    ]
+    ],
+    "RevealGoalsProgressively": true
   },
   {
     "Comment": "Present Problems - Snow Days: Candi Ivy sends you round Snowhill to find out why everyone's gifts were empty",
@@ -1444,25 +1468,25 @@
     "NotificationActive": 6,
     "Goals": [
       {
-        "NameId": 420302,
+        "NameId": 420301,
         "DescriptionId": 420302,
         "DialogueId": 420311,
         "TargetGuid": 100000032900
       },
       {
-        "NameId": 420304,
+        "NameId": 420303,
         "DescriptionId": 420304,
         "DialogueId": 420309,
         "TargetGuid": 100000032901
       },
       {
-        "NameId": 420306,
+        "NameId": 91368,
         "DescriptionId": 420306,
         "DialogueId": 420313,
         "TargetGuid": 100000032902
       },
       {
-        "NameId": 420308,
+        "NameId": 419846,
         "DescriptionId": 420308,
         "DialogueId": 420270,
         "TargetGuid": 100000032813
@@ -1528,6 +1552,7 @@
     "IconId": 242,
     "GiverGuid": 100000032813,
     "TargetGuid": 100000032813,
+    "SuppressTakeMeThere": true,
     "RewardCoins": 250,
     "RewardExperience": 300,
     "RewardItems": [
@@ -1555,6 +1580,209 @@
         "NameId": 419846,
         "DialogueId": 420294,
         "TargetGuid": 100000032813
+      }
+    ]
+  },
+  {
+    "Comment": "Bag Snatchers - Super Spooktacular: recover 8 stolen candy bags on the trail out of Sanctuary, confront Greyli Dustywings, report back to Halloween Harry",
+    "QuestId": 3095,
+    "TitleId": 415303,
+    "DescriptionId": 415304,
+    "GiverDialogueId": 415302,
+    "ObjectiveDescriptionId": 415384,
+    "SubGoalId": 415835,
+    "TargetDialogueId": 415305,
+    "IconId": 43278,
+    "RadialOfferIconId": 21644,
+    "RadialTurnInIconId": 21644,
+    "RadialCompletedIconId": 39988,
+    "GiverGuid": 100000032815,
+    "SuppressTakeMeThere": true,
+    "TargetGuid": 100000032815,
+    "RewardCoins": 0,
+    "RewardExperience": 0,
+    "RewardTable": "spooktacular-mystery-gift",
+    "PrerequisiteQuestId": 0,
+    "NextQuestId": 0,
+    "NotificationAvailable": 237,
+    "NotificationActive": 237,
+    "Goals": [
+      {
+        "NameId": 415835,
+        "DescriptionId": 415836,
+        "Type": 2,
+        "RequiredCount": 8,
+        "CollectModelId": 1053,
+        "CollectNameId": 415837,
+        "CollectSpawns": [
+          [
+            -1271.28,
+            -14.36,
+            302.18
+          ],
+          [
+            -1251.59,
+            -14.34,
+            400.46
+          ],
+          [
+            -1238.19,
+            -14.34,
+            402.61
+          ],
+          [
+            -1266.86,
+            -14.34,
+            421.39
+          ],
+          [
+            -1255.84,
+            -14.34,
+            434.57
+          ],
+          [
+            -1184.59,
+            5.57,
+            358.12
+          ],
+          [
+            -1158.01,
+            6.35,
+            311.15
+          ],
+          [
+            -1183.09,
+            5.25,
+            232.77
+          ]
+        ]
+      },
+      {
+        "NameId": 415939,
+        "DescriptionId": 415940,
+        "Type": 0,
+        "DialogueId": 415941,
+        "TargetGuid": 100000003541
+      },
+      {
+        "NameId": 415943,
+        "DescriptionId": 415944,
+        "Type": 0,
+        "DialogueId": 415305,
+        "TargetGuid": 100000032815
+      }
+    ],
+    "RevealGoalsProgressively": true
+  },
+  {
+    "Comment": "Candy Gram - Super Spooktacular: deliver the recovered candy bags to the kids of Sanctuary, discover Ethan is missing",
+    "QuestId": 3096,
+    "TitleId": 415311,
+    "DescriptionId": 415312,
+    "GiverDialogueId": 415310,
+    "ObjectiveDescriptionId": 415385,
+    "SubGoalId": 415945,
+    "TargetDialogueId": 415313,
+    "IconId": 43278,
+    "RadialOfferIconId": 21644,
+    "RadialTurnInIconId": 21644,
+    "RadialCompletedIconId": 39988,
+    "GiverGuid": 100000032815,
+    "TargetGuid": 100000032815,
+    "RewardCoins": 0,
+    "RewardExperience": 0,
+    "RewardTable": "spooktacular-mystery-gift",
+    "PrerequisiteQuestId": 3095,
+    "NextQuestId": 3097,
+    "NotificationAvailable": 237,
+    "NotificationActive": 237,
+    "Goals": [
+      {
+        "NameId": 415945,
+        "DescriptionId": 415946,
+        "Type": 0,
+        "DialogueId": 415963,
+        "TargetGuid": 100000040040
+      },
+      {
+        "NameId": 415947,
+        "DescriptionId": 415948,
+        "Type": 0,
+        "DialogueId": 415965,
+        "TargetGuid": 100000040041
+      },
+      {
+        "NameId": 415949,
+        "DescriptionId": 415950,
+        "Type": 0,
+        "DialogueId": 415967,
+        "TargetGuid": 100000002367
+      },
+      {
+        "NameId": 415951,
+        "DescriptionId": 415952,
+        "Type": 1,
+        "ReachPosition": [
+          -1492.5,
+          -35.05,
+          404.0
+        ],
+        "ReachRadius": 9.0
+      },
+      {
+        "NameId": 415953,
+        "DescriptionId": 415953,
+        "Type": 0,
+        "DialogueId": 415969,
+        "TargetGuid": 100000040042
+      },
+      {
+        "NameId": 415823,
+        "DescriptionId": 415944,
+        "Type": 0,
+        "DialogueId": 415313,
+        "TargetGuid": 100000032815
+      }
+    ],
+    "RevealGoalsProgressively": true
+  },
+  {
+    "Comment": "A Formal Report - Super Spooktacular: report Ethan's disappearance to General Glowlight, who sends you on to Greyli Dustywings",
+    "QuestId": 3097,
+    "TitleId": 415315,
+    "DescriptionId": 415316,
+    "GiverDialogueId": 415314,
+    "ObjectiveDescriptionId": 415386,
+    "SubGoalId": 415973,
+    "TargetDialogueId": 415317,
+    "IconId": 43278,
+    "RadialOfferIconId": 21644,
+    "RadialTurnInIconId": 21644,
+    "RadialCompletedIconId": 39988,
+    "GiverGuid": 100000032815,
+    "TargetGuid": 100000003541,
+    "RewardCoins": 0,
+    "RewardExperience": 0,
+    "RewardTable": "spooktacular-mystery-gift",
+    "PrerequisiteQuestId": 3096,
+    "NextQuestId": 0,
+    "NotificationAvailable": 237,
+    "NotificationActive": 237,
+    "RevealGoalsProgressively": true,
+    "Goals": [
+      {
+        "NameId": 415973,
+        "DescriptionId": 415974,
+        "Type": 0,
+        "DialogueId": 415979,
+        "TargetGuid": 100000002377
+      },
+      {
+        "NameId": 415939,
+        "DescriptionId": 415981,
+        "Type": 0,
+        "DialogueId": 415317,
+        "TargetGuid": 100000003541
       }
     ]
   }

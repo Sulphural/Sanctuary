@@ -1,13 +1,16 @@
 [
   {
-    "Id": 17054,
-    "CategoryId": 10,
+    "Id": 10,
+    "NameId": 17054,
+    "CategoryId": 3,
     "DescriptionId": 17055,
-    "Type": 3,
     "IconId": 2124,
     "IconTintId": 92,
     "HeaderMetadata": 9,
     "RewardMetadata": 11,
+    "RewardXp": 250,
+    "RewardCoins": 100,
+    "RewardProfileId": 1,
     "Entries": [
       { "Id": 41, "NameId": 17056, "IconId": 2124, "IconTintId": 99, "ItemDefinitionId": 11081 },
       { "Id": 42, "NameId": 17057, "IconId": 2124, "IconTintId": 96, "ItemDefinitionId": 11082 },

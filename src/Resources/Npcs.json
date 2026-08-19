@@ -51000,5 +51000,44 @@
       515.97
     ],
     "SpawnHeading": -3.002
+  },
+  {
+    "Id": 40040,
+    "NameId": 7602,
+    "Name": "Buzz",
+    "ModelId": 242,
+    "ModelFileName": "fairychild_m_mohawkshorts.adr",
+    "SpawnPosition": [
+      -1006.1,
+      6.32,
+      196.9
+    ],
+    "SpawnHeading": 1.1
+  },
+  {
+    "Id": 40041,
+    "NameId": 10089,
+    "Name": "Posey",
+    "ModelId": 11,
+    "ModelFileName": "fairychild_f_sleevesandshorts.adr",
+    "SpawnPosition": [
+      -1028.4,
+      5.6,
+      191.6
+    ],
+    "SpawnHeading": -0.9
+  },
+  {
+    "Id": 40042,
+    "NameId": 37189,
+    "Name": "Bella",
+    "ModelId": 241,
+    "ModelFileName": "fairychild_f_pigtailsdress.adr",
+    "SpawnPosition": [
+      -1486.9,
+      -35.05,
+      405.4
+    ],
+    "SpawnHeading": 2.2
   }
 ]

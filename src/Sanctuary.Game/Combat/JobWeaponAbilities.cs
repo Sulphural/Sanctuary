@@ -16,13 +16,13 @@ public static class JobWeaponAbilities
     public static bool HasKit(Player player) => JobKits.Has(player.ActiveProfileId);
 
     // The active job's weapon toolbar (op36/5), or null. ALWAYS carries the held power-up slot (if any) -
-    // see PowerupSystem.MakeHeldSlot - not just when explicitly sent via SendToolbarWithPowerup below.
+    // see PowerupSystem.MakeHeldSlot - not just when explicitly sent via SendToolbar below.
     //
     // FIXED 2026-07-29 (live feedback: "still cannot pick up Flame Wave/Earth Shard/Super Shield even after
     // not having it"): PowerupSystem._held is a static dictionary that only ever gets CLEARED by TryUse
     // (pressing "3") - it has no expiry and isn't touched by zone transitions, job swaps, or level-ups. But
     // the held-slot ICON only ever got attached by the two callers that explicitly asked for it (Grant/
-    // TryUse's own SendToolbarWithPowerup calls) - every OTHER toolbar refresh in the game (dungeon entry's
+    // TryUse's own SendToolbar calls) - every OTHER toolbar refresh in the game (dungeon entry's
     // SendToolbarWithFxPreload, weapon-swap, job-switch, Player.RestoreWeaponToolbar after a level-up) went
     // through this method directly and silently OMITTED the slot. The very first unrelated toolbar refresh
     // after picking one up would erase its visible icon from the player's screen while _held stayed set
@@ -35,6 +35,22 @@ public static class JobWeaponAbilities
         // Snowball Battles overrides the bar entirely - see BuildSnowballArenaToolbar.
         if (BuildSnowballArenaToolbar(player) is { } arenaBar)
             return arenaBar;
+
+        // A held YO-YO takes the "1"/"2" keys for its two tricks, ahead of the job kit and regardless of
+        // job: the moves belong to the prop, not to a profile. The third/fourth slots still get applied
+        // below, so a held power-up or snowball is unaffected.
+        if (YoYoTricks.BuildToolbar(player) is { } yoYoBar)
+        {
+            ApplyThirdSlot(player, yoYoBar);
+            return yoYoBar;
+        }
+
+        // Same deal for the Light Strand Whip's two transform abilities.
+        if (LightStrandWhip.BuildToolbar(player) is { } whipBar)
+        {
+            ApplyThirdSlot(player, whipBar);
+            return whipBar;
+        }
 
         var def = JobKits.Active(player)?.BuildToolbar(player, resources);
         if (def is not null)
@@ -206,11 +222,17 @@ public static class JobWeaponAbilities
     // The "3" key - held combat power-ups.
     public const int PowerupSlotIndex = 2;
 
-    // Same toolbar; BuildToolbar above already carries the third slot whenever a job kit exists, so this
-    // only needs its own fallback for the no-kit case. Kept as a separate method (rather than folding call
-    // sites into plain BuildToolbar+SendTunneled) since PowerupSystem.Grant/TryUse and the snowball pickup
-    // want to guarantee the slot shows even for a player with no active combat job.
-    public static void SendToolbarWithPowerup(Player player, IResourceManager resources)
+    // ★ SEND THE BAR FOR *ANY* JOB, KIT OR NOT - the one call every "the bar must now be correct" path
+    // should use. BuildToolbar returns null for a job with no weapon kit (Adventurer and the other
+    // freestyle jobs), and a caller that treats null as "nothing to send" leaves the client showing
+    // whatever was on the bar before, because a profile re-send (ActivateProfile / JobLevelUp) CLEARS the
+    // toolbar and only an op36/5 puts one back. That is how swapping to the Adventurer used to leave the
+    // previous job's abilities sitting on the bar, and how earning Adventurer XP wiped it entirely.
+    //
+    // A no-kit job still has a bar worth sending: the held power-up ("3") and the snowball tool ("4") are
+    // the player's, not the job's. With neither, the explicit EMPTY bar is itself the correct answer - it
+    // is what clears the outgoing job's abilities.
+    public static void SendToolbar(Player player, IResourceManager resources)
     {
         var def = BuildToolbar(player, resources);
         if (def is null)
@@ -244,7 +266,11 @@ public static class JobWeaponAbilities
         // toolbar and won't re-check, so the defs must already be present for the columns to resolve.
         PreloadAbilityDefinitions(player);
         player.SendTunneled(toolbar);
-        PreloadAbilityEffects(player);
+
+        // Only a KIT has weapon FX worth warming. Without this guard a no-kit job (an Adventurer holding a
+        // yo-yo) warmed the NINJA's effects, because ResolveAbility falls back to the bare-hand strike.
+        if (JobKits.Active(player) is not null)
+            PreloadAbilityEffects(player);
         SnowballTool.PreloadEffects(player); // no-op unless they're carrying one
         return true;
     }

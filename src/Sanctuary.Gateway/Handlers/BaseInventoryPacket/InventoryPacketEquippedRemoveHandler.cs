@@ -8,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using Sanctuary.Core.Helpers;
 using Sanctuary.Database;
 using Sanctuary.Game;
+using Sanctuary.Game.Combat;
+using Sanctuary.Game.Interactions;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common.Attributes;
 
@@ -120,9 +122,20 @@ public static class InventoryPacketEquippedRemoveHandler
 
         playerUpdatePacketEquipItemChange.ProfileId = packet.ProfileId;
 
-        playerUpdatePacketEquipItemChange.WieldType = itemClass.WieldType;
+        // Props report wield 0 so the client stays in the ordinary locomotion branch - see
+        // PropAnimation.SuppressPropWieldType for why (their own branch interrupts every one-shot).
+        playerUpdatePacketEquipItemChange.WieldType =
+            PropAnimation.EffectiveWieldType(clientItemDefinition.Id, itemClass.WieldType);
 
         connection.Player.SendTunneledToVisible(playerUpdatePacketEquipItemChange);
+
+        // ★ TAKING THE WEAPON OFF HAS TO REDRAW THE BAR TOO. Only the EQUIP path used to, so whatever the
+        // outgoing weapon put on the toolbar stayed drawn until something else refreshed it - most visibly
+        // the yo-yo's two tricks, which survived unequipping the yo-yo (they were dead buttons: the press
+        // handler re-checks that it is still equipped). SendToolbar covers a no-kit job as well, where the
+        // correct bar is the empty one.
+        if (packet.Slot == 7)
+            JobWeaponAbilities.SendToolbar(connection.Player, _resourceManager);
 
         // Update the Weapon composite effect if we have a Flair Shard equipped.
         if (packet.Slot == 13)

@@ -88,7 +88,7 @@ public static class SnowballSpecials
     {
         _held[player.Guid] = kind;
 
-        Combat.JobWeaponAbilities.SendToolbarWithPowerup(player, resources);
+        Combat.JobWeaponAbilities.SendToolbar(player, resources);
     }
 
     // The slot for the arena bar, or null when the player is holding nothing.

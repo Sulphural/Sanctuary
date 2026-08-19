@@ -68,6 +68,7 @@ public class DbCharacter
     public ICollection<DbProfile> Profiles { get; set; } = new HashSet<DbProfile>();
     public ICollection<DbCharacterDailyWheel> DailyWheels { get; set; } = new HashSet<DbCharacterDailyWheel>();
     public ICollection<DbCharacterQuest> Quests { get; set; } = new HashSet<DbCharacterQuest>();
+    public ICollection<DbCharacterCollection> Collections { get; set; } = new HashSet<DbCharacterCollection>();
 
     public ulong UserId { get; set; }
     public DbUser User { get; set; } = null!;

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -261,9 +261,217 @@ public sealed class QuestManager : IQuestManager
                     continue;
 
                 if (player.ScaredNpcs.Add(targetGuid))
+                {
+                    // Only the BEAM comes off here - it meant "needs scaring", and that is now done. The
+                    // badge stays until the candy is actually collected (see Player.GetNotificationImageId),
+                    // which is what keeps a scared-but-uncollected townsperson findable.
+                    //
+                    // ★ And because no badge change is needed, nothing respawns the NPC - so the reaction
+                    // cannot be stomped, which is what made the ordering here delicate before.
+                    SetScareSpotlight(player, targetGuid, lit: false);
+
                     QuestDialogue.PlayScareReaction(player, targetGuid);
+                }
             }
         }
+    }
+
+    // ── The spotlight on a scare target ───────────────────────────────────────────────────────────────
+    // ★ 5486 PFX_light_white_root_god-beam_med_loop - a white light COLUMN anchored at the actor's ROOT,
+    // i.e. a beam standing on the ground around them, which is exactly what retail put on the costumed
+    // townsfolk ("NPCs with the spotlight beam around them"). The family has sm/med/lg/huge variants
+    // (5568/5486/5569/5570); med is the person-sized one.
+    //
+    // ★★ ATTACHED PER PLAYER, NOT ON THE NPC. Npc.AttachedEffectId would light the NPC up for EVERYONE,
+    // including players who have not taken the quest or have already scared that one - and the whole point
+    // is that the beam marks what YOU still have to do. An effect tag is per-recipient state, the same
+    // mechanism the snowball arena's team markers use, so each player sees their own set.
+    private const int ScareSpotlightFxId = 5486;
+    private const int ScareSpotlightTagId = 91040;
+
+    // Light up every NPC this player still has to scare, and put out every beam that is no longer earned.
+    //
+    // ★★ IT MUST CLEAR AS WELL AS LIGHT. An earlier version only walked the player's ACTIVE quests and lit
+    // their targets - so the moment the quest was completed or abandoned it stopped considering those NPCs
+    // at all, and every beam already attached stayed burning on the client with nothing left to ever turn
+    // it off. Working out the wanted set FIRST and then reconciling the currently-lit set against it makes
+    // this self-correcting: whatever state the player was left in, one call puts it right.
+    public void RefreshScareSpotlights(Player player)
+    {
+        var wanted = new HashSet<ulong>();
+
+        foreach (var quest in ActiveScareQuests(player))
+        {
+            int goalIndex = player.QuestGoalProgress.TryGetValue(quest.QuestId, out var p) ? p : 0;
+            var goals = quest.EffectiveGoals;
+            if (goalIndex >= goals.Count)
+                continue;
+
+            var goal = goals[goalIndex];
+            if (!goal.RequiresScare)
+                continue;
+
+            foreach (var targetGuid in goal.AllTalkTargetGuids())
+            {
+                if (!player.TalkedQuestNpcs.Contains(targetGuid) && !player.ScaredNpcs.Contains(targetGuid))
+                    wanted.Add(targetGuid);
+            }
+        }
+
+        // Put out anything lit that no longer belongs - snapshot first, the loop mutates the set.
+        foreach (var guid in player.SpotlitNpcs.ToArray())
+        {
+            if (!wanted.Contains(guid))
+                SetScareSpotlight(player, guid, lit: false);
+        }
+
+        foreach (var guid in wanted)
+            SetScareSpotlight(player, guid, lit: true);
+    }
+
+    private static void SetScareSpotlight(Player player, ulong npcGuid, bool lit)
+    {
+        if (lit == player.SpotlitNpcs.Contains(npcGuid))
+            return; // already in the right state - re-attaching would stack a second beam
+
+        if (lit)
+        {
+            player.SpotlitNpcs.Add(npcGuid);
+            player.SendTunneled(new PlayerUpdatePacketAddEffectTagCompositeEffect
+            {
+                Guid = npcGuid,
+                TagId = ScareSpotlightTagId,
+                CompositeEffectId = ScareSpotlightFxId,
+                SourceGuid = npcGuid,
+            });
+            return;
+        }
+
+        player.SpotlitNpcs.Remove(npcGuid);
+        player.SendTunneled(new PlayerUpdatePacketRemoveEffectTagCompositeEffect
+        {
+            Guid = npcGuid,
+            TagId = ScareSpotlightTagId,
+        });
+    }
+
+    private IEnumerable<QuestDefinition> ActiveScareQuests(Player player)
+    {
+        foreach (var (questId, completed) in player.Quests)
+        {
+            if (completed || !_resourceManager.Quests.TryGet(questId, out var quest))
+                continue;
+
+            yield return quest;
+        }
+    }
+
+    // ── The trick-or-treat conversation ───────────────────────────────────────────────────────────────
+    // Button dressing, matched to the retail screenshots: the dare is closed by a plain beige "Exit." with
+    // the leave arrow, the thank-you by a green "Thanks!" with the tick. Ids are the real ones -
+    // 3104 "Exit.", 1911 "Thanks!", image 4008 ui_dialog_leave, 300 ui_dialog_greencheck, sets 18/17.
+    private const int ScareExitTextId = 3104;
+    private const int ScareThanksTextId = 1911;
+    private const int ScareLeaveImageId = 4008;
+    private const int ScareCheckImageId = 300;
+    private const int ScareBeigeButtonSet = 18;
+    private const int ScareGreenButtonSet = 17;
+    private const int ScareResponseId = 1;
+
+    // ★ WHICH LINE AN NPC USES IS FIXED BY THEIR GUID, not rolled. Retail gives each costumed townsperson
+    // one personality - the hiccuping one always hiccups - so re-approaching the same NPC must not reshuffle
+    // what they say. Same index into both lists, which is what pairs the dare with its matching thank-you.
+    private static int ScarePairIndex(ulong npcGuid, int count) =>
+        count <= 0 ? -1 : (int)(npcGuid % (ulong)count);
+
+    private static void ShowScareIntro(Player player, QuestGoal goal, Npc npc)
+    {
+        int index = ScarePairIndex(npc.Guid, goal.ScareIntroDialogueIds.Count);
+        if (index < 0)
+            return; // no conversation authored - the goal just isn't a talking one
+
+        QuestDialogue.PlayTalkAnimation(player, npc.Guid);
+
+        var dialog = new CommandPacketShowDialog
+        {
+            DialogueTextId = goal.ScareIntroDialogueIds[index],
+            NpcGuid = npc.Guid,
+            CameraFocusParam = 1f,
+        };
+
+        dialog.Responses.Add(new CommandPacketShowDialog.Response
+        {
+            Id = ScareResponseId,
+            LabelTextId = ScareExitTextId,
+            Param1 = ScareLeaveImageId,
+            Param2 = ScareBeigeButtonSet,
+        });
+
+        // No action: this half of the conversation only tells the player what to do.
+        player.PendingDialogChoices = null;
+        player.SendTunneled(dialog);
+    }
+
+    private void ShowScareThanks(Player player, QuestDefinition quest, int goalIndex, QuestGoal goal, Npc npc)
+    {
+        int index = ScarePairIndex(npc.Guid, goal.ScareThanksDialogueIds.Count);
+
+        // No thank-you authored - fall straight through to the payout so the goal can never stall.
+        if (index < 0)
+        {
+            CreditScaredNpc(player, quest, goalIndex, npc);
+            return;
+        }
+
+        QuestDialogue.PlayTalkAnimation(player, npc.Guid);
+
+        var dialog = new CommandPacketShowDialog
+        {
+            DialogueTextId = goal.ScareThanksDialogueIds[index],
+            NpcGuid = npc.Guid,
+            CameraFocusParam = 1f,
+        };
+
+        dialog.Responses.Add(new CommandPacketShowDialog.Response
+        {
+            Id = ScareResponseId,
+            LabelTextId = ScareThanksTextId,
+            Param1 = ScareCheckImageId,
+            Param2 = ScareGreenButtonSet,
+        });
+
+        // ★ THE PAYOUT RIDES THE BUTTON. Crediting on the click that OPENS this would hand over the candy
+        // before the player has been told what they got.
+        var guid = npc.Guid;
+        player.PendingDialogChoices = new Dictionary<int, Action>
+        {
+            [ScareResponseId] = () =>
+            {
+                if (player.Zone.TryGetNpc(guid, out var target))
+                    CreditScaredNpc(player, quest, goalIndex, target);
+            },
+        };
+
+        player.SendTunneled(dialog);
+    }
+
+    // The payout: spend the scare, hand over a random candy, then run the normal counted-talk credit.
+    private void CreditScaredNpc(Player player, QuestDefinition quest, int goalIndex, Npc npc)
+    {
+        var goal = quest.EffectiveGoals[goalIndex];
+
+        // Spend the scare so one spooking can't be cashed in twice - they have to be spooked again.
+        if (!player.ScaredNpcs.Remove(npc.Guid))
+            return;
+
+        if (goal.TalkRewardItems.Count > 0 && !player.TalkedQuestNpcs.Contains(npc.Guid))
+        {
+            int candy = goal.TalkRewardItems[Random.Shared.Next(goal.TalkRewardItems.Count)];
+            GrantItem(player, candy);
+            player.SendTunneled(new RewardNonBundledItemPacket { ItemDefinitionId = candy, Quantity = 1 });
+        }
+
+        CreditCountedTalk(player, quest, goalIndex, npc);
     }
 
     // Credits one NPC toward a COUNTED TalkToNpc goal - the "talk to N of these interchangeable NPCs"
@@ -278,14 +486,49 @@ public sealed class QuestManager : IQuestManager
         if (!goal.AllTalkTargetGuids().Contains(npc.Guid))
             return false;
 
-        // Trick-or-treat: nobody hands over candy until they have been scared. Claim the scare here so
-        // one /scare can't be spent on the same NPC twice - they have to be spooked again to give more.
-        if (goal.RequiresScare && !player.ScaredNpcs.Remove(npc.Guid))
-            return true; // this NPC IS a target, so stop scanning - it just isn't ready to pay out yet
+        // ★★ TRICK-OR-TREAT IS A TWO-STEP CONVERSATION. Clicking a costumed townsperson does NOT hand over
+        // candy - they dare you to scare them first, you /scare, and only the SECOND click pays out. Both
+        // halves are real dialogue (see QuestGoal.ScareIntroDialogueIds), and the credit rides the closing
+        // button rather than the click, so the player gets their candy when they dismiss the thank-you.
+        if (goal.RequiresScare)
+        {
+            // Already collected from - nothing more to say.
+            if (player.TalkedQuestNpcs.Contains(npc.Guid))
+                return true;
+
+            if (!player.ScaredNpcs.Contains(npc.Guid))
+            {
+                // Not spooked yet: they tell you what they want and the conversation ends there.
+                ShowScareIntro(player, goal, npc);
+                return true;
+            }
+
+            // Spooked: the thank-you, with the payout hanging off its button.
+            ShowScareThanks(player, quest, goalIndex, goal, npc);
+            return true;
+        }
+
+        CreditCountedTalk(player, quest, goalIndex, npc);
+        return true;
+    }
+
+    // The counted-talk credit itself, split out so the trick-or-treat conversation can run it from its
+    // closing button instead of from the click that opened the dialog.
+    private void CreditCountedTalk(Player player, QuestDefinition quest, int goalIndex, Npc npc)
+    {
+        var goal = quest.EffectiveGoals[goalIndex];
 
         // Each NPC counts once: talking to the same Freewheeler three times must not finish the goal.
         // Their line still replays (below) so a re-talk isn't a silent no-op.
         bool alreadyCredited = !player.TalkedQuestNpcs.Add(npc.Guid);
+
+        // ★ THE BADGE COMES OFF HERE - the player is done with this NPC, which is the moment the marker
+        // stops meaning anything. It has to be a full RefreshQuestNotification (the badge lives both on the
+        // AddNpc and in the notification overlay, so the actor is respawned), and doing it at the END of
+        // the conversation rather than at the scare is what keeps that respawn away from the NPC's
+        // reaction animation.
+        if (!alreadyCredited)
+            RefreshQuestNotification(player, npc.Guid);
 
         int required = goal.RequiredCount;
         int count = player.QuestCollectProgress.TryGetValue(quest.QuestId, out var c) ? c : 0;
@@ -297,7 +540,7 @@ public sealed class QuestManager : IQuestManager
             player.QuestCollectProgress.Remove(quest.QuestId);
             ClearTalkProgress(player, goal);
             CompleteGoal(player, quest, goalIndex, npc.Guid);
-            return true;
+            return;
         }
 
         if (!alreadyCredited)
@@ -322,7 +565,6 @@ public sealed class QuestManager : IQuestManager
 
         // Re-point the marker/breadcrumb at the nearest target the player hasn't reached yet.
         RefreshObjectiveTarget(player);
-        return true;
     }
 
     // Forgets which of a counted talk goal's NPCs this player has spoken to, so the step starts clean on
@@ -365,6 +607,70 @@ public sealed class QuestManager : IQuestManager
     // A collectible pickup was clicked. Credits the quest's active Collect goal (one per distinct pickup),
     // hides the pickup for this player, animates the tracker counter, and completes the goal - advancing to
     // the return step - once RequiredCount is reached.
+    // A COLLECTION NODE was gathered. Credits any active Collect goal whose CollectNodeType names this
+    // node type - the pool-driven alternative to quest-owned CollectSpawns pickups (see QuestGoal).
+    //
+    // ★ Deliberately NOT keyed on the node's guid the way OnCollectInteract is. A pooled node respawns and
+    // its hard point is reused, so "which node was this" is not a stable identity and cannot be used to
+    // stop double-credit - the count is simply how many the player has gathered. The node itself is
+    // consumed and respawns on the pool's own timer, which is what paces the goal.
+    public void OnCollectionNodeGathered(Player player, string nodeTypeKey)
+    {
+        if (string.IsNullOrWhiteSpace(nodeTypeKey))
+            return;
+
+        // ★★ ITERATE A SNAPSHOT. CompleteGoal can finish the quest, which writes player.Quests - mutating
+        // the very dictionary being enumerated and throwing "collection was modified" mid-credit. The
+        // caller catches that, so the failure is invisible: the node is consumed and the item granted, but
+        // the goal never ticks. Take a copy and the credit can safely finish the quest.
+        foreach (var (questId, completed) in player.Quests.ToArray())
+        {
+            if (completed || !_resourceManager.Quests.TryGet(questId, out var quest))
+                continue;
+
+            int goalIndex = player.QuestGoalProgress.TryGetValue(questId, out var progress) ? progress : 0;
+            var goals = quest.EffectiveGoals;
+            if (goalIndex >= goals.Count)
+                continue;
+
+            var goal = goals[goalIndex];
+            if (goal.Type != QuestGoalType.Collect
+                || !string.Equals(goal.CollectNodeType, nodeTypeKey, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            int required = goal.RequiredCount;
+            if (required <= 0)
+                continue;
+
+            // ★ CLAMP the running count. Progress can be left over from an earlier run of this goal - most
+            // sharply when a goal is switched from quest-owned pickups to nodes mid-flight, where a stale
+            // count could already sit at or above the target and complete the goal on the first gather.
+            int previous = player.QuestCollectProgress.TryGetValue(questId, out var c) ? c : 0;
+            int count = Math.Clamp(previous, 0, required - 1) + 1;
+
+            if (count >= required)
+            {
+                player.QuestCollectProgress.Remove(questId);
+                CompleteGoal(player, quest, goalIndex);
+                return;
+            }
+
+            player.QuestCollectProgress[questId] = count;
+
+            player.SendTunneled(new QuestObjectiveUpdatePacket
+            {
+                QuestId = questId,
+                ObjectiveId = goal.NameId,
+                CurrentCount = count,
+                CompletedPercentage = (float)count / required
+            });
+
+            PersistCollectCount(player, questId, count);
+            RefreshObjectiveTarget(player);
+            return;
+        }
+    }
+
     public void OnCollectInteract(Player player, Npc npc)
     {
         if (!_resourceManager.Quests.Collectibles.TryGetValue(npc.Guid, out var loc))
@@ -890,8 +1196,12 @@ public sealed class QuestManager : IQuestManager
 
         foreach (var (questId, completed) in player.Quests)
         {
+            // suppressStartBanner: this is a REPLAY of quests the player already accepted, not a fresh
+            // accept. Without it the client fires its "Quest Started" toast (FUN_00a92680 ->
+            // FUN_00cb7070, 6s each) once per active quest on every login. Same reasoning as the
+            // Silent flag on the completed-goal replay below.
             if (!completed && _resourceManager.Quests.TryGet(questId, out var quest))
-                SendActiveState(player, quest);
+                SendActiveState(player, quest, suppressStartBanner: true);
         }
 
         // Seed the journal's lifetime "quests completed" counter (op49/12) from the DB-backed state.
@@ -930,6 +1240,19 @@ public sealed class QuestManager : IQuestManager
         RefreshQuestNotification(player, quest.GiverGuid);
         RefreshQuestNotification(player, quest.TargetGuid);
 
+        // A counted-talk goal marks its whole target list, not just one NPC - trick-or-treat's ten
+        // costumed townsfolk each need the badge, and the spotlight that goes with it.
+        foreach (var goal in quest.EffectiveGoals)
+        {
+            if (!goal.IsCountedTalk)
+                continue;
+
+            foreach (var targetGuid in goal.AllTalkTargetGuids())
+                RefreshQuestNotification(player, targetGuid);
+        }
+
+        RefreshScareSpotlights(player);
+
         foreach (var excludedId in quest.ExcludesQuestIds)
         {
             if (!_resourceManager.Quests.TryGet(excludedId, out var excludedQuest))
@@ -940,6 +1263,12 @@ public sealed class QuestManager : IQuestManager
         }
     }
 
+    // ★ THERE IS NO CHEAP WAY TO CLEAR A BADGE. Dropping just the notification overlay
+    // (PlayerUpdatePacketRemoveNotifications) was tried and is NOT enough - the badge also rides the
+    // AddNpc's own NotificationImageSetId, so the spawn-time copy stays on screen. Changing that field on
+    // an already-spawned NPC means removing and re-adding the actor, which is what this does. The cost is
+    // that the respawn wipes whatever the NPC was doing, so anything the caller wants the NPC to say or
+    // play must be sent AFTER this, not before.
     public void RefreshQuestNotification(Player player, ulong npcGuid)
     {
         if (npcGuid == 0 || !player.Zone.TryGetNpc(npcGuid, out var npc))
@@ -1112,9 +1441,24 @@ public sealed class QuestManager : IQuestManager
             return;
         }
 
-        // More goals to go: activate the next one and re-point the tracker/breadcrumb at its target. Its
-        // row is already in the helper - SendActiveState adds every goal's row when the quest is taken,
-        // so the player can see the whole checklist rather than one step at a time.
+        // More goals to go: activate the next one and re-point the tracker/breadcrumb at its target.
+        //
+        // Whether its ROW already exists depends on the quest. By default SendActiveState puts every goal
+        // up when the quest is taken, so activating is all that is needed - adding here would duplicate a
+        // row. A progressive-reveal quest only has the rows uncovered so far, so this is where the next
+        // one appears; it must be added BEFORE activating, or the activate has no row to find (the client
+        // matches rows by NameId - see the identity note in SendActiveState).
+        if (quest.RevealGoalsProgressively)
+        {
+            player.SendTunneled(new QuestObjectiveAddedPacket
+            {
+                QuestId = quest.QuestId,
+                ObjectiveNameId = goals[done].NameId,
+                ObjectiveDescriptionId = goals[done].NameId,
+                ObjectiveField2 = goals[done].DescriptionId != 0 ? goals[done].DescriptionId : goals[done].NameId
+            });
+        }
+
         SendObjectiveActivated(player, quest.QuestId, goals[done]);
         SendObjectiveForGoal(player, quest, done);
 
@@ -1183,7 +1527,7 @@ public sealed class QuestManager : IQuestManager
     // (retail-safe), not the long TurnInDialogueId. The actual turn-in bubble doesn't depend on this at
     // all - the end screen reads QuestEndPacket's own TitleId field directly (see TurnIn()), on both
     // patched and stock clients, so it stays correct regardless of what's sent here.
-    private static void SendQuestAdd(Player player, QuestDefinition quest, int helperTextId, float completedPercentage = 0f)
+    private static void SendQuestAdd(Player player, QuestDefinition quest, int helperTextId, float completedPercentage = 0f, bool suppressStartBanner = false)
     {
         player.SendTunneled(new QuestAddPacket
         {
@@ -1201,15 +1545,16 @@ public sealed class QuestManager : IQuestManager
             ProfileId = quest.ProfileId,
             CompletedPercentage = completedPercentage,
             IconId = quest.IconId,
-            SystemQuest = false
+            SystemQuest = false,
+            SuppressStartBanner = suppressStartBanner
         });
     }
 
     // QuestAdd + objective packets that put the quest into the client's journal + tracker.
-    private void SendActiveState(Player player, QuestDefinition quest)
+    private void SendActiveState(Player player, QuestDefinition quest, bool suppressStartBanner = false)
     {
         int alreadyDone = player.QuestGoalProgress.TryGetValue(quest.QuestId, out var p) ? p : 0;
-        SendQuestAdd(player, quest, quest.ObjectiveDescriptionId, (float)alreadyDone / quest.EffectiveGoals.Count);
+        SendQuestAdd(player, quest, quest.ObjectiveDescriptionId, (float)alreadyDone / quest.EffectiveGoals.Count, suppressStartBanner);
 
         // FULL CHECKLIST: every goal gets its row up front, so the quest helper shows the whole quest
         // (done, current, and still-to-come) rather than revealing steps one at a time. Reversed from the
@@ -1219,7 +1564,12 @@ public sealed class QuestManager : IQuestManager
         var goals = quest.EffectiveGoals;
         int done = player.QuestGoalProgress.TryGetValue(quest.QuestId, out var progress) ? progress : 0;
 
-        for (int i = 0; i < goals.Count; i++)
+        // ★ PROGRESSIVE REVEAL sends only the goals reached so far (the done ones plus the current), and
+        // CompleteGoal adds each next row as it becomes active. On a relog this replays exactly the rows
+        // the player had already uncovered, so the list never jumps ahead of their progress.
+        int rows = quest.RevealGoalsProgressively ? Math.Min(done + 1, goals.Count) : goals.Count;
+
+        for (int i = 0; i < rows; i++)
         {
             player.SendTunneled(new QuestObjectiveAddedPacket
             {
@@ -1356,6 +1706,16 @@ public sealed class QuestManager : IQuestManager
         if (goalIndex >= 0 && goalIndex < goals.Count
             && goals[goalIndex].Type == QuestGoalType.Collect)
         {
+            // A node-backed collect goal has no quest-owned pickups to point at - aim at the nearest LIVE
+            // node of its type instead. Which ones exist changes as the pool cycles them, so this is
+            // resolved from the zone each time rather than from a fixed list.
+            if (!string.IsNullOrWhiteSpace(goals[goalIndex].CollectNodeType))
+            {
+                var node = NearestCollectionNode(player, goals[goalIndex].CollectNodeType);
+                if (node is not null)
+                    return node.Guid;
+            }
+
             var nearest = NearestUncollectedPickup(player, quest.QuestId, goalIndex);
             if (nearest is not null)
                 return nearest.Guid;
@@ -1366,6 +1726,32 @@ public sealed class QuestManager : IQuestManager
 
     // Nearest Collect pickup for (questId, goalIndex) that this player hasn't gathered yet, or null when
     // none remain in this zone. Pickups are the collectible NPCs spawned from the goal's CollectSpawns.
+    // The nearest LIVE collection node of a given type. Pool-driven nodes come and go, so this walks the
+    // player's visible entities rather than any static spawn list.
+    private static Npc? NearestCollectionNode(Player player, string nodeTypeKey)
+    {
+        Npc? nearest = null;
+        var best = float.MaxValue;
+
+        foreach (var npc in player.VisibleNpcs.Values)
+        {
+            if (npc is not CollectionNode node
+                || !string.Equals(node.TypeDefinition.Key, nodeTypeKey, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var dx = node.Position.X - player.Position.X;
+            var dz = node.Position.Z - player.Position.Z;
+            var d2 = dx * dx + dz * dz;
+            if (d2 < best)
+            {
+                best = d2;
+                nearest = node;
+            }
+        }
+
+        return nearest;
+    }
+
     private Npc? NearestUncollectedPickup(Player player, int questId, int goalIndex)
     {
         Npc? nearest = null;
@@ -1479,6 +1865,16 @@ public sealed class QuestManager : IQuestManager
     private void SendObjectiveForGoal(Player player, QuestDefinition quest, int goalIndex)
     {
         var goals = quest.EffectiveGoals;
+
+        // ★ SOME QUESTS HAVE NOWHERE TO POINT. A quest whose targets are scattered over the whole world -
+        // trick-or-treat, whose costumed townsfolk stand in every district - gets no arrow, no green trail
+        // and no auto-walk, because picking one of them would be arbitrary. Retail simply omits "Take Me
+        // There" for those, so clear any stale target and send nothing.
+        if (quest.SuppressTakeMeThere)
+        {
+            player.SendTunneled(new ObjectiveTargetUpdatePacket { Active = false });
+            return;
+        }
 
         // ReachLocation: pin the destination itself (Guid 0 - a place, not an entity). Label = the
         // goal row's text ("Take a look at the view").

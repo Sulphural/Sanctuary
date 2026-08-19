@@ -9,6 +9,7 @@ using Sanctuary.Core.Helpers;
 using Sanctuary.Database;
 using Sanctuary.Game;
 using Sanctuary.Game.Combat;
+using Sanctuary.Game.Interactions;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
 using Sanctuary.Packet.Common.Attributes;
@@ -160,17 +161,29 @@ public static class InventoryPacketEquipByGuidHandler
             return true;
         }
 
-        playerUpdatePacketEquipItemChange.WieldType = itemClass.WieldType;
+        // Props report wield 0 so the client stays in the ordinary locomotion branch - see
+        // PropAnimation.SuppressPropWieldType for why (their own branch interrupts every one-shot).
+        playerUpdatePacketEquipItemChange.WieldType =
+            PropAnimation.EffectiveWieldType(clientItemDefinition.Id, itemClass.WieldType);
 
         connection.Player.SendTunneledToVisible(playerUpdatePacketEquipItemChange);
 
         // COMBAT: equipping a weapon (slot 7) on any kit job (ninja/archer) refreshes the ability
         // toolbar to match the new weapon's granted abilities (item-driven — see JobWeaponAbilities)
         // and warms the FX cache so the new weapon's first casts render.
-        if (packet.Slot == 7 && JobWeaponAbilities.SendToolbarWithFxPreload(connection.Player, _resourceManager))
+        // A no-kit job needs the send too: the yo-yo puts its two tricks on the bar, so swapping it out
+        // has to replace them - and with no send at all the old buttons just stayed there.
+        if (packet.Slot == 7)
         {
-            _logger.LogInformation("Refreshed ability toolbar after equipping weapon definition {def} (profile {profile}).",
-                clientItemDefinition.Id, connection.Player.ActiveProfileId);
+            if (JobWeaponAbilities.SendToolbarWithFxPreload(connection.Player, _resourceManager))
+            {
+                _logger.LogInformation("Refreshed ability toolbar after equipping weapon definition {def} (profile {profile}).",
+                    clientItemDefinition.Id, connection.Player.ActiveProfileId);
+            }
+            else
+            {
+                JobWeaponAbilities.SendToolbar(connection.Player, _resourceManager);
+            }
         }
 
         // Update the Weapon composite effect if we have a Flair Shard equipped.

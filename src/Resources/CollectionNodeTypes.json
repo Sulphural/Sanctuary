@@ -9,12 +9,30 @@
     "CursorId": 18,
     "PlacementYOffset": -0.05,
     "DropTable": [
-      { "ItemDefinitionId": 11082, "Weight": 100 },
-      { "ItemDefinitionId": 11083, "Weight": 100 },
-      { "ItemDefinitionId": 11084, "Weight": 100 },
-      { "ItemDefinitionId": 11086, "Weight": 100 },
-      { "ItemDefinitionId": 11087, "Weight": 100 },
-      { "ItemDefinitionId": 11088, "Weight": 100 }
+      {
+        "ItemDefinitionId": 11082,
+        "Weight": 100
+      },
+      {
+        "ItemDefinitionId": 11083,
+        "Weight": 100
+      },
+      {
+        "ItemDefinitionId": 11084,
+        "Weight": 100
+      },
+      {
+        "ItemDefinitionId": 11086,
+        "Weight": 100
+      },
+      {
+        "ItemDefinitionId": 11087,
+        "Weight": 100
+      },
+      {
+        "ItemDefinitionId": 11088,
+        "Weight": 100
+      }
     ]
   },
   {
@@ -27,8 +45,14 @@
     "CursorId": 18,
     "PlacementYOffset": -0.05,
     "DropTable": [
-      { "ItemDefinitionId": 11081, "Weight": 100 },
-      { "ItemDefinitionId": 11085, "Weight": 100 }
+      {
+        "ItemDefinitionId": 11081,
+        "Weight": 100
+      },
+      {
+        "ItemDefinitionId": 11085,
+        "Weight": 100
+      }
     ]
   }
 ]

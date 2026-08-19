@@ -102,6 +102,24 @@ public class QuestGoal
     // QuickChat id 219 and QuestManager.OnQuickChatEmote records it against nearby targets.
     public bool RequiresScare { get; set; }
 
+    // ★ THE SCARE IS A TWO-STEP CONVERSATION, not a single talk. Retail's trick-or-treat runs:
+    //   click the NPC   -> they dare you to scare them  (ScareIntroDialogueIds, closed with "Exit.")
+    //   /scare nearby   -> they jump
+    //   click them AGAIN-> they hand over candy         (ScareThanksDialogueIds, closed with "Thanks!")
+    // and the credit + candy land on that final button, not on the first click.
+    //
+    // The two lists are PAIRED BY INDEX - entry N of Intro belongs with entry N of Thanks - and which
+    // pair an NPC uses is chosen from its guid, so a given townsperson always says the same thing rather
+    // than re-rolling every time you walk up. Retail authored four pairs; short/empty lists just skip the
+    // conversation and credit on a plain talk, which is what every other counted-talk goal wants.
+    public List<int> ScareIntroDialogueIds { get; set; } = new();
+    public List<int> ScareThanksDialogueIds { get; set; } = new();
+
+    // One of these is granted per NPC that pays out - the random candy a trick-or-treater collects. Flat
+    // pick, like RandomRewardItems. Empty = the goal hands out nothing per-NPC and only the quest's own
+    // completion reward applies.
+    public List<int> TalkRewardItems { get; set; } = new();
+
     // For count goals (Collect/Kill, and a counted TalkToNpc): how many
     // of the thing are required. 0 falls back to CollectSpawns.Count (collect them all).
     // The tracker renders "current/required" as the player collects.
@@ -180,6 +198,21 @@ public class QuestGoal
     // pickups spawn. Interacting with one credits the goal; at RequiredCount the goal ticks
     // off and the next goal (the "return" step) activates. Place at least RequiredCount.
     public List<float[]> CollectSpawns { get; set; } = new();
+
+    // ★ THE OTHER WAY TO RUN A COLLECT GOAL: gather a COLLECTION NODE instead of a quest-owned pickup.
+    // Set this to a CollectionNodeTypes.json key and the goal ignores CollectSpawns entirely - it is
+    // credited whenever the player gathers a node of that type (see QuestManager.OnCollectionNodeGathered,
+    // called from the collection-node interact path).
+    //
+    // The two shapes differ in who owns the world object. A CollectSpawns pickup is placed by the quest,
+    // exists forever and is merely hidden per-player once taken. A collection node is placed by a POOL:
+    // only MaxActiveNodes of its hard points are live at a time and each one respawns on a timer, so the
+    // same spot is a renewable resource rather than a fixed prop. That is the right model for something
+    // the world is supposed to keep producing - candy bags that keep turning up around Sanctuary - and it
+    // also means the drop itself comes from the node type's own weighted table.
+    //
+    // RequiredCount MUST be set explicitly when using this: there is no CollectSpawns list to count.
+    public string CollectNodeType { get; set; } = string.Empty;
 
     // For ReachLocation: the world position ([x, y, z]) the player must get near. The check is 2D
     // (X/Z), so the Y only feeds the map pin.

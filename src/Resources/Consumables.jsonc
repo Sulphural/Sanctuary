@@ -140,7 +140,29 @@
     { "AbilityId": 4370, "ModelId": 2055, "DurationMs": 30000, "CooldownMs": 10000, "CompositeEffectId": 21 }, // Boss Cake - Stone Heart
     { "AbilityId": 4371, "ModelId": 1944, "DurationMs": 30000, "CooldownMs": 10000, "CompositeEffectId": 21 }, // Boss Cake - Abominable Snowman
     { "AbilityId": 4372, "ModelId": 1702, "DurationMs": 30000, "CooldownMs": 10000, "CompositeEffectId": 21 }, // Boss Cake - Pumpkin Prince
-    { "AbilityId": 4373, "ModelId": 22,   "DurationMs": 30000, "CooldownMs": 10000, "CompositeEffectId": 21 }  // Boss Cake - Cakenstein
+    { "AbilityId": 4373, "ModelId": 22,   "DurationMs": 30000, "CooldownMs": 10000, "CompositeEffectId": 21 }, // Boss Cake - Cakenstein
+
+    // ── Super Spooktacular trick-or-treat candy ───────────────────────────────────────────────────
+    // ★ THE CANDY ITEMS ALREADY CARRY THEIR OWN TRANSFORM ABILITIES - 4379..4383, consecutive and sitting
+    // immediately after the four boss-cake transforms above (4370-4373). That adjacency is what identifies
+    // them: they are the same authoring batch, so each candy was always meant to turn you into the thing on
+    // the wrapper. Only the ability->model rows were missing, so eating one did nothing.
+    //   69818 Pumpkin Candy -> 4379 · 69845 Skeleton -> 4380 · 69846 Wraith -> 4381
+    //   69847 Tarantula -> 4382 · 69848 Widow -> 4383
+    // Each model is the literal creature the candy is named for, and every one ships:
+    //   1701 pumpkinprince_m       - the Pumpkin Prince himself, NOT the _boss variant (1702), which the
+    //                                Boss Cake already uses; the candy should not impersonate the boss
+    //   1692 skeleton_m_01         - (also Halloween Harry's own model)
+    //   751  wraith_m_cloakedskelly
+    //   1339 tarantula_01
+    //   52   blackwidow_01
+    // Duration/cooldown copy the boss cakes (30s/10s) rather than the older 10s food transforms: these are
+    // the same Halloween batch and a 10s costume is over before anyone sees it.
+    { "AbilityId": 4379, "ModelId": 1701, "DurationMs": 30000, "CooldownMs": 10000, "CompositeEffectId": 21 }, // Pumpkin Candy
+    { "AbilityId": 4380, "ModelId": 1692, "DurationMs": 30000, "CooldownMs": 10000, "CompositeEffectId": 21 }, // Skeleton Candy
+    { "AbilityId": 4381, "ModelId": 751,  "DurationMs": 30000, "CooldownMs": 10000, "CompositeEffectId": 21 }, // Wraith Candy
+    { "AbilityId": 4382, "ModelId": 1339, "DurationMs": 30000, "CooldownMs": 10000, "CompositeEffectId": 21 }, // Tarantula Candy
+    { "AbilityId": 4383, "ModelId": 52,   "DurationMs": 30000, "CooldownMs": 10000, "CompositeEffectId": 21 }  // Widow Candy
   ],
 
   "PartyFavors": [

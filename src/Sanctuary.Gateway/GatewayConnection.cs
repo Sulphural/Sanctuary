@@ -5,6 +5,7 @@ using System.Net;
 using System.Numerics;
 using System.Text;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -541,6 +542,12 @@ public class GatewayConnection : UdpConnection
                 Player.ActiveQuestId = dbQuest.QuestId;
         }
 
+        // Which collections have already paid out. Collection items are kept once a collection completes,
+        // so without this the next pickup (or just the next login) would look like a fresh completion and
+        // re-award the Adventurer XP.
+        _serviceProvider.GetRequiredService<Sanctuary.Game.Collections.ICollectionManager>()
+            .LoadCompleted(Player);
+
         _logger.LogInformation("Pets loaded and will be sent via PetListPacket. TotalPetsCount={count}", Player.Pets.Count);
 
         // Note: Pets are sent via PetListPacket (OpCode 5) in StartingZone.cs after zone initialization
@@ -784,6 +791,14 @@ public class GatewayConnection : UdpConnection
 
     public void SendSelfToClient()
     {
+        // Pay out any collection the player has completed but not been rewarded for. Here rather than on
+        // each item grant because a collection entry can arrive by half a dozen routes (node gather, quest
+        // reward, store, /giveitem) and this is the one place they all funnel through before the panel is
+        // rebuilt - so the reward and the filled-in panel always land in the same send. Already-paid
+        // collections are a set lookup, so the normal case costs nothing.
+        _serviceProvider.GetRequiredService<Sanctuary.Game.Collections.ICollectionManager>()
+            .CheckAll(Player);
+
         var ownedItemDefinitionIds = Player.Items
             .Select(item => item.Definition)
             .ToHashSet();

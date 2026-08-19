@@ -33,6 +33,10 @@ public interface IQuestManager
     // Collect goal's count and, at the required count, tick the goal off and advance to the return step.
     void OnCollectInteract(Player player, Npc npc);
 
+    // A pooled collection node was gathered - credits any active Collect goal whose CollectNodeType names
+    // that node type (the alternative to quest-owned CollectSpawns pickups).
+    void OnCollectionNodeGathered(Player player, string nodeTypeKey);
+
     // Player harvested an item from a gathering node: credits the active Gather goal that wants it.
     void OnItemGathered(Player player, int itemDefinitionId);
 

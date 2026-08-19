@@ -128,7 +128,9 @@ public class ScriptingTests
         // Counts are Resources/MiningNodes.json and Resources/SnowballPiles.json.
         Assert.AreEqual(5, zone.GatheringNodes.Count, "ore veins (MiningNodes.json)");
         Assert.AreEqual(3, zone.SnowballPiles.Count, "snowball piles (SnowballPiles.json)");
-        Assert.AreEqual(31, zone.QuestCollectibles.Count, "collect-goal pickups (Quests.json)");
+        // 39 = 31 + the 8 candy bags of Bag Snatchers (quest 3095). This number is meant to move when a
+        // collect goal is added or removed - what it guards is the generator silently emitting NONE.
+        Assert.AreEqual(39, zone.QuestCollectibles.Count, "collect-goal pickups (Quests.json)");
         Assert.AreEqual(42, zone.DungeonEntrances.Count, "dungeon entrances (PointOfInterests.json)");
 
         // The pickup guid is its identity - it binds back to a (quest, goal), so a generator that

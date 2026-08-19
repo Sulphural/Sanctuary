@@ -86,6 +86,25 @@ public class QuestDefinition
     // anything, since it spends most of its life in the "completed" state.
     public bool IsDaily { get; set; }
 
+    // ★ NOT EVERY QUEST GETS "TAKE ME THERE". A quest whose targets are scattered across the whole world -
+    // trick-or-treat, where the costumed townsfolk are spread over every district - has no single place to
+    // point at, and retail simply does not offer the breadcrumb for those. Set this to suppress the
+    // tracker's target arrow / green trail / auto-walk (the ObjectiveTargetUpdatePacket that
+    // QuestManager.SendObjectiveTarget would otherwise send).
+    public bool SuppressTakeMeThere { get; set; }
+
+    // ★ REVEAL THE GOAL LIST ONE STEP AT A TIME instead of showing the whole checklist up front.
+    //
+    // The default (false) puts every goal row up when the quest is accepted, so the helper shows done,
+    // current and still-to-come together. That was a deliberate choice - a helper that hides the remaining
+    // steps can read as if the quest only ever has one objective - so this is opt-in per quest rather than
+    // a global flip, and existing quests keep the behaviour they were authored against.
+    //
+    // Worth turning on for a long quest whose later steps are a spoiler or make no sense yet: Candy Gram's
+    // "Ethan isn't here, speak to Bella" gives away that Ethan is missing before the player has been to
+    // his door.
+    public bool RevealGoalsProgressively { get; set; }
+
     // Chain / gating.
     public int PrerequisiteQuestId { get; set; }    // 0 = none; must be completed before this is offered
     public int NextQuestId { get; set; }            // 0 = none; becomes offerable once this completes

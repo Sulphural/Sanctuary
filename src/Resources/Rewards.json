@@ -120,5 +120,215 @@
                 "Comment": "Tree Cut-Out Cookie"
             }
         ]
+    },
+    {
+        "Key": "spooktacular-mystery-gift",
+        "PreviewItemDefinitionId": 69855,
+        "PreviewQuantity": 1,
+        "DropTable": [
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69818,
+                "Quantity": 1,
+                "Weight": 4,
+                "Comment": "Pumpkin Candy (common)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69845,
+                "Quantity": 1,
+                "Weight": 4,
+                "Comment": "Skeleton Candy (common)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69846,
+                "Quantity": 1,
+                "Weight": 4,
+                "Comment": "Wraith Candy (common)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69847,
+                "Quantity": 1,
+                "Weight": 4,
+                "Comment": "Tarantula Candy (common)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69848,
+                "Quantity": 1,
+                "Weight": 4,
+                "Comment": "Widow Candy (common)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69549,
+                "Quantity": 1,
+                "Weight": 2,
+                "Comment": "Gothic Rag Doll Face Paint Card"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69550,
+                "Quantity": 1,
+                "Weight": 2,
+                "Comment": "Kitty Face Paint Card"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69551,
+                "Quantity": 1,
+                "Weight": 2,
+                "Comment": "Flower Face Paint Card"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69552,
+                "Quantity": 1,
+                "Weight": 2,
+                "Comment": "Tiger Face Paint Card"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69553,
+                "Quantity": 1,
+                "Weight": 2,
+                "Comment": "Starry Moons Face Paint Card"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69554,
+                "Quantity": 1,
+                "Weight": 2,
+                "Comment": "Witch Face Paint Card"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69555,
+                "Quantity": 1,
+                "Weight": 2,
+                "Comment": "The Monster Face Paint"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69556,
+                "Quantity": 1,
+                "Weight": 2,
+                "Comment": "Phantom Face Paint Card"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69557,
+                "Quantity": 1,
+                "Weight": 2,
+                "Comment": "Troll Face Paint Card"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69558,
+                "Quantity": 1,
+                "Weight": 2,
+                "Comment": "Sea Monster Face Paint Card"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69559,
+                "Quantity": 1,
+                "Weight": 2,
+                "Comment": "Saber-toothed Face Paint Card"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69560,
+                "Quantity": 1,
+                "Weight": 2,
+                "Comment": "Bandit Face Paint Card"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69107,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Bixie Costume (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69108,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Changeling Ninja Costume (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69109,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Chatty Costume (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69110,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Chugawug Costume (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69111,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Darkthorne Costume (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69112,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Floren Costume (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69113,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Man-Eating Plant Costume (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69114,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Valerian Costume (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69115,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Robgoblin Costume (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69116,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Shambler Costume (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69117,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Tree Soldier Costume (rare)"
+            },
+            {
+                "RewardType": "Item",
+                "ItemDefinitionId": 69118,
+                "Quantity": 1,
+                "Weight": 1,
+                "Comment": "Yeti Costume (rare)"
+            }
+        ]
     }
 ]

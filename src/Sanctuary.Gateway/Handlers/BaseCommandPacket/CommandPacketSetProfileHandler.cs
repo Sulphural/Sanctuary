@@ -88,6 +88,15 @@ public static class CommandPacketSetProfileHandler
         {
             _logger.LogInformation("Sent weapon-driven ability SetDefinition on swap to profile {id}.", profile.Id);
         }
+        else
+        {
+            // ★ A NO-KIT JOB STILL NEEDS A BAR SENT. The ActivateProfile above has already cleared the
+            // client's toolbar, so skipping the send here left the OUTGOING job's abilities drawn on the
+            // bar until something else refreshed it (a zone change). Swapping to the Adventurer is the
+            // case that shows it. This send carries the player's own slots - held power-up, snowball tool -
+            // and when they have neither, the explicit empty bar is what clears the old job's abilities.
+            JobWeaponAbilities.SendToolbar(player, _resourceManager);
+        }
 
         var playerUpdatePacketEquippedItemsChange = new PlayerUpdatePacketEquippedItemsChange();
 

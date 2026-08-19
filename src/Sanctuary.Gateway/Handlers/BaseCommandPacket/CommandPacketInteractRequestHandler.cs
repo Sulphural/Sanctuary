@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ using Sanctuary.Database;
 using Sanctuary.Database.Entities;
 using Sanctuary.Game;
 using Sanctuary.Game.Entities;
+using Sanctuary.Game.Resources.Definitions;
 using Sanctuary.Game.Zones;
 using Sanctuary.Gateway.Admin;
 using Sanctuary.Packet;
@@ -28,12 +30,23 @@ public static class CommandPacketInteractRequestHandler
     private static IDbContextFactory<DatabaseContext> _dbContextFactory = null!;
     private static IResourceManager _resourceManager = null!;
 
+    // ★ HELD AS THE PROVIDER, NOT THE SERVICE. ConfigurePacketHandlers runs during startup, and resolving
+    // a singleton there CONSTRUCTS it right then - dragging QuestManager (and its own dependencies) into
+    // boot ordering that nothing previously required. Handlers only need this once a packet arrives, long
+    // after everything is up, so the lookup is deferred to first use.
+    private static IServiceProvider _services = null!;
+    private static Sanctuary.Game.Quests.IQuestManager QuestManager =>
+        _services.GetRequiredService<Sanctuary.Game.Quests.IQuestManager>();
+    private static Sanctuary.Game.Collections.ICollectionManager CollectionManager =>
+        _services.GetRequiredService<Sanctuary.Game.Collections.ICollectionManager>();
+
     public static void ConfigureServices(IServiceProvider serviceProvider)
     {
         var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
         _logger = loggerFactory.CreateLogger(nameof(CommandPacketInteractRequestHandler));
         _dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<DatabaseContext>>();
         _resourceManager = serviceProvider.GetRequiredService<IResourceManager>();
+        _services = serviceProvider;
     }
 
     public static bool HandlePacket(GatewayConnection connection, ReadOnlySpan<byte> data)
@@ -238,8 +251,6 @@ public static class CommandPacketInteractRequestHandler
         if (!node.TryReserve())
             return true;
 
-        connection.Player.Dismount();
-
         var itemPersisted = false;
         var nodeCompleted = false;
 
@@ -255,6 +266,14 @@ public static class CommandPacketInteractRequestHandler
                 node.Release();
                 return true;
             }
+
+            var ownedItemDefinitionIds = connection.Player.Items
+                .Select(item => item.Definition)
+                .ToHashSet();
+            var collectionMatch = FindCollectionEntry(itemDefinitionId);
+            var collectionWasStarted = collectionMatch is not null &&
+                collectionMatch.Value.Definition.IsStarted(ownedItemDefinitionIds);
+            var collectionEntryWasCollected = ownedItemDefinitionIds.Contains(itemDefinitionId);
 
             var characterId = GuidHelper.GetPlayerId(connection.Player.Guid);
 
@@ -327,13 +346,56 @@ public static class CommandPacketInteractRequestHandler
                 });
             }
 
+            ownedItemDefinitionIds.Add(itemDefinitionId);
+
             node.CompleteCollection();
             nodeCompleted = true;
 
-            // The delta packet is not fully decoded. The authoritative self packet is
-            // capture-validated and refreshes an already-open collection panel.
-            connection.SendSelfToClient();
-            SendCollectionRewardToast(connection, clientItem, itemDefinition);
+            if (collectionMatch is not null && !collectionEntryWasCollected)
+            {
+                if (!collectionWasStarted)
+                    SendCollectionStart(connection, collectionMatch.Value.Definition, ownedItemDefinitionIds);
+
+                SendCollectionEntryUpdate(connection, collectionMatch.Value.Definition,
+                    collectionMatch.Value.Entry, collectionMatch.Value.Index);
+            }
+            else
+            {
+                SendCollectionRewardToast(connection, clientItem, itemDefinition);
+            }
+
+            // Did that pickup finish a collection? Pays the collection's job its XP plus any coins/items.
+            // Guarded like the quest credit below: the gather is already committed, so a reward fault must
+            // not be reported as a failed gather.
+            try
+            {
+                CollectionManager.OnItemCollected(connection.Player, itemDefinitionId);
+            }
+            catch (Exception collectionEx)
+            {
+                _logger.LogError(collectionEx, "Collection item {itemDefinitionId} was granted but the " +
+                    "collection completion check failed.", itemDefinitionId);
+            }
+
+            // ★★ QUEST CREDIT GOES LAST, AND IN ITS OWN GUARD. A gathered node can also be a quest
+            // objective - a Collect goal whose CollectNodeType names this node type - which is what lets a
+            // quest use the pooled/respawning collection-node system instead of fixed pickups.
+            //
+            // It must NOT sit inside the gather's own try/catch: that block's failure path releases or
+            // completes the node and returns false, so a fault on the QUEST side would be reported as a
+            // failed gather and, worse, swallowed silently - the player gets the item and the node is
+            // consumed while the goal never ticks. The gather is already committed by this point; a quest
+            // problem is logged and nothing else is undone.
+            try
+            {
+                QuestManager.OnCollectionNodeGathered(connection.Player, node.TypeDefinition.Key);
+            }
+            catch (Exception questEx)
+            {
+                _logger.LogError(questEx, "Collection node {type} was gathered but crediting the quest failed.",
+                    node.TypeDefinition.Key);
+            }
+
             return true;
         }
         catch (Exception ex)
@@ -348,6 +410,56 @@ public static class CommandPacketInteractRequestHandler
             return false;
         }
     }
+
+    private static CollectionEntryMatch? FindCollectionEntry(int itemDefinitionId)
+    {
+        foreach (var definition in _resourceManager.Collections.Values)
+        {
+            for (var index = 0; index < definition.Entries.Count; index++)
+            {
+                var entry = definition.Entries[index];
+
+                if (entry.ItemDefinitionId == itemDefinitionId)
+                    return new CollectionEntryMatch(definition, entry, index);
+            }
+        }
+
+        return null;
+    }
+
+    private static void SendCollectionStart(GatewayConnection connection, CollectionDefinition definition,
+        IReadOnlySet<int> ownedItemDefinitionIds)
+    {
+        var collection = definition.CreateClientCollection(connection.Player.Guid, ownedItemDefinitionIds);
+
+        using var writer = new PacketWriter();
+        collection.Serialize(writer);
+
+        connection.SendTunneled(new ClientUpdatePacketCollectionStart { Payload = writer.Buffer });
+    }
+
+    private static void SendCollectionEntryUpdate(GatewayConnection connection, CollectionDefinition definition,
+        CollectionEntryDefinition entryDefinition, int index)
+    {
+        var entry = definition.CreateClientCollectionEntry(entryDefinition, index, true);
+
+        connection.SendTunneled(new ClientUpdatePacketCollectionAddEntry
+        {
+            DefinitionId = entry.DefinitionId,
+            IconId = entry.IconId,
+            IconTintId = entry.IconTintId,
+            NameId = entry.NameId,
+            CollectionId = entry.CollectionId,
+            Index = entry.Index,
+            Unknown = entry.Unknown,
+            Collected = entry.Collected
+        });
+    }
+
+    private readonly record struct CollectionEntryMatch(
+        CollectionDefinition Definition,
+        CollectionEntryDefinition Entry,
+        int Index);
 
     // A real grant, not a preview: the banner icon/name ride in the bundle's IconId/NameId, and the
     // granted row goes in the entry list carrying the player's inventory item id, gated by the bundle's
