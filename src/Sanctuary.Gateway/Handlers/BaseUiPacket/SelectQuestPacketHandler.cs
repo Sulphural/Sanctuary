@@ -9,8 +9,6 @@ using Sanctuary.Packet.Common.Attributes;
 
 namespace Sanctuary.Gateway.Handlers;
 
-// "Make Quest Active" - the player picked this quest as their tracked quest in the journal. The quest
-// manager re-activates its objective so it shows in the on-screen quest helper/tracker.
 [PacketHandler]
 public static class SelectQuestPacketHandler
 {

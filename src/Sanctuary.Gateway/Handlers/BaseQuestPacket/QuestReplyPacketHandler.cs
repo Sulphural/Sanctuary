@@ -42,8 +42,6 @@ public static class QuestReplyPacketHandler
             return true;
         }
 
-        // Declined: reset the interact debounce on the quest's giver so the client's immediate
-        // re-fire of FreeInteractionNpc after closing the offer doesn't reopen it right away.
         if (_resourceManager.Quests.TryGet(packet.QuestId, out var quest))
         {
             player.LastInteractNpcGuid = quest.GiverGuid;

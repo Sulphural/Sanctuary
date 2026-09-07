@@ -2,7 +2,6 @@ using Sanctuary.Core.IO;
 
 namespace Sanctuary.Packet;
 
-// Server -> client. Sets the "current objective target" driving the tracker arrow, mini-map indicator, and "Take Me There" breadcrumb trail. Wire format from client deserializer FUN_00a8b440 (opcode 47, sub 14); Active=false ends the packet early and clears the client's target.
 public class ObjectiveTargetUpdatePacket : BaseUiPacket, ISerializablePacket
 {
     public new const byte OpCode = 14;

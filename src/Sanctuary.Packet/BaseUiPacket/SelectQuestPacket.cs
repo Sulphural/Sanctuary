@@ -4,7 +4,6 @@ using Sanctuary.Core.IO;
 
 namespace Sanctuary.Packet;
 
-// Client sends this right after accepting a quest offer, carrying the QuestId. Opcode 47 sub 12; field layout (single int32 QuestId) is best-effort from the observed hex payload, not a verified deserializer trace.
 public class SelectQuestPacket : BaseUiPacket, IDeserializable<SelectQuestPacket>
 {
     public new const byte OpCode = 12;

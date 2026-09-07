@@ -4,8 +4,6 @@ using Sanctuary.Core.IO;
 
 namespace Sanctuary.Packet;
 
-// Server -> client: removes a quest from the Hero's Journal. Trailing bool must be false, or the
-// dispatcher's extra journal/UI refresh (FUN_00a92cd0) is skipped.
 public class QuestAbandonedPacket : BaseQuestPacket, IDeserializable<QuestAbandonedPacket>, ISerializablePacket
 {
     public new const int OpCode = 6;
@@ -20,10 +18,10 @@ public class QuestAbandonedPacket : BaseQuestPacket, IDeserializable<QuestAbando
     {
         using var writer = new PacketWriter();
 
-        Write(writer); // short OpCode(49) + int SubOpCode(6) = 6-byte header
+        Write(writer);
 
         writer.Write(QuestId);
-        writer.Write(false); // trailing bool (FUN_00c7ae40 reads it) - required or the client rejects the packet
+        writer.Write(false);
 
         return writer.Buffer;
     }

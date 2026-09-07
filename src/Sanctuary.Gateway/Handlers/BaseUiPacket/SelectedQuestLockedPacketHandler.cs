@@ -8,7 +8,6 @@ using Sanctuary.Packet.Common.Attributes;
 
 namespace Sanctuary.Gateway.Handlers;
 
-// Purely informational: the client's own locked/unlocked read on the tracked quest, edge-triggered, no reply expected - logged in case it ever drifts from our PrerequisiteQuestId gating.
 [PacketHandler]
 public static class SelectedQuestLockedPacketHandler
 {

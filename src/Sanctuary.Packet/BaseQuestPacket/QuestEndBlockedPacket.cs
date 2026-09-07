@@ -2,14 +2,13 @@ using Sanctuary.Core.IO;
 
 namespace Sanctuary.Packet;
 
-// Server -> client plain message popup (Lua MessageWindow). Unused - CommandPacketShowDialog is used instead.
 public class QuestEndBlockedPacket : BaseQuestPacket, ISerializablePacket
 {
     public const int SubOpCode = 16;
 
-    public ulong NpcGuid;   // obj+0x10/+0x14 - the speaking NPC
-    public int TextId;      // obj+0x18 - Global.Text id shown in the MessageWindow
-    public int QuestId;     // obj+0x1c
+    public ulong NpcGuid;
+    public int TextId;
+    public int QuestId;
 
     public QuestEndBlockedPacket() : base(SubOpCode)
     {
@@ -19,7 +18,7 @@ public class QuestEndBlockedPacket : BaseQuestPacket, ISerializablePacket
     {
         using var writer = new PacketWriter();
 
-        Write(writer); // short OpCode(49) + int SubOpCode(16) = 6-byte header
+        Write(writer);
 
         writer.Write(NpcGuid);
         writer.Write(TextId);

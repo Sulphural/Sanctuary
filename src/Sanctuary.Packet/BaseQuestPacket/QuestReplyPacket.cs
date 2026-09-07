@@ -4,8 +4,6 @@ using Sanctuary.Core.IO;
 
 namespace Sanctuary.Packet;
 
-// Best-effort field layout - not verified against a live client capture. Incoming reply to
-// a QuestInfoPacket offer (accept/decline).
 public class QuestReplyPacket : BaseQuestPacket, IDeserializable<QuestReplyPacket>
 {
     public new const int OpCode = 2;

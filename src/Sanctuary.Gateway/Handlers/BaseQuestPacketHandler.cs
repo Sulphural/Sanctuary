@@ -32,15 +32,13 @@ public static class BaseQuestPacketHandler
         {
             QuestReplyPacket.OpCode => QuestReplyPacketHandler.HandlePacket(connection, reader.Span),
             QuestAbandonedPacket.OpCode => QuestAbandonedPacketHandler.HandlePacket(connection, reader.Span),
-            QuestEndPacket.SubOpCode + 1 => HandleQuestEndReply(connection), // sub 14: QuestEndReplyPacket
+            QuestEndPacket.SubOpCode + 1 => HandleQuestEndReply(connection),
             _ => HandleUnknownOpCode(subOpCode)
         };
     }
 
-    // Global.Text id for QuestEndBlockedPacket - placeholder, not verified against a real client text dump.
     private const int QuestEndBlockedTextId = 0;
 
-    // "Complete" clicked on the end screen: run the pending completion, or tell the player if there's none (stray double-click / relog wiped it).
     private static bool HandleQuestEndReply(GatewayConnection connection)
     {
         var pending = connection.Player.PendingQuestEndAction;
