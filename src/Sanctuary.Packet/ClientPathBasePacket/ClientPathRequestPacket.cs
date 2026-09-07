@@ -1,18 +1,24 @@
-using System;
+﻿using System;
 using System.Numerics;
 
 using Sanctuary.Core.IO;
 
 namespace Sanctuary.Packet;
 
-// Client -> server (opcode 98, sub 1): a path request for the "Take Me There" breadcrumb system. Server replies with ClientPathReplyPacket carrying the path from Start to the destination.
+// Client -> server (opcode 98, sub 1): a path request for the "Take Me There" breadcrumb system.
+// Start is the player's exact position. End is NOT necessarily the final destination: the client first
+// searches its own shipped per-zone roadmap ("<zone>.map") for a full route to its target, then asks us
+// only for the hop from Start to the FIRST node of that route, walking its own path from there. It
+// refuses to send at all when that hop is over 300 units, so requests keep arriving while the objective
+// is far away. In a zone with no roadmap its search finds nothing and End is the raw target.
 public class ClientPathRequestPacket : ClientPathBasePacket, IDeserializable<ClientPathRequestPacket>
 {
     public new const byte OpCode = 1;
 
     public int RequestId;
     public int Unknown1;
-    public int Mode;      // 1 = passive trail refresh, 2 = "Take Me There" button click (auto-walk)
+    // Which client controller asked; the reply's ResultType routes the answer back to it.
+    public int Mode;      // 1 = breadcrumb trail follower, 2 = auto-move controller
     public int Unknown3;
     public Vector4 Start;
     public Vector4 End;

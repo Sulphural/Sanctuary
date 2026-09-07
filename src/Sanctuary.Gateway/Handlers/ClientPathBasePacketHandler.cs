@@ -1,30 +1,36 @@
 using System;
-using System.Collections.Generic;
-using System.Numerics;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Sanctuary.Core.IO;
-using Sanctuary.Game.Quests;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common.Attributes;
 
 namespace Sanctuary.Gateway.Handlers;
 
-// Opcode 98 sub 1: "Take Me There" - replies with the waypoint path to the tracked quest's target NPC (or the client's end point).
+// Opcode 98 sub 1: the "Take Me There" path request.
+//
+// The client does the routing itself. It ships a per-zone roadmap ("<zone>.map" - the same file we
+// load into Zone.Pathfinder) and searches that graph locally for a full route to its target before it
+// ever asks us. What it then requests is only the short off-road hop from the player's exact position
+// to the FIRST node of its own route; it walks our hop and continues along its own path from there.
+// It refuses to send the request at all when that hop is longer than 300 units, which is why requests
+// keep arriving while the objective is thousands of units away.
+//
+// So the answer is simply the hop the client asked for. Substituting our own destination here (the
+// tracked quest NPC) replaces a ~30-unit hop with a multi-thousand-unit straight line, which the
+// client then walks literally, through whatever scenery is in the way. In a zone the client has no
+// roadmap for, its search finds nothing and End is the raw target, so answering End stays correct.
 [PacketHandler]
 public static class ClientPathBasePacketHandler
 {
     private static ILogger _logger = null!;
-    private static IQuestManager _questManager = null!;
 
     public static void ConfigureServices(IServiceProvider serviceProvider)
     {
         var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
         _logger = loggerFactory.CreateLogger(nameof(ClientPathBasePacketHandler));
-
-        _questManager = serviceProvider.GetRequiredService<IQuestManager>();
     }
 
     public static bool HandlePacket(GatewayConnection connection, PacketReader reader)
@@ -41,12 +47,6 @@ public static class ClientPathBasePacketHandler
         };
     }
 
-    // Auto-walk cancels once the player is within this distance of the target.
-    private const float ArrivalDistance = 8f;
-
-    // Destination drift beyond this between refreshes is treated as a real objective change, not the same target wandering.
-    private const float DestinationChangeThreshold = 40f;
-
     private static bool HandlePathRequest(GatewayConnection connection, ReadOnlySpan<byte> data)
     {
         if (!ClientPathRequestPacket.TryDeserialize(data, out var request))
@@ -55,59 +55,18 @@ public static class ClientPathBasePacketHandler
             return false;
         }
 
-        var player = connection.Player;
+        // Mode says WHICH client controller asked and ResultType routes the reply back to it: 1 = the
+        // breadcrumb trail follower (draws the green line), 2 = the auto-move controller (walks the
+        // character). They run independently and each sends its own request, so echoing the Mode back
+        // is all that is needed - and a trail refresh can no longer make the character walk off on its
+        // own, because it is never answered with an auto-move reply.
+        var reply = new ClientPathReplyPacket { RequestId = request.RequestId, ResultType = request.Mode };
 
-        // Destination: the tracked quest's target NPC if we have one, otherwise the point the client asked for.
-        var destination = request.End;
-        if (_questManager.TryGetActiveObjectiveTarget(player, out var targetPosition))
-            destination = new Vector4(targetPosition, 1f);
+        reply.Path.Add(request.Start);
+        reply.Path.Add(request.End);
 
-        var path = BuildPath(player, request.Start, destination);
-
-        // ResultType 1 = breadcrumb trail render, 2 = character auto-move.
-        var trail = new ClientPathReplyPacket { RequestId = request.RequestId, ResultType = 1 };
-        trail.Path.AddRange(path);
-        player.SendTunneled(trail);
-
-        if (request.Mode == 2)
-        {
-            // A genuine "Take Me There" click starts (or restarts) an active auto-walk session.
-            player.TakeMeThereActive = true;
-            player.TakeMeThereDestination = destination;
-        }
-        else if (player.TakeMeThereActive)
-        {
-            // Passive refresh: only keep auto-walking while it's the same objective and not yet arrived.
-            var start3 = new Vector3(request.Start.X, request.Start.Y, request.Start.Z);
-            var dest3 = new Vector3(destination.X, destination.Y, destination.Z);
-            var lastDest3 = new Vector3(player.TakeMeThereDestination.X, player.TakeMeThereDestination.Y, player.TakeMeThereDestination.Z);
-
-            if (Vector3.Distance(start3, dest3) < ArrivalDistance || Vector3.Distance(lastDest3, dest3) > DestinationChangeThreshold)
-                player.TakeMeThereActive = false;
-            else
-                player.TakeMeThereDestination = destination;
-        }
-
-        if (player.TakeMeThereActive)
-        {
-            var walk = new ClientPathReplyPacket { RequestId = request.RequestId, ResultType = 2 };
-            walk.Path.AddRange(path);
-            player.SendTunneled(walk);
-        }
+        connection.Player.SendTunneled(reply);
 
         return true;
-    }
-
-    // Uses the zone's .map waypoint graph (Player.TryGetPath); falls back to a straight line if unavailable.
-    private static List<Vector4> BuildPath(Sanctuary.Game.Entities.Player player, Vector4 start, Vector4 destination)
-    {
-        var start3 = new Vector3(start.X, start.Y, start.Z);
-        var dest3 = new Vector3(destination.X, destination.Y, destination.Z);
-
-        var path = player.TryGetPath(start3, dest3);
-        if (path is not null)
-            return path;
-
-        return new List<Vector4> { start, destination };
     }
 }

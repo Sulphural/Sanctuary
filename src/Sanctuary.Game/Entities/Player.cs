@@ -11,7 +11,6 @@ using Sanctuary.Core.IO;
 using Sanctuary.Game.ChatCommands;
 using Sanctuary.Game.Helpers;
 using Sanctuary.Game.Interactions;
-using Sanctuary.Game.Pathfinding;
 using Sanctuary.Game.Zones;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
@@ -33,29 +32,6 @@ public sealed class Player : ClientPcData, IEntity
     public ConcurrentDictionary<ulong, Npc> VisibleNpcs { get; } = [];
     public ConcurrentDictionary<ulong, Player> VisiblePlayers { get; } = [];
 
-    // "Take Me There" auto-walk state (see ClientPathBasePacketHandler); lets a passive trail refresh
-    // detect if the objective changed mid-walk.
-    public bool TakeMeThereActive { get; set; }
-    public Vector4 TakeMeThereDestination { get; set; }
-
-    // Caches the last route so repeated passive trail-refresh requests don't re-run A* every time.
-    private PathBuilder? _pathBuilder;
-    private List<Vector4>? _lastComputedPath;
-
-    // Route for "Take Me There" via the zone's Pathfinder; null falls back to a straight line.
-    public List<Vector4>? TryGetPath(Vector3 start, Vector3 destination)
-    {
-        if (Zone.Pathfinder is null)
-            return null;
-
-        _pathBuilder ??= new PathBuilder(Zone.Pathfinder);
-
-        var waypoints = _pathBuilder.TryRecompute(start, destination);
-        if (waypoints is not null)
-            _lastComputedPath = waypoints.Select(point => new Vector4(point, 1f)).ToList();
-
-        return _lastComputedPath;
-    }
 
     private int ZoneAreaId { get; set; }
 

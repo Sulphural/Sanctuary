@@ -1,11 +1,15 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Numerics;
 
 using Sanctuary.Core.IO;
 
 namespace Sanctuary.Packet;
 
-// Server -> client (opcode 98, sub 2): reply to ClientPathRequestPacket. Wire format from client deserializer FUN_008faf30. ResultType=1 routes to the breadcrumb follower (FUN_009cd2f0); an empty Path means "path attempt failed".
+// Server -> client (opcode 98, sub 2): reply to ClientPathRequestPacket. Wire format from client
+// deserializer FUN_008faf30. ResultType routes the reply to the controller that asked (echo the
+// request's Mode): 1 = the breadcrumb trail follower (FUN_009cd2f0), which draws the green line;
+// 2 = the auto-move controller (FUN_009cead0), which walks the character. An empty Path means
+// "path attempt failed".
 public class ClientPathReplyPacket : ClientPathBasePacket, ISerializablePacket
 {
     public new const byte OpCode = 2;
