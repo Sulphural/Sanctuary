@@ -40,5 +40,10 @@ public interface IResourceManager
     QuestDefinitionCollection Quests { get; }
     MapGraphCollection Maps { get; }
 
+    RewardTableDefinitionCollection RewardTables { get; }
+
+    AbilityDefinitionCollection CombatAbilities { get; }
+    JobKitDefinitionCollection CombatJobs { get; }
+
     bool Load();
 }

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Sanctuary.Core.Collections;
 using Sanctuary.Game.Entities;
 using Sanctuary.Game.Pathfinding;
 using Sanctuary.Game.Resources.Definitions;
@@ -26,6 +27,8 @@ public abstract class BaseZone : IZone, IDisposable
 {
     private readonly ILogger _logger;
     private readonly IResourceManager _resourceManager;
+    private readonly IScriptManager _scriptManager;
+    private readonly ScriptRuntime _scriptRuntime;
     private readonly BaseZoneDefinition _zoneDefinition;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
 
@@ -39,6 +42,7 @@ public abstract class BaseZone : IZone, IDisposable
     private readonly ConcurrentDictionary<ulong, IEntity> _entities = new();
     private readonly object _collectionNodeLock = new();
     private readonly PriorityQueue<CollectionNodePoolRefill, long> _collectionNodeRefills = new();
+    private readonly ConcurrentSet<string> _scripts = new();
 
     private const int FrameRate = 10;
     private const float TickRate = 1000f / FrameRate;
@@ -63,7 +67,8 @@ public abstract class BaseZone : IZone, IDisposable
     public IEnumerable<Npc> Npcs => _npcs.Values;
     public IEnumerable<Player> Players => _players.Values;
 
-    private ScriptContext? _scriptContext;
+    public IScriptManager ScriptManager => _scriptManager;
+    public ScriptRuntime ScriptRuntime => _scriptRuntime;
 
     // Null when there's no Resources/Maps/<Name>.map file for this zone - callers fall back to a
     // straight line when this is null.
@@ -78,9 +83,11 @@ public abstract class BaseZone : IZone, IDisposable
 
         _logger = loggerFactory.CreateLogger($"Zone {Name} ({Id})");
 
-        var scriptManager = serviceProvider.GetRequiredService<IScriptManager>();
+        _scriptManager = serviceProvider.GetRequiredService<IScriptManager>();
+        _scriptRuntime = new ScriptRuntime(_logger);
 
-        _scriptContext = scriptManager.GetContextForZone(this);
+        foreach (var script in _zoneDefinition.Scripts ?? [])
+            _scripts.TryAdd(script);
 
         _tiles = GenerateTiles();
 
@@ -102,10 +109,9 @@ public abstract class BaseZone : IZone, IDisposable
 
     public virtual void OnStart()
     {
-        ActivateCollectionNodePools();
+        GetOrCreateScriptContext().FireEvent("start");
 
-        // fire and forget. safe since CallFunctionAsync does not throw.
-        _ = _scriptContext?.CallFunctionAsync("onStart", this).AsTask();
+        ActivateCollectionNodePools();
     }
 
     // Spawns Quests.json Collect-goal pickups; must be called from the zone script's onStart
@@ -122,7 +128,6 @@ public abstract class BaseZone : IZone, IDisposable
             npc.NameId = spawn.NameId;
             npc.ModelId = spawn.ModelId;
             npc.Scale = 1f;
-            npc.Static = true;
             npc.Visible = true;
 
             npc.UpdatePosition(spawn.Position, Quaternion.Identity);
@@ -142,10 +147,55 @@ public abstract class BaseZone : IZone, IDisposable
 
     #endregion
 
-    #region Scripting
+    #region IScriptable
 
-    public bool TrySpawnNpc(int npcId, ulong? npcGuid, float x, float y, float z, float heading)
+    public ScriptContext GetOrCreateScriptContext()
     {
+        if (_scriptManager.GetOrCreateContext(this, out var context))
+        {
+            // Fresh context. Attach all scripts defined in the zone definition.
+            // We can't use `LoadScriptInBackground` here because we need to ensure that any `onStart` handlers are fully loaded.
+            foreach (var script in _scripts)
+                context.LoadScript(Path.Combine("Zone", script + ".lua"));
+        }
+
+        return context;
+    }
+
+    public bool TryAddScript(string scriptName)
+    {
+        var context = GetOrCreateScriptContext();
+
+        if (!_scripts.TryAdd(scriptName))
+            return false;
+
+        var scriptPath = Path.Combine("Zone", scriptName + ".lua");
+
+        context.LoadScriptInBackground(scriptPath);
+
+        return true;
+    }
+
+    public bool TryRemoveScript(string scriptName)
+    {
+        if (!_scripts.TryRemove(scriptName))
+            return false;
+
+        var context = GetOrCreateScriptContext();
+
+        var scriptPath = Path.Combine("Zone", scriptName + ".lua");
+
+        return context.UnloadScript(scriptPath);
+    }
+
+    #endregion
+
+    #region Scripting API
+
+    public bool TrySpawnNpc(int npcId, ulong? npcGuid, float x, float y, float z, float heading, [MaybeNullWhen(false)] out IScriptableNpc npc)
+    {
+        npc = null;
+
         if (npcGuid.HasValue)
         {
             if (_npcs.ContainsKey(npcGuid.Value))
@@ -162,7 +212,7 @@ public abstract class BaseZone : IZone, IDisposable
             return false;
         }
 
-        if (!TryCreateNpc(npcGuid, definition, out var npc))
+        if (!TryCreateNpc(npcGuid, definition, out var spawnedNpc))
         {
             _logger.LogWarning("Failed to spawn NPC {NpcId}: Could not create NPC instance.", npcId);
             return false;
@@ -171,8 +221,9 @@ public abstract class BaseZone : IZone, IDisposable
         var position = new Vector4(x, y, z, 1f);
         var rotation = new Quaternion(MathF.Sin(heading), 0f, MathF.Cos(heading), 0f);
 
-        npc.UpdatePosition(position, rotation);
+        spawnedNpc.UpdatePosition(position, rotation);
 
+        npc = spawnedNpc;
         return true;
     }
 
@@ -230,11 +281,22 @@ public abstract class BaseZone : IZone, IDisposable
             ModelId = definition.ModelId,
             TextureAlias = definition.TextureAlias,
             Scale = scale,
-            Static = true,
             Visible = true
         };
 
-        return _npcs.TryAdd(npc.Guid, npc) && _entities.TryAdd(npc.Guid, npc);
+        if (!_npcs.TryAdd(npc.Guid, npc) || !_entities.TryAdd(npc.Guid, npc))
+        {
+            npc = null;
+            return false;
+        }
+
+        foreach (var script in definition.Scripts ?? [])
+        {
+            if (!npc.TryAddScript(script))
+                _logger.LogWarning("NPC {NpcName} ({NpcGuid}) already has script {Script}", npc.Name, npc.Guid, script);
+        }
+
+        return true;
     }
 
     public IReadOnlyList<CollectionNodePoolStatus> GetCollectionNodePoolStatuses()
@@ -496,7 +558,6 @@ public abstract class BaseZone : IZone, IDisposable
             CompositeEffectId = typeDefinition.CompositeEffectId,
             InteractRange = typeDefinition.InteractRange,
             CursorId = typeDefinition.CursorId,
-            Static = true,
             Visible = true
         };
 
@@ -812,9 +873,6 @@ public abstract class BaseZone : IZone, IDisposable
 
                 foreach (var entity in _entities)
                 {
-                    if (entity.Value is Npc { Static: true })
-                        continue;
-
                     entity.Value.UpdateEveryTick();
                 }
             }
@@ -833,9 +891,6 @@ public abstract class BaseZone : IZone, IDisposable
             {
                 foreach (var entity in _entities)
                 {
-                    if (entity.Value is Npc { Static: true })
-                        continue;
-
                     entity.Value.UpdateEverySecond();
                 }
             }
@@ -870,5 +925,7 @@ public abstract class BaseZone : IZone, IDisposable
 
         _npcs.Clear();
         _players.Clear();
+
+        _scriptManager.DeleteContext(this);
     }
 }

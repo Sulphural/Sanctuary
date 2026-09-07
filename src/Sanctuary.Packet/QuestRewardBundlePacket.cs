@@ -1,11 +1,11 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 using Sanctuary.Core.IO;
 
 namespace Sanctuary.Packet;
 
-// op50 (RewardBase family) sub 1: the reward-earned celebration (coins + XP fly-in with sound) sent after a quest turn-in. Distinct from BaseRewardPacket.RewardBundlePacket (collection-node pickup toast) - same opcode family, different body shape.
-public class QuestRewardBundlePacket : BaseRewardPacket, ISerializablePacket
+// op50 (RewardBase family) sub 1: the reward-earned celebration (coins + XP fly-in with sound) sent after a quest turn-in. Distinct from RewardBasePacket.RewardBundlePacket (collection-node pickup toast) - same opcode family, different body shape.
+public class QuestRewardBundlePacket : RewardBasePacket, ISerializablePacket
 {
     public const byte SubOpCode = 1;
 
