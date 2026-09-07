@@ -63,9 +63,17 @@ public sealed class QuestManager : IQuestManager
             if (goal.Type == QuestGoalType.Collect)
                 continue;
 
+            if (goal.IsCountedTalk)
+            {
+                if (TryCreditCountedTalk(player, activeQuest, done, npc))
+                    return;
+
+                continue;
+            }
+
             if (GoalTargetGuid(activeQuest, done) == npc.Guid)
             {
-                CompleteGoal(player, activeQuest, done);
+                CompleteGoal(player, activeQuest, done, npc.Guid);
                 return;
             }
         }
@@ -244,6 +252,7 @@ public sealed class QuestManager : IQuestManager
         player.Quests[questId] = false;
         player.QuestGoalProgress.Remove(questId); // fresh accept starts on the first goal
         player.QuestCollectProgress.Remove(questId); // and with no collect progress
+        ClearTalkProgress(player, quest);
         player.ActiveQuestId = questId; // a freshly accepted quest becomes the tracked one
         player.LastQuestAcceptedAt = DateTime.UtcNow; // guards against a stray post-accept QuestAbandon
 
@@ -286,6 +295,7 @@ public sealed class QuestManager : IQuestManager
 
         player.Quests[questId] = true;
         player.QuestCollectProgress.Remove(questId);
+        ClearTalkProgress(player, quest);
         UpdateCharacterQuest(player, questId, q => q.Completed = true);
 
         player.SendTunneled(new QuestCompletePacket { QuestId = questId });
@@ -336,6 +346,8 @@ public sealed class QuestManager : IQuestManager
 
         player.Quests.Remove(questId);
         player.QuestCollectProgress.Remove(questId);
+        ClearTalkProgress(player, quest);
+        QuestDialogue.Clear(player);
 
         using (var db = _dbContextFactory.CreateDbContext())
         {
@@ -517,8 +529,104 @@ public sealed class QuestManager : IQuestManager
         return items;
     }
 
+    // Credits one NPC toward a counted TalkToNpc goal - the "talk to N of these interchangeable NPCs"
+    // shape retail authors as a single plural tracker row, which can't be modelled as one goal per NPC
+    // because there is only one goal string to name the rows with. Returns true when this NPC belonged
+    // to the goal, so the caller stops scanning the player's quests.
+    private bool TryCreditCountedTalk(Player player, QuestDefinition quest, int goalIndex, Npc npc)
+    {
+        var goal = quest.EffectiveGoals[goalIndex];
+
+        if (!goal.AllTalkTargetGuids().Contains(npc.Guid))
+            return false;
+
+        // Each NPC counts once; their line still replays so a re-talk isn't a silent no-op.
+        bool alreadyCredited = !player.TalkedQuestNpcs.Add(npc.Guid);
+
+        if (!alreadyCredited)
+            RefreshQuestNotification(player, npc.Guid);
+
+        int required = goal.RequiredCount;
+        int count = player.QuestCollectProgress.TryGetValue(quest.QuestId, out var c) ? c : 0;
+
+        if (!alreadyCredited)
+            count++;
+
+        if (!alreadyCredited && count >= required)
+        {
+            player.QuestCollectProgress.Remove(quest.QuestId);
+            ClearTalkProgress(player, goal);
+            CompleteGoal(player, quest, goalIndex, npc.Guid);
+            return true;
+        }
+
+        if (!alreadyCredited)
+        {
+            player.QuestCollectProgress[quest.QuestId] = count;
+
+            player.SendTunneled(new QuestObjectiveUpdatePacket
+            {
+                QuestId = quest.QuestId,
+                ObjectiveId = goal.NameId,
+                CurrentCount = count,
+                CompletedPercentage = (float)count / required
+            });
+
+            PersistCollectCount(player, quest.QuestId, count);
+        }
+
+        QuestDialogue.Begin(player, goal.ConversationFor(npc.Guid), npc.Guid);
+
+        // Re-point the marker at the nearest target the player hasn't reached yet.
+        RefreshObjectiveTarget(player);
+        return true;
+    }
+
+    // Forgets which of a counted talk goal's NPCs this player has spoken to, so the step starts clean
+    // on accept/abandon and can't leak credit into a later re-run of the same quest.
+    private static void ClearTalkProgress(Player player, QuestGoal goal)
+    {
+        foreach (var guid in goal.AllTalkTargetGuids())
+            player.TalkedQuestNpcs.Remove(guid);
+    }
+
+    private static void ClearTalkProgress(Player player, QuestDefinition quest)
+    {
+        foreach (var goal in quest.EffectiveGoals)
+            if (goal.IsCountedTalk)
+                ClearTalkProgress(player, goal);
+    }
+
+    // Nearest of a counted talk goal's NPCs this player hasn't spoken to yet, or 0 when they have all
+    // been credited (or none are in this zone) - in which case the caller falls back to the static target.
+    private static ulong NearestUntalkedTarget(Player player, QuestGoal goal)
+    {
+        ulong nearest = 0;
+        var best = float.MaxValue;
+
+        foreach (var guid in goal.AllTalkTargetGuids())
+        {
+            if (player.TalkedQuestNpcs.Contains(guid))
+                continue;
+
+            if (!player.Zone.TryGetNpc(guid, out var npc))
+                continue;
+
+            var dx = npc.Position.X - player.Position.X;
+            var dz = npc.Position.Z - player.Position.Z;
+            var distance = dx * dx + dz * dz;
+
+            if (distance < best)
+            {
+                best = distance;
+                nearest = guid;
+            }
+        }
+
+        return nearest;
+    }
     // Ticks off goalIndex, then activates the next goal or hands in the quest if it was the last one.
-    private void CompleteGoal(Player player, QuestDefinition quest, int goalIndex)
+    private void CompleteGoal(Player player, QuestDefinition quest, int goalIndex, ulong spokenBy = 0)
     {
         var goals = quest.EffectiveGoals;
 
@@ -563,23 +671,11 @@ public sealed class QuestManager : IQuestManager
 
         // Only TalkToNpc goals get a reply bubble - other goal types fire from field events with no NPC to camera-focus.
         var completedGoal = goals[goalIndex];
-        if (completedGoal.DialogueId != 0 && completedGoal.Type == QuestGoalType.TalkToNpc)
+        if (completedGoal.Type == QuestGoalType.TalkToNpc)
         {
-            var dialog = new CommandPacketShowDialog
-            {
-                DialogueTextId = completedGoal.DialogueId,
-                NpcGuid = GoalTargetGuid(quest, goalIndex),
-                CameraFocusParam = 1f,
-            };
+            var speaker = spokenBy != 0 ? spokenBy : GoalTargetGuid(quest, goalIndex);
 
-            dialog.Responses.Add(new CommandPacketShowDialog.Response
-            {
-                Id = 1,
-                LabelTextId = YouGotItTextId, // "You got it!"
-                Param1 = GreenCheckImageId,   // node+0x14 -> button icon = green checkmark (confirmed in-game)
-                Param2 = GreenButtonImageSet, // node+0x18 -> button skin = "dialog green button" imageSet
-            });
-            player.SendTunneled(dialog);
+            QuestDialogue.Begin(player, completedGoal.ConversationFor(speaker), speaker);
         }
     }
 
@@ -732,6 +828,16 @@ public sealed class QuestManager : IQuestManager
             var nearest = NearestUncollectedPickup(player, quest.QuestId, goalIndex);
             if (nearest is not null)
                 return nearest.Guid;
+        }
+
+        // A counted talk goal has several interchangeable NPCs: point at the nearest one this player
+        // hasn't spoken to yet, so the marker walks them round the remaining targets instead of staying
+        // pinned on the first, already-credited one.
+        if (goalIndex >= 0 && goalIndex < goals.Count && goals[goalIndex].IsCountedTalk)
+        {
+            var untalked = NearestUntalkedTarget(player, goals[goalIndex]);
+            if (untalked != 0)
+                return untalked;
         }
 
         return GoalTargetGuid(quest, goalIndex);

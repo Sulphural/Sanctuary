@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Sanctuary.Game.Quests;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common.Attributes;
 
@@ -27,6 +28,11 @@ public static class PacketDialogResponseHandler
             _logger.LogError("Failed to deserialize {packet}.", nameof(PacketDialogResponse));
             return false;
         }
+
+        // A multi-turn conversation plays its next line here; the teardown is held back until the
+        // exchange actually runs out of turns, or the dialog would close after the first bubble.
+        if (QuestDialogue.TryAdvance(connection.Player))
+            return true;
 
         connection.Player.SendTunneled(new CommandPacketEndDialog());
         return true;

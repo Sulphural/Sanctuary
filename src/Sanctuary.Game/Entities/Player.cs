@@ -12,6 +12,7 @@ using Sanctuary.Core.IO;
 using Sanctuary.Game.ChatCommands;
 using Sanctuary.Game.Helpers;
 using Sanctuary.Game.Interactions;
+using Sanctuary.Game.Resources.Definitions;
 using Sanctuary.Game.Resources.Definitions.Combat;
 using Sanctuary.Game.Zones;
 using Sanctuary.Packet;
@@ -80,6 +81,18 @@ public sealed class Player : ClientPcData, IEntity
 
     // Collect pickups this player has already gathered (shared world objects, hidden per-player).
     public HashSet<ulong> CollectedPickups { get; } = new();
+
+    // NPCs this player has already been credited for on a counted TalkToNpc goal.
+    public HashSet<ulong> TalkedQuestNpcs { get; } = new();
+
+    // Remaining turns of the conversation currently on screen, and the NPC speaking them.
+    public Queue<QuestDialogueLine> PendingDialogue { get; } = new();
+    public ulong PendingDialogueNpcGuid { get; set; }
+
+    // The NPC currently playing its talk gesture, and a ticket so a later gesture supersedes an
+    // earlier one's pending reset instead of being cut short by it.
+    public ulong TalkingNpcGuid { get; set; }
+    public int TalkAnimationTicket { get; set; }
 
     // The quest currently tracked (the objective arrow points at this quest). 0 = none.
     public int ActiveQuestId { get; set; }
