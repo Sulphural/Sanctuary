@@ -38,9 +38,6 @@ public static class CommandPacketInteractionSelectHandler
 
         _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(CommandPacketInteractionSelect), packet);
 
-        // An NPC's menu is built per interact, so its option ids only mean anything against the list
-        // we just sent this player - resolve those before falling through to the globally registered
-        // player-to-player interactions.
         if (connection.Player.OpenInteractionMenu is { } menu
             && menu.Guid == packet.Guid
             && menu.Options.TryGetValue(packet.Id, out var action))
@@ -81,7 +78,6 @@ public static class CommandPacketInteractionSelectHandler
         return true;
     }
 
-    // The select path resolves by guid, so without this a selection could land from across the map.
     private static bool IsInInteractRange(Player player, Npc npc)
     {
         var playerPosition = new Vector3(player.Position.X, player.Position.Y, player.Position.Z);

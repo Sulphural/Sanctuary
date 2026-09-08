@@ -16,8 +16,6 @@ public sealed class CollectionNodeTypeDefinition
     public float PlacementYOffset { get; set; }
     public List<CollectionNodeDropDefinition> DropTable { get; set; } = [];
 
-    // A node with no drop table grants nothing when gathered - it exists only to raise the gather
-    // event, which is how a quest objective collectible is modelled.
     public bool HasDrop => DropTable.Count > 0;
 
     private WeightedDropTable<CollectionNodeDropDefinition>? _table;

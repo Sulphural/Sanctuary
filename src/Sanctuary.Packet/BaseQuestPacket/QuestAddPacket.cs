@@ -76,9 +76,6 @@ public class QuestAddPacket : BaseQuestPacket, ISerializablePacket
         return writer.Buffer;
     }
 
-    // The journal row carries an inert, empty reward bundle. The real reward is sent separately by
-    // QuestInfoPacket (offer) and QuestEndPacket (turn-in), so every scalar here stays at the value
-    // this packet has always sent.
     private static void WriteEmptyRewardBundle(PacketWriter writer)
     {
         new RewardBundleBase

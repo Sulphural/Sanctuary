@@ -11,7 +11,6 @@ internal sealed class ZoneUserData(IScriptableZone zone) : ILuaUserData
 
     public LuaTable? Metatable { get; set; } = SharedMetatable;
 
-    // We weakly cache the wrappers so that we don't have to manually evict them when zones are unloaded.
     private static readonly ConditionalWeakTable<IScriptableZone, ZoneUserData> Cache = new();
     public static ZoneUserData GetOrCreate(IScriptableZone zone)
         => Cache.GetValue(zone, static z => new ZoneUserData(z));

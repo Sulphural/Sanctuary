@@ -31,7 +31,6 @@ public static class PlayerUpdatePacketUpdatePositionHandler
             return false;
         }
 
-        // _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(PlayerUpdatePacketUpdatePosition), packet);
 
         packet.Guid = connection.Player.Guid;
 

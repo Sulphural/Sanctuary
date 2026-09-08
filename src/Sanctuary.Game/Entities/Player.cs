@@ -58,47 +58,32 @@ public sealed class Player : ClientPcData, IEntity
     public ConcurrentSet<ulong> IncomingFriendRequests { get; } = [];
     public ConcurrentSet<ulong> IncomingGuildInvites { get; } = [];
 
-    // --- Quests ---
 
-    // Database character id, used to persist quest state (DbCharacterQuest).
     public ulong CharacterId { get; set; }
 
-    // The NPC the player most recently interacted with, and when (gates quest offer/turn-in).
     public ulong LastInteractNpcGuid { get; set; }
     public DateTime LastInteractAt { get; set; }
 
-    // When the player last accepted a quest; used to ignore a stray abandon fired right after accept.
     public DateTime LastQuestAcceptedAt { get; set; }
 
-    // QuestId -> completed. Presence in the map means the quest has been accepted.
     public Dictionary<int, bool> Quests { get; } = new();
 
-    // QuestId -> goals completed so far (goals tick off in order).
     public Dictionary<int, int> QuestGoalProgress { get; } = new();
 
-    // QuestId -> collect count for the active Collect goal (in-memory; a relog restarts it).
     public Dictionary<int, int> QuestCollectProgress { get; } = new();
 
-    // NPCs this player has already been credited for on a counted TalkToNpc goal.
     public HashSet<ulong> TalkedQuestNpcs { get; } = new();
 
-    // Remaining turns of the conversation currently on screen, and the NPC speaking them.
     public Queue<QuestDialogueLine> PendingDialogue { get; } = new();
     public ulong PendingDialogueNpcGuid { get; set; }
 
-    // The NPC currently playing its talk gesture, and a ticket so a later gesture supersedes an
-    // earlier one's pending reset instead of being cut short by it.
     public ulong TalkingNpcGuid { get; set; }
     public int TalkAnimationTicket { get; set; }
 
-    // The quest currently tracked (the objective arrow points at this quest). 0 = none.
     public int ActiveQuestId { get; set; }
 
-    // Quest turn-in finalization, invoked once when the client confirms the end screen.
     public System.Action? PendingQuestEndAction { get; set; }
 
-    // Sends a "+XP" popup for the active profile (visual only - this codebase has no job-leveling
-    // system yet, so there's no level bar to actually advance).
     public void AwardXp(int xp)
     {
         SendTunneled(new ClientUpdatePacketUpdateProfileExperience
@@ -188,7 +173,7 @@ public sealed class Player : ClientPcData, IEntity
         DateTimeOffset? mutedUntil = MutedUntil;
         return mutedUntil.HasValue && mutedUntil > currentTime;
     }
-    
+
     public void Disconnect()
     {
         _connection.Disconnect();
@@ -284,11 +269,9 @@ public sealed class Player : ClientPcData, IEntity
 
         Zone.TryRemovePlayer(Guid);
 
-        // Add to new zone/zonetile
 
         zone.TryAddPlayer(this);
 
-        // Teleport to new zone
 
         Visible = false;
 
@@ -373,8 +356,6 @@ public sealed class Player : ClientPcData, IEntity
 
             var playerUpdatePacketAddNpc = npc.GetAddNpcPacket();
 
-            // AddNpc's own NotificationImageSetId also needs the per-player quest badge, not just the
-            // NotificationInfo packet below.
             playerUpdatePacketAddNpc.NotificationImageSetId = GetNotificationImageId(npc);
 
             SendTunneled(playerUpdatePacketAddNpc);
@@ -402,7 +383,6 @@ public sealed class Player : ClientPcData, IEntity
 
         foreach (var npc in npcs)
         {
-            // Per-player quest badge overrides the NPC's static Notification (e.g. a vendor badge).
             var questImageId = GetNotificationImageId(npc);
             if (questImageId != 0)
             {
@@ -428,8 +408,6 @@ public sealed class Player : ClientPcData, IEntity
             VisibleNpcs.TryAdd(npc.Guid, npc);
     }
 
-    // Per-player quest badge: "!" if a quest here is offerable, "?" if an active quest turns in here,
-    // else the NPC's static badge.
     public int GetNotificationImageId(Npc npc)
     {
         var quests = _resourceManager.Quests;
@@ -610,7 +588,6 @@ public sealed class Player : ClientPcData, IEntity
 
         var compositeEffectId = clientItemDefinition.CompositeEffectId;
 
-        // Update the Weapon composite effect if we have a Flair Shard equipped.
         if (slot == 7)
         {
             var flairShardcompositeEffectId = GetFlairShardCompositeEffect();
@@ -667,7 +644,6 @@ public sealed class Player : ClientPcData, IEntity
             IsMember = MembershipStatus != 0,
             IsReferee = isReferee,
 
-            // playerUpdatePacketAddPc.TemporaryAppearance = 277;
 
             ActiveProfileId = ActiveProfileId,
 
@@ -760,7 +736,6 @@ public sealed class Player : ClientPcData, IEntity
         SendTunneled(setDefinition);
 
         MaxEnergy = kit.Energy.Max;
-        // Resync energy against the new max.
         Energy = _energy;
 
         return true;
@@ -856,7 +831,7 @@ public sealed class Player : ClientPcData, IEntity
 
     public void Dispose()
     {
-        RemoveFromVisibleEntities(false); // no need to notify self since we're DCing
+        RemoveFromVisibleEntities(false);
 
         Mount?.Dispose();
         Mount = null;
@@ -865,15 +840,10 @@ public sealed class Player : ClientPcData, IEntity
         Zone.TryRemovePlayer(Guid);
     }
 
-    // The NPC radial menu currently on this player's screen. The client answers with the id we gave
-    // the option, which is meaningless without the list that produced it, so the actions are held
-    // here until the reply arrives or the next menu opens.
     public sealed record InteractionMenu(ulong Guid, IReadOnlyDictionary<int, Action<Player>> Options);
 
     public InteractionMenu? OpenInteractionMenu { get; set; }
 
-    // Option ids live well above IInteraction.UniqueId (a small counter over the handful of
-    // registered player-to-player interactions), so a menu id can never be mistaken for one.
     private const int NpcInteractionIdBase = 1_000_000;
 
     public void SendInteractionMenu(Npc npc, IReadOnlyList<NpcInteractionOption> options)

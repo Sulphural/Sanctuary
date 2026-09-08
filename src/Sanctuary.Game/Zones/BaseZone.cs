@@ -70,8 +70,6 @@ public abstract class BaseZone : IZone, IDisposable
     public IScriptManager ScriptManager => _scriptManager;
     public ScriptRuntime ScriptRuntime => _scriptRuntime;
 
-    // Null when there's no Resources/Maps/<Name>.map file for this zone - callers fall back to a
-    // straight line when this is null.
     public Pathfinder<MapNode>? Pathfinder { get; }
 
     protected BaseZone(BaseZoneDefinition zoneDefinition, IServiceProvider serviceProvider)
@@ -100,7 +98,6 @@ public abstract class BaseZone : IZone, IDisposable
         Task.Factory.StartNew(UpdateEveryTickAsync, _cancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         Task.Factory.StartNew(UpdateEverySecondAsync, _cancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
-        // Just in case we don't actually have the `.map` file for a particular zone.
         if (_resourceManager.Maps.TryGetValue(Name, out var mapGraph))
             Pathfinder = new Pathfinder<MapNode>(mapGraph.Nodes, _logger);
     }
@@ -114,8 +111,6 @@ public abstract class BaseZone : IZone, IDisposable
         ActivateCollectionNodePools();
     }
 
-    // Spawns Quests.json Collect-goal pickups; must be called from the zone script's onStart
-    // (spawnQuestCollectibles) or the pickups never appear.
     public virtual void OnClientIsReady(Player player)
     {
     }
@@ -132,8 +127,6 @@ public abstract class BaseZone : IZone, IDisposable
     {
         if (_scriptManager.GetOrCreateContext(this, out var context))
         {
-            // Fresh context. Attach all scripts defined in the zone definition.
-            // We can't use `LoadScriptInBackground` here because we need to ensure that any `onStart` handlers are fully loaded.
             foreach (var script in _scripts)
                 context.LoadScript(Path.Combine("Zone", script + ".lua"));
         }
@@ -633,7 +626,6 @@ public abstract class BaseZone : IZone, IDisposable
     {
         var tiles = new Dictionary<int, ZoneTile>();
 
-        // Generate all tiles
         for (var longitude = _zoneDefinition.StartLongitude; longitude < _zoneDefinition.EndLongitude; longitude++)
         {
             for (var latitude = _zoneDefinition.StartLatitude; latitude < _zoneDefinition.EndLatitude; latitude++)
@@ -644,7 +636,6 @@ public abstract class BaseZone : IZone, IDisposable
             }
         }
 
-        // Calcualte visible tiles
         for (var rootLongitude = _zoneDefinition.StartLongitude; rootLongitude < _zoneDefinition.EndLongitude; rootLongitude++)
         {
             for (var rootLatitude = _zoneDefinition.StartLatitude; rootLatitude < _zoneDefinition.EndLatitude; rootLatitude++)

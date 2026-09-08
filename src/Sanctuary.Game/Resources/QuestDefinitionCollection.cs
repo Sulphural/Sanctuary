@@ -16,7 +16,6 @@ public class QuestDefinitionCollection
 
     public ConcurrentDictionary<int, QuestDefinition> Quests { get; } = new();
 
-    // NPC guid -> the quests it offers, and the quests it is a goal target or turn-in for.
     public ConcurrentDictionary<ulong, List<int>> ByGiver { get; } = new();
     public ConcurrentDictionary<ulong, List<int>> ByTarget { get; } = new();
 
@@ -27,8 +26,6 @@ public class QuestDefinitionCollection
 
     public bool TryGet(int questId, out QuestDefinition definition) => Quests.TryGetValue(questId, out definition!);
 
-    // The hover cursor this NPC should carry, from the first goal that names one. Without a cursor
-    // the client is never told the NPC is clickable.
     public bool TryGetNpcCursorId(ulong npcGuid, out byte cursorId)
     {
         cursorId = 0;
@@ -142,8 +139,6 @@ public class QuestDefinitionCollection
 
         foreach (var goal in quest.Goals)
         {
-            // Intermediate goals can point at NPCs that are neither the giver nor the turn-in target, and
-            // every NPC of a counted talk goal has to be clickable, so index them all.
             foreach (var targetGuid in goal.AllTalkTargetGuids())
             {
                 var questIds = ByTarget.GetOrAdd(targetGuid, _ => []);
@@ -152,12 +147,9 @@ public class QuestDefinitionCollection
                     questIds.Add(quest.QuestId);
             }
 
-            // NameId doubles as the client's objective row key, so duplicates make goals indistinguishable.
             if (!goalNameIds.Add(goal.NameId))
                 _logger.LogWarning("Duplicate goal NameId {nameId} on quest {id} in \"{file}\".", goal.NameId, quest.QuestId, filePath);
 
-            // A collect goal is credited by gathering collection nodes, so it needs both the node
-            // type to watch and a count to reach.
             if (goal.Type == QuestGoalType.Collect)
             {
                 if (string.IsNullOrEmpty(goal.CollectNodeType))

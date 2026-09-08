@@ -52,11 +52,6 @@ public class Npc : IScriptableNpc, IEntity
 
     public float Scale { get; set; }
 
-    /// <summary>
-    /// 0 - Hostile
-    /// 1 - Neutral
-    /// 2 - Ally
-    /// </summary>
     public int Disposition { get; set; } = 1;
 
     public int Animation { get; set; } = 1;
@@ -242,19 +237,18 @@ public class Npc : IScriptableNpc, IEntity
 
             InteractRange = InteractRange,
 
-            WalkAnimId = default, // Walk GroupAnimId
-            RunAnimId = default, // Sprint GroupAnimId
-            StandAnimId = default, // Idle GroupAnimId
+            WalkAnimId = default,
+            RunAnimId = default,
+            StandAnimId = default,
 
             Unknown33 = default,
             Unknown34 = default,
 
             SubTextNameId = SubTextNameId,
 
-            Unknown36 = default, // AnimationEvent
+            Unknown36 = default,
             TemporaryAppearance = default,
 
-            // playerUpdatePacketAddNpc.EffectTags = TODO
 
             Unknown38 = default,
             Unknown39 = default,
@@ -264,7 +258,6 @@ public class Npc : IScriptableNpc, IEntity
 
             HasTilt = default,
 
-            // playerUpdatePacketAddNpc.Customization = TODO
 
             Tilt = default,
 
@@ -294,9 +287,6 @@ public class Npc : IScriptableNpc, IEntity
             Unknown57 = default,
             Unknown58 = default,
 
-            // playerUpdatePacketAddNpc.Head = TODO
-            // playerUpdatePacketAddNpc.Hair = TODO
-            // playerUpdatePacketAddNpc.ModelCustomization = TODO
 
             ReplaceTerrainObject = default,
 
@@ -356,7 +346,6 @@ public class Npc : IScriptableNpc, IEntity
     {
         if (Zone.ScriptManager.GetOrCreateContext(this, out var context))
         {
-            // Fresh context. Load all attached scripts into it.
             foreach (var scriptName in _scripts)
                 context.LoadScriptInBackground(Path.Combine("Npc", scriptName + ".lua"));
         }
@@ -394,7 +383,6 @@ public class Npc : IScriptableNpc, IEntity
 
     #region Scripting API
 
-    // Explicit interface implementation needed here to avoid exposing all of IZone to the scripting layer.
     IScriptableZone IScriptableNpc.Zone => Zone;
 
     (float x, float y, float z) IScriptableNpc.Position => (Position.X, Position.Y, Position.Z);
@@ -429,7 +417,7 @@ public class Npc : IScriptableNpc, IEntity
     {
         MoveTo(new Vector3(x, y, z), direct);
     }
-    
+
     #endregion
 
     public virtual void Dispose()

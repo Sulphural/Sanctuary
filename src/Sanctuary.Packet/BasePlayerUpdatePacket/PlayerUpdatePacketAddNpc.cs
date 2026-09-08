@@ -40,11 +40,6 @@ public class PlayerUpdatePacketAddNpc : BasePlayerUpdatePacket, ISerializablePac
 
     public bool HasAttachments;
 
-    /// <summary>
-    /// 0 - Hostile
-    /// 1 - Neutral
-    /// 2 - Ally
-    /// </summary>
     public int Disposition;
 
     public int Animation;
@@ -93,8 +88,8 @@ public class PlayerUpdatePacketAddNpc : BasePlayerUpdatePacket, ISerializablePac
     public int Unknown39;
 
     public bool Unknown40;
-    public bool Unknown41; // Health bar
-    public bool Unknown42; // Collision?
+    public bool Unknown41;
+    public bool Unknown42;
 
     public bool HasTilt;
 
@@ -103,8 +98,6 @@ public class PlayerUpdatePacketAddNpc : BasePlayerUpdatePacket, ISerializablePac
     [JsonConverter(typeof(Vector4JsonConverter))]
     public Vector4 Tilt;
 
-    // ARGB int32 (client m_nNameColor) — a static nameplate color; 0 lets the client's disposition
-    // resolver pick the color.
     public int NameColor;
 
     public int AreaDefinitionId;
@@ -115,15 +108,10 @@ public class PlayerUpdatePacketAddNpc : BasePlayerUpdatePacket, ISerializablePac
 
     public ulong RiderGuid;
 
-    // 0 - None
-    // 1 - Controller
-    // 2 - Physics
     public int MovementType;
 
     public float Unknown51;
 
-    // public Target Target;
-    // public CharacterVariables Variables;
 
     public int Unknown52;
 
@@ -142,22 +130,15 @@ public class PlayerUpdatePacketAddNpc : BasePlayerUpdatePacket, ISerializablePac
     public string Hair = null!;
     public string ModelCustomization = null!;
 
-    /// <summary>
-    /// Replaces the terrain object based on the model id.
-    /// </summary>
     public bool ReplaceTerrainObject;
 
     public int Unknown63;
     public int Unknown64;
 
-    /// <summary>
-    /// Fly-by composite effect id
-    /// </summary>
     public int FlyByEffectId;
 
     public int ActiveProfile;
 
-    // The NPC's notification badge (e.g. quest "!"/"?"); per-player badges are set via Player.OnAddVisibleNpcs instead, not on the shared Npc entity.
     public int NotificationImageSetId;
     public int Unknown68;
 
@@ -272,9 +253,9 @@ public class PlayerUpdatePacketAddNpc : BasePlayerUpdatePacket, ISerializablePac
 
         writer.Write(Unknown51);
 
-        writer.Write(0); // Target
+        writer.Write(0);
 
-        writer.Write(0); // CharacterVariables
+        writer.Write(0);
 
         writer.Write(Unknown52);
 

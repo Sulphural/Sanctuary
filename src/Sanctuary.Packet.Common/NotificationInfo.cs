@@ -2,7 +2,6 @@ using Sanctuary.Core.IO;
 
 namespace Sanctuary.Packet.Common;
 
-// op35/sub10 AddNotifications, byte-exact vs a real 2014 capture: Combat=true is the short 14-byte form (red crossed-swords badge); Combat=false is the full form used for other notification types (e.g. quest "!"/"?").
 public class NotificationInfo : ISerializableType
 {
     public ulong Guid { get; set; }

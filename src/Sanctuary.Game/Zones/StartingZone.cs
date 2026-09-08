@@ -88,7 +88,6 @@ public sealed class StartingZone : BaseZone
 
         UpdateFriendStatus(player);
 
-        // Replay in-progress quest state and show the "!"/"?" badges on quest NPCs.
         _questManager.RestoreJournal(player);
 
         foreach (var npc in Npcs)
@@ -96,8 +95,6 @@ public sealed class StartingZone : BaseZone
             if (!_questManager.IsQuestNpc(npc.Guid))
                 continue;
 
-            // Without a cursor the client is never told the NPC is clickable: both relevance paths
-            // (here and Player's initial sweep) skip a CursorId of 0.
             if (_resourceManager.Quests.TryGetNpcCursorId(npc.Guid, out var cursorId))
                 npc.CursorId = cursorId;
 
@@ -142,7 +139,6 @@ public sealed class StartingZone : BaseZone
 
         clientUpdatePacketUpdateStat.Guid = player.Guid;
 
-        // TODO
         clientUpdatePacketUpdateStat.Stats.AddRange(
         [
             new CharacterStat(CharacterStatId.MaxHealth, 2500),
@@ -308,8 +304,6 @@ public sealed class StartingZone : BaseZone
 
     private void SendAdventurersJournalInfo(Player player)
     {
-        // DO NOT REMOVE even if it's not fully implemented. This packet is needed
-        // due to an Area Definition called "Newbiezone" in FabledRealmsAreas.xml.
 
         var adventurersJournal = new AdventurersJournalInfoPacket();
 
@@ -962,47 +956,47 @@ public sealed class StartingZone : BaseZone
         {
             new PlayerCustomizationData
             {
-                Id = 0, // Head
+                Id = 0,
                 Param = player.HeadId,
                 StringParam = player.Head
             },
             new PlayerCustomizationData
             {
-                Id = 1, // Skin Tone
+                Id = 1,
                 Param = player.SkinToneId,
                 StringParam = player.SkinTone
             },
             new PlayerCustomizationData
             {
-                Id = 2, // Hair
+                Id = 2,
                 Param = player.HairId,
                 StringParam = player.Hair
             },
             new PlayerCustomizationData
             {
-                Id = 3, // Hair Color
+                Id = 3,
                 Param = player.HairColor
             },
             new PlayerCustomizationData
             {
-                Id = 4, // Eye Color
+                Id = 4,
                 Param = player.EyeColor
             },
             new PlayerCustomizationData
             {
-                Id = 5, // Model Customization
+                Id = 5,
                 Param = player.ModelCustomizationId,
                 StringParam = player.ModelCustomization
             },
             new PlayerCustomizationData
             {
-                Id = 6, // Face Paint
+                Id = 6,
                 Param = player.FacePaintId,
                 StringParam = player.FacePaint
             },
             new PlayerCustomizationData
             {
-                Id = 8, // Model
+                Id = 8,
                 Param = player.Model
             }
         };
@@ -1081,21 +1075,8 @@ public sealed class StartingZone : BaseZone
 
         player.SendTunneled(packetInGamePurchaseStoreBundleGroups);
 
-        /* var inGamePurchaseUpdateSaleDisplay = new InGamePurchaseUpdateSaleDisplay();
 
-        inGamePurchaseUpdateSaleDisplay.Sales.Add(new SaleDisplayInfo
-        {
-            Id = 12951,
-            IconId = 7866,
-            TintId = 0,
-            TitleId = 824,
-            BodyId = 825,
-            SecondsLeft = 1000,
-            Unknown = 0,
-            IsMembership = false
-        });
 
-        player.SendTunneled(inGamePurchaseUpdateSaleDisplay); */
     }
 
     private void SendFriendList(Player player)

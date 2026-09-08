@@ -250,8 +250,6 @@ public class ResourceManager : IResourceManager
 
         foreach (var table in RewardTables.Values)
         {
-            // NOTE: We may need to fiddle with this if we ever extend past just items and currencies,
-            // though isn't everything technically an item? Didn't think that far ahead.
             if (table.DropTable.OfType<ItemRewardDropDefinition>().Any(drop => !ClientItemDefinitions.ContainsKey(drop.ItemDefinitionId)))
             {
                 _logger.LogError("Reward table {key} references an unknown item definition.", table.Key);

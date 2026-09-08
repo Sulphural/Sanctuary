@@ -38,10 +38,9 @@ public class GatewayConnection : UdpConnection
 
     private ICipher _cipher;
 #pragma warning disable CS0649
-    private bool _useEncryption; // Hardcoded in the client.
+    private bool _useEncryption;
 #pragma warning restore CS0649
 
-    // Player will only be null during login.
     public Player Player { get; private set; } = null!;
 
     public string Locale { get; set; } = "en_US";
@@ -73,7 +72,6 @@ public class GatewayConnection : UdpConnection
 
         _logger.LogInformation("{connection} disconnected. {reason}", this, reason);
 
-        // Just in case check if player is null.
         if (Player is null)
             return;
 
@@ -109,9 +107,6 @@ public class GatewayConnection : UdpConnection
 
         bool handled;
 
-        // The try-catch here only applies to release mode, where we don't want an unhandled
-        // exception in a single packet to crash the entire server.
-        // Crashing is fine in debug mode; that way it's not missed and we can fix it properly.
 
 #if !DEBUG
         try
@@ -215,7 +210,6 @@ public class GatewayConnection : UdpConnection
 
         Player = player;
 
-        // Start - ClientPcData
 
         Player.Model = dbCharacter.Model;
 
@@ -378,12 +372,10 @@ public class GatewayConnection : UdpConnection
             });
         }
 
-        // TODO
 
-        // Start - Store on DB
         var clientActionBar = new ClientActionBar();
 
-        clientActionBar.Id = 2; // ItemActionBar
+        clientActionBar.Id = 2;
 
         clientActionBar.Slots.Add(0, new ActionBarSlot() { IsEmpty = true });
         clientActionBar.Slots.Add(1, new ActionBarSlot() { IsEmpty = true });
@@ -391,7 +383,6 @@ public class GatewayConnection : UdpConnection
         clientActionBar.Slots.Add(3, new ActionBarSlot() { IsEmpty = true });
 
         Player.ActionBars.Add(clientActionBar.Id, clientActionBar);
-        // End - Store on DB
 
         foreach (var dbTitle in dbCharacter.Titles)
         {
@@ -405,7 +396,6 @@ public class GatewayConnection : UdpConnection
 
         Player.VipRank = dbCharacter.VipRank;
 
-        // End ClientPcData
 
         Player.ChatBubbleForegroundColor = dbCharacter.ChatBubbleForegroundColor;
         Player.ChatBubbleBackgroundColor = dbCharacter.ChatBubbleBackgroundColor;
@@ -517,7 +507,6 @@ public class GatewayConnection : UdpConnection
             return;
         }
 
-        // Start - ClientPcData
 
         Vector4 position;
         Quaternion rotation;
@@ -547,7 +536,6 @@ public class GatewayConnection : UdpConnection
         if (dbCharacter.LastLogin.HasValue)
             dbCharacter.PlayTime += (int)(DateTimeOffset.UtcNow - dbCharacter.LastLogin.Value).TotalMinutes;
 
-        // End ClientPcData
 
         dbCharacter.ChatBubbleForegroundColor = Player.ChatBubbleForegroundColor;
         dbCharacter.ChatBubbleBackgroundColor = Player.ChatBubbleBackgroundColor;
@@ -620,8 +608,6 @@ public class GatewayConnection : UdpConnection
             .Select(item => item.Definition)
             .ToHashSet();
 
-        // TODO: Include persisted non-inventory progress here when direct collections such as
-        // adventure coins have a database representation.
         Player.Collections = _resourceManager.Collections.CreateClientCollections(Player.Guid, ownedItemDefinitionIds);
 
         var packetSendSelfToClient = new PacketSendSelfToClient();

@@ -55,7 +55,6 @@ public static class CommandPacketInteractRequestHandler
             return HandleCollectionNode(connection, collectionNode);
 
 
-        // Quest givers / turn-in targets route to the quest manager (offer, advance, or turn in).
         if (entity is Npc npc && _questManager.IsQuestNpc(npc.Guid))
         {
             connection.Player.LastInteractNpcGuid = npc.Guid;
@@ -87,8 +86,6 @@ public static class CommandPacketInteractRequestHandler
 
         try
         {
-            // A node with no drop table exists only to raise the gather event (quest objective
-            // collectibles), so there is no item to roll, persist or announce.
             if (!node.TypeDefinition.HasDrop)
             {
                 node.CompleteCollection();

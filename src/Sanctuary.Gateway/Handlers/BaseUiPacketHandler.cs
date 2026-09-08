@@ -9,7 +9,6 @@ using Sanctuary.Packet.Common.Attributes;
 
 namespace Sanctuary.Gateway.Handlers;
 
-// Opcode 47 (BaseUiPacket / "Task" family) - only sub-opcodes 12 and 13 have real packet classes; the rest are just logged.
 [PacketHandler]
 public static class BaseUiPacketHandler
 {
@@ -37,7 +36,7 @@ public static class BaseUiPacketHandler
                 return SelectQuestPacketHandler.HandlePacket(connection, fullBuffer);
             case SelectedQuestLockedPacket.OpCode:
                 return SelectedQuestLockedPacketHandler.HandlePacket(connection, fullBuffer);
-            case 6: // SelectTaskRequest - fired by the objective-helper "SelectedTask(guid)" FR_event.
+            case 6:
                 _logger.LogInformation("SelectTaskRequest from {name}. Payload: {data}", connection.Player.Name, Convert.ToHexString(reader.RemainingSpan));
                 return false;
             default:

@@ -9,7 +9,6 @@ using Sanctuary.Packet.Common.Attributes;
 
 namespace Sanctuary.Gateway.Handlers;
 
-// Reply to a CommandPacketShowDialog click with CommandPacketEndDialog (not CommandPacketQuestDialogComplete, which targets the quest start/end screen and would leave HUD/movement locked here).
 [PacketHandler]
 public static class PacketDialogResponseHandler
 {
@@ -29,8 +28,6 @@ public static class PacketDialogResponseHandler
             return false;
         }
 
-        // A multi-turn conversation plays its next line here; the teardown is held back until the
-        // exchange actually runs out of turns, or the dialog would close after the first bubble.
         if (QuestDialogue.TryAdvance(connection.Player))
             return true;
 
