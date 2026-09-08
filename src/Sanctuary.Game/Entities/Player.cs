@@ -79,9 +79,6 @@ public sealed class Player : ClientPcData, IEntity
     // QuestId -> collect count for the active Collect goal (in-memory; a relog restarts it).
     public Dictionary<int, int> QuestCollectProgress { get; } = new();
 
-    // Collect pickups this player has already gathered (shared world objects, hidden per-player).
-    public HashSet<ulong> CollectedPickups { get; } = new();
-
     // NPCs this player has already been credited for on a counted TalkToNpc goal.
     public HashSet<ulong> TalkedQuestNpcs { get; } = new();
 
@@ -866,5 +863,46 @@ public sealed class Player : ClientPcData, IEntity
 
         ZoneTile.Entities.Remove(Guid, out _);
         Zone.TryRemovePlayer(Guid);
+    }
+
+    // The NPC radial menu currently on this player's screen. The client answers with the id we gave
+    // the option, which is meaningless without the list that produced it, so the actions are held
+    // here until the reply arrives or the next menu opens.
+    public sealed record InteractionMenu(ulong Guid, IReadOnlyDictionary<int, Action<Player>> Options);
+
+    public InteractionMenu? OpenInteractionMenu { get; set; }
+
+    // Option ids live well above IInteraction.UniqueId (a small counter over the handful of
+    // registered player-to-player interactions), so a menu id can never be mistaken for one.
+    private const int NpcInteractionIdBase = 1_000_000;
+
+    public void SendInteractionMenu(Npc npc, IReadOnlyList<NpcInteractionOption> options)
+    {
+        var packet = new CommandPacketInteractionList();
+
+        packet.List.Guid = npc.Guid;
+        packet.List.Name = npc.Name ?? string.Empty;
+
+        var actions = new Dictionary<int, Action<Player>>(options.Count);
+
+        for (var i = 0; i < options.Count; i++)
+        {
+            var option = options[i];
+            var id = NpcInteractionIdBase + i;
+
+            packet.List.Interactions.Add(new InteractionData
+            {
+                Id = id,
+                IconId = option.IconId,
+                ButtonText = option.ButtonTextId,
+                TooltipId = option.TooltipId
+            });
+
+            actions[id] = option.Invoke;
+        }
+
+        OpenInteractionMenu = new InteractionMenu(npc.Guid, actions);
+
+        SendTunneled(packet);
     }
 }

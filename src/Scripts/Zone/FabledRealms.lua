@@ -4256,5 +4256,4 @@ end
 
 registerCallback("start", function(zone)
     spawnStaticNpcs(zone)
-    zone:spawnQuestCollectibles()
 end)

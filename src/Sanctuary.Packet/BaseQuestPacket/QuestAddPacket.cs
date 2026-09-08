@@ -1,4 +1,5 @@
-using Sanctuary.Core.IO;
+﻿using Sanctuary.Core.IO;
+using Sanctuary.Packet.Common;
 
 namespace Sanctuary.Packet;
 
@@ -16,6 +17,8 @@ public class QuestAddPacket : BaseQuestPacket, ISerializablePacket
     public float CompletedPercentage;
     public int IconId;
     public bool SystemQuest;
+
+    public bool SuppressStartBanner;
 
     public bool IncludeObjective;
     public int ObjectiveId;
@@ -40,10 +43,10 @@ public class QuestAddPacket : BaseQuestPacket, ISerializablePacket
         writer.Write(MembersOnly);
         writer.Write(TimeStarted);
         writer.Write(ProfileId);
-        writer.Write(false);
+        writer.Write(SuppressStartBanner);
         writer.Write(CompletedPercentage);
 
-        RewardBundleSerializer.Write(writer, 0, 0);
+        WriteEmptyRewardBundle(writer);
 
         if (IncludeObjective)
         {
@@ -56,7 +59,7 @@ public class QuestAddPacket : BaseQuestPacket, ISerializablePacket
             writer.Write(ObjectiveField2);
             writer.Write(false);
 
-            RewardBundleSerializer.Write(writer, 0, 0);
+            WriteEmptyRewardBundle(writer);
 
             writer.Write(0); writer.Write(0); writer.Write(0); writer.Write(0); writer.Write(false); writer.Write(0);
         }
@@ -71,5 +74,20 @@ public class QuestAddPacket : BaseQuestPacket, ISerializablePacket
         writer.Write(false);
 
         return writer.Buffer;
+    }
+
+    // The journal row carries an inert, empty reward bundle. The real reward is sent separately by
+    // QuestInfoPacket (offer) and QuestEndPacket (turn-in), so every scalar here stays at the value
+    // this packet has always sent.
+    private static void WriteEmptyRewardBundle(PacketWriter writer)
+    {
+        new RewardBundleBase
+        {
+            Success = false,
+            Unknown3 = 0,
+            Multiplier = 0f
+        }.Serialize(writer);
+
+        writer.Write(0);
     }
 }

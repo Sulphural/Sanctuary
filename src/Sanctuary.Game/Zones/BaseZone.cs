@@ -116,27 +116,6 @@ public abstract class BaseZone : IZone, IDisposable
 
     // Spawns Quests.json Collect-goal pickups; must be called from the zone script's onStart
     // (spawnQuestCollectibles) or the pickups never appear.
-    public int SpawnQuestCollectibles()
-    {
-        var count = 0;
-
-        foreach (var spawn in _resourceManager.Quests.CollectibleSpawns)
-        {
-            if (!TryCreateNpc(spawn.Guid, out var npc))
-                continue;
-
-            npc.NameId = spawn.NameId;
-            npc.ModelId = spawn.ModelId;
-            npc.Scale = 1f;
-            npc.Visible = true;
-
-            npc.UpdatePosition(spawn.Position, Quaternion.Identity);
-            count++;
-        }
-
-        return count;
-    }
-
     public virtual void OnClientIsReady(Player player)
     {
     }

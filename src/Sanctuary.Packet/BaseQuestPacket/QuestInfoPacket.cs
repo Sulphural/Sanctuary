@@ -1,6 +1,7 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 using Sanctuary.Core.IO;
+using Sanctuary.Packet.Common;
 
 namespace Sanctuary.Packet;
 
@@ -22,9 +23,7 @@ public class QuestInfoPacket : BaseQuestPacket, ISerializablePacket
     public bool Unknown11;
     public bool Unknown12;
 
-    public int RewardCoins;
-    public int RewardExperience;
-    public List<RewardBundleItem> RewardItems = new();
+    public RewardBundleBase RewardBundle { get; } = new();
 
     public QuestInfoPacket() : base(SubOpCode)
     {
@@ -44,7 +43,8 @@ public class QuestInfoPacket : BaseQuestPacket, ISerializablePacket
         writer.Write(Unknown6);
         writer.Write(Unknown7);
 
-        RewardBundleSerializer.Write(writer, RewardCoins, RewardExperience, RewardItems);
+        RewardBundle.Serialize(writer);
+        writer.Write(0);
 
         writer.Write(NpcGuid);
         writer.Write(Unknown10);

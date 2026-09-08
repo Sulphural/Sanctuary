@@ -10,6 +10,12 @@ namespace Sanctuary.Database.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AddColumn<int>(
+                name: "ActiveQuestId",
+                table: "Characters",
+                type: "INTEGER",
+                nullable: true);
+
             migrationBuilder.CreateTable(
                 name: "CharacterQuests",
                 columns: table => new
@@ -42,6 +48,10 @@ namespace Sanctuary.Database.Sqlite.Migrations
         {
             migrationBuilder.DropTable(
                 name: "CharacterQuests");
+
+            migrationBuilder.DropColumn(
+                name: "ActiveQuestId",
+                table: "Characters");
         }
     }
 }

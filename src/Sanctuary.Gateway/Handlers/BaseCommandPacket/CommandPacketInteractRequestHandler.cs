@@ -54,12 +54,6 @@ public static class CommandPacketInteractRequestHandler
         if (entity is CollectionNode collectionNode)
             return HandleCollectionNode(connection, collectionNode);
 
-        // Collect-goal pickups (spawned from a quest's CollectSpawns) credit the goal on click.
-        if (entity is Npc collectNpc && _resourceManager.Quests.Collectibles.ContainsKey(collectNpc.Guid))
-        {
-            _questManager.OnCollectInteract(connection.Player, collectNpc);
-            return true;
-        }
 
         // Quest givers / turn-in targets route to the quest manager (offer, advance, or turn in).
         if (entity is Npc npc && _questManager.IsQuestNpc(npc.Guid))
@@ -93,6 +87,15 @@ public static class CommandPacketInteractRequestHandler
 
         try
         {
+            // A node with no drop table exists only to raise the gather event (quest objective
+            // collectibles), so there is no item to roll, persist or announce.
+            if (!node.TypeDefinition.HasDrop)
+            {
+                node.CompleteCollection();
+                _questManager.OnCollectionNodeGathered(connection.Player, node);
+                return true;
+            }
+
             var drop = node.TypeDefinition.Table.SelectRandom();
             var itemDefinitionId = drop.ItemDefinitionId;
 
@@ -187,6 +190,8 @@ public static class CommandPacketInteractRequestHandler
 
             node.CompleteCollection();
             nodeCompleted = true;
+
+            _questManager.OnCollectionNodeGathered(connection.Player, node);
 
             if (collectionMatch is not null && !collectionEntryWasCollected)
             {

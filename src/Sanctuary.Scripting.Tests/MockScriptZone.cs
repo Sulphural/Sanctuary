@@ -37,8 +37,4 @@ internal class MockScriptZone(ILogger _logger) : IScriptableZone
         throw new NotImplementedException();
     }
 
-    public int SpawnQuestCollectibles()
-    {
-        throw new NotImplementedException();
-    }
 }

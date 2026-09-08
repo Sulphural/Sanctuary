@@ -2,62 +2,51 @@ using System.Collections.Generic;
 
 namespace Sanctuary.Game.Resources.Definitions;
 
-public class QuestDefinition
+public sealed class QuestDefinition
 {
     public int QuestId { get; set; }
 
     public int TitleId { get; set; }
     public int DescriptionId { get; set; }
     public int GiverDialogueId { get; set; }
+
+    // The line above the goal rows in the tracker and journal.
     public int ObjectiveDescriptionId { get; set; }
-    public int SubGoalId { get; set; }
-    public int TargetDialogueId { get; set; }
+
     public int IconId { get; set; }
 
-    public List<QuestGoal> Goals { get; set; } = new();
+    // In the order they complete. A quest with none is rejected at load.
+    public List<QuestGoal> Goals { get; set; } = [];
 
     public ulong GiverGuid { get; set; }
+
+    // The turn-in NPC, and the fallback for a goal that names no NPC of its own.
     public ulong TargetGuid { get; set; }
 
     public int RewardCoins { get; set; }
 
+    // Goes to the player's active profile.
     public int RewardExperience { get; set; }
 
-    public List<int> RewardItems { get; set; } = new();
+    // Item definition ids.
+    public List<int> RewardItems { get; set; } = [];
 
+    // 0 = none.
     public int PrerequisiteQuestId { get; set; }
     public int NextQuestId { get; set; }
 
-    public List<int> ExcludesQuestIds { get; set; } = new();
+    // Quests that block this one while active or completed, for mutually exclusive quests such as the
+    // two race-specific introductions. Each lists the other so the check is symmetric.
+    public List<int> ExcludesQuestIds { get; set; } = [];
 
+    // Badge on the giver: "!" while available, "?" while in progress.
     public int NotificationAvailable { get; set; } = 2;
     public int NotificationActive { get; set; } = 6;
 
-    public IReadOnlyList<QuestGoal> EffectiveGoals =>
-        Goals.Count > 0
-            ? Goals
-            : new[]
-            {
-                new QuestGoal
-                {
-                    NameId = SubGoalId != 0 ? SubGoalId : ObjectiveDescriptionId,
-                    DescriptionId = ObjectiveDescriptionId,
-                    DialogueId = TargetDialogueId,
-                    Type = QuestGoalType.TalkToNpc,
-                    TargetGuid = TargetGuid,
-                }
-            };
+    // The final goal's line, since a quest can end back at its giver.
+    public int TurnInDialogueId => Goals.Count > 0 ? Goals[^1].DialogueId : 0;
 
-    public int TurnInDialogueId
-    {
-        get
-        {
-            var goals = EffectiveGoals;
-            var last = goals[goals.Count - 1];
-            return last.DialogueId != 0 ? last.DialogueId : TargetDialogueId;
-        }
-    }
-
+    // Shared by the offer flow and the giver's badge so the two can't drift.
     public bool IsOfferableFor(IReadOnlyDictionary<int, bool> playerQuests)
     {
         if (playerQuests.ContainsKey(QuestId))

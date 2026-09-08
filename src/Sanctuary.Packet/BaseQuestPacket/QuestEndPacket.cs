@@ -1,6 +1,7 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 using Sanctuary.Core.IO;
+using Sanctuary.Packet.Common;
 
 namespace Sanctuary.Packet;
 
@@ -14,9 +15,7 @@ public class QuestEndPacket : BaseQuestPacket, ISerializablePacket
     public int DescriptionId;
     public float Percent = 1f;
 
-    public int RewardCoins;
-    public int RewardExperience;
-    public List<RewardBundleItem> RewardItems = new();
+    public RewardBundleBase RewardBundle { get; } = new();
 
     public QuestEndPacket() : base(SubOpCode)
     {
@@ -33,7 +32,8 @@ public class QuestEndPacket : BaseQuestPacket, ISerializablePacket
         writer.Write(TitleId);
         writer.Write(DescriptionId);
 
-        RewardBundleSerializer.Write(writer, RewardCoins, RewardExperience, RewardItems);
+        RewardBundle.Serialize(writer);
+        writer.Write(0);
 
         writer.Write(Percent);
 

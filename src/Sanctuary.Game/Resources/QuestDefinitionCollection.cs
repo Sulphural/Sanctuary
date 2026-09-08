@@ -1,8 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.Numerics;
 using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
@@ -11,30 +10,15 @@ using Sanctuary.Game.Resources.Definitions;
 
 namespace Sanctuary.Game.Resources;
 
-public sealed class CollectibleSpawn
-{
-    public ulong Guid { get; init; }
-    public int ModelId { get; init; }
-    public int NameId { get; init; }
-    public Vector4 Position { get; init; }
-}
-
 public class QuestDefinitionCollection
 {
     private readonly ILogger _logger;
 
     public ConcurrentDictionary<int, QuestDefinition> Quests { get; } = new();
 
+    // NPC guid -> the quests it offers, and the quests it is a goal target or turn-in for.
     public ConcurrentDictionary<ulong, List<int>> ByGiver { get; } = new();
-
     public ConcurrentDictionary<ulong, List<int>> ByTarget { get; } = new();
-
-    public ConcurrentDictionary<ulong, (int QuestId, int GoalIndex)> Collectibles { get; } = new();
-
-    public List<CollectibleSpawn> CollectibleSpawns { get; } = new();
-
-    private const ulong CollectibleGuidBase = 700000000000UL;
-    private ulong _nextCollectibleGuid = CollectibleGuidBase;
 
     public QuestDefinitionCollection(ILogger logger)
     {
@@ -43,85 +27,102 @@ public class QuestDefinitionCollection
 
     public bool TryGet(int questId, out QuestDefinition definition) => Quests.TryGetValue(questId, out definition!);
 
+    // The hover cursor this NPC should carry, from the first goal that names one. Without a cursor
+    // the client is never told the NPC is clickable.
+    public bool TryGetNpcCursorId(ulong npcGuid, out byte cursorId)
+    {
+        cursorId = 0;
+
+        foreach (var index in new[] { ByGiver, ByTarget })
+        {
+            if (!index.TryGetValue(npcGuid, out var questIds))
+                continue;
+
+            foreach (var questId in questIds)
+                if (TryGet(questId, out var quest))
+                    foreach (var goal in quest.Goals)
+                        if (goal.CursorId != 0)
+                        {
+                            cursorId = goal.CursorId;
+                            return true;
+                        }
+        }
+
+        return false;
+    }
+    public bool TryGetNpcInteractRange(ulong npcGuid, out int interactRange)
+    {
+        interactRange = int.MaxValue;
+
+        foreach (var index in new[] { ByGiver, ByTarget })
+        {
+            if (!index.TryGetValue(npcGuid, out var questIds))
+                continue;
+
+            foreach (var questId in questIds)
+                if (TryGet(questId, out var quest))
+                    foreach (var goal in quest.Goals)
+                        if (goal.InteractRange > 0)
+                            interactRange = Math.Min(interactRange, goal.InteractRange);
+        }
+
+        if (interactRange == int.MaxValue)
+        {
+            interactRange = 0;
+            return false;
+        }
+
+        return true;
+    }
+
     public bool Load(string filePath)
     {
         if (!File.Exists(filePath))
         {
-            _logger.LogWarning("Quest file not found: \"{file}\". No quests will be loaded.", filePath);
+            _logger.LogWarning("Failed to find file \"{file}\". No quests will be loaded.", filePath);
             return true;
         }
 
         try
         {
-            using var fileStream = File.OpenRead(filePath);
+            using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-            var options = new JsonSerializerOptions
+            var jsonSerializerOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
                 ReadCommentHandling = JsonCommentHandling.Skip,
                 AllowTrailingCommas = true
             };
 
-            var quests = JsonSerializer.Deserialize<List<QuestDefinition>>(fileStream, options);
+            var entries = JsonSerializer.Deserialize<List<QuestDefinition>>(fileStream, jsonSerializerOptions);
 
-            if (quests is null)
+            if (entries is null)
             {
                 _logger.LogError("No entries found in file \"{file}\".", filePath);
                 return false;
             }
 
-            foreach (var quest in quests)
+            foreach (var entry in entries)
             {
-                if (!Quests.TryAdd(quest.QuestId, quest))
+                if (entry.Goals.Count == 0)
                 {
-                    _logger.LogWarning("Duplicate quest id {id} in \"{file}\".", quest.QuestId, filePath);
+                    _logger.LogError("Quest {id} has no goals. \"{file}\"", entry.QuestId, filePath);
+                    return false;
+                }
+
+                if (!Quests.TryAdd(entry.QuestId, entry))
+                {
+                    _logger.LogWarning("Failed to add entry. {id} \"{file}\"", entry.QuestId, filePath);
                     continue;
                 }
 
-                if (quest.GiverGuid != 0)
-                    ByGiver.GetOrAdd(quest.GiverGuid, _ => new List<int>()).Add(quest.QuestId);
+                if (entry.GiverGuid != 0)
+                    ByGiver.GetOrAdd(entry.GiverGuid, _ => []).Add(entry.QuestId);
 
-                if (quest.TargetGuid != 0)
-                    ByTarget.GetOrAdd(quest.TargetGuid, _ => new List<int>()).Add(quest.QuestId);
+                if (entry.TargetGuid != 0)
+                    ByTarget.GetOrAdd(entry.TargetGuid, _ => []).Add(entry.QuestId);
 
-                var goalNameIds = new HashSet<int>();
-                foreach (var goal in quest.EffectiveGoals)
-                {
-                    if (goal.TargetGuid != 0 && goal.TargetGuid != quest.TargetGuid
-                        && !ByTarget.GetOrAdd(goal.TargetGuid, _ => new List<int>()).Contains(quest.QuestId))
-                        ByTarget[goal.TargetGuid].Add(quest.QuestId);
-
-                    if (!goalNameIds.Add(goal.NameId))
-                        _logger.LogWarning("Quest {id}: duplicate goal NameId {nameId} - goals will collide client-side (checkmarks/advance won't render correctly).", quest.QuestId, goal.NameId);
-                }
-
-                var effective = quest.EffectiveGoals;
-                for (int gi = 0; gi < effective.Count; gi++)
-                {
-                    var goal = effective[gi];
-
-                    if (goal.Type != QuestGoalType.Collect)
-                        continue;
-
-                    if (goal.RequiredCount <= 0)
-                        goal.RequiredCount = goal.CollectSpawns.Count;
-
-                    foreach (var pos in goal.CollectSpawns)
-                    {
-                        if (pos is null || pos.Length < 3)
-                            continue;
-
-                        var guid = _nextCollectibleGuid++;
-                        Collectibles[guid] = (quest.QuestId, gi);
-                        CollectibleSpawns.Add(new CollectibleSpawn
-                        {
-                            Guid = guid,
-                            ModelId = goal.CollectModelId,
-                            NameId = goal.CollectNameId,
-                            Position = new Vector4(pos[0], pos[1], pos[2], 1f)
-                        });
-                    }
-                }
+                IndexGoals(entry, filePath);
             }
 
             _logger.LogInformation("Loaded {count} quest definitions from \"{file}\".", Quests.Count, filePath);
@@ -133,5 +134,38 @@ public class QuestDefinitionCollection
         }
 
         return true;
+    }
+
+    private void IndexGoals(QuestDefinition quest, string filePath)
+    {
+        var goalNameIds = new HashSet<int>();
+
+        foreach (var goal in quest.Goals)
+        {
+            // Intermediate goals can point at NPCs that are neither the giver nor the turn-in target, and
+            // every NPC of a counted talk goal has to be clickable, so index them all.
+            foreach (var targetGuid in goal.AllTalkTargetGuids())
+            {
+                var questIds = ByTarget.GetOrAdd(targetGuid, _ => []);
+
+                if (!questIds.Contains(quest.QuestId))
+                    questIds.Add(quest.QuestId);
+            }
+
+            // NameId doubles as the client's objective row key, so duplicates make goals indistinguishable.
+            if (!goalNameIds.Add(goal.NameId))
+                _logger.LogWarning("Duplicate goal NameId {nameId} on quest {id} in \"{file}\".", goal.NameId, quest.QuestId, filePath);
+
+            // A collect goal is credited by gathering collection nodes, so it needs both the node
+            // type to watch and a count to reach.
+            if (goal.Type == QuestGoalType.Collect)
+            {
+                if (string.IsNullOrEmpty(goal.CollectNodeType))
+                    _logger.LogWarning("Collect goal on quest {id} has no CollectNodeType in \"{file}\"; it can never be credited.", quest.QuestId, filePath);
+
+                if (goal.RequiredCount <= 0)
+                    _logger.LogWarning("Collect goal on quest {id} has no RequiredCount in \"{file}\"; it can never be completed.", quest.QuestId, filePath);
+            }
+        }
     }
 }

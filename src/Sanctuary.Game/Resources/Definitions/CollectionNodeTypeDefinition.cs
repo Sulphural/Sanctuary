@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 using Sanctuary.Core.Collections;
 
@@ -15,6 +15,10 @@ public sealed class CollectionNodeTypeDefinition
     public byte CursorId { get; set; } = 18;
     public float PlacementYOffset { get; set; }
     public List<CollectionNodeDropDefinition> DropTable { get; set; } = [];
+
+    // A node with no drop table grants nothing when gathered - it exists only to raise the gather
+    // event, which is how a quest objective collectible is modelled.
+    public bool HasDrop => DropTable.Count > 0;
 
     private WeightedDropTable<CollectionNodeDropDefinition>? _table;
     public WeightedDropTable<CollectionNodeDropDefinition> Table => _table ??= new WeightedDropTable<CollectionNodeDropDefinition>(DropTable);

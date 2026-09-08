@@ -61,15 +61,6 @@ internal sealed class ZoneUserData(IScriptableZone zone) : ILuaUserData
         return new ValueTask<int>(context.Return(handle));
     });
 
-    private static readonly LuaFunction SpawnQuestCollectiblesFunction = new("spawnQuestCollectibles", static (context, cancellationToken) =>
-    {
-        var self = context.GetArgument<ZoneUserData>(0);
-
-        var count = self._zone.SpawnQuestCollectibles();
-
-        return new ValueTask<int>(context.Return(count));
-    });
-
     private static readonly LuaTable SharedMetatable = BuildMetatable();
 
     private static LuaTable BuildMetatable()
@@ -88,7 +79,6 @@ internal sealed class ZoneUserData(IScriptableZone zone) : ILuaUserData
                 "name" => new LuaValue(self._zone.Name),
                 "spawnNpc" => SpawnNpcFunction,
                 "spawnNpcWithGuid" => SpawnNpcWithGuidFunction,
-                "spawnQuestCollectibles" => SpawnQuestCollectiblesFunction,
                 _ => LuaValue.Nil
             };
 

@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Numerics;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 using Sanctuary.Game;
+using Sanctuary.Game.Entities;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common.Attributes;
 
@@ -36,6 +38,24 @@ public static class CommandPacketInteractionSelectHandler
 
         _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(CommandPacketInteractionSelect), packet);
 
+        // An NPC's menu is built per interact, so its option ids only mean anything against the list
+        // we just sent this player - resolve those before falling through to the globally registered
+        // player-to-player interactions.
+        if (connection.Player.OpenInteractionMenu is { } menu
+            && menu.Guid == packet.Guid
+            && menu.Options.TryGetValue(packet.Id, out var action))
+        {
+            connection.Player.OpenInteractionMenu = null;
+
+            if (!connection.Player.VisibleNpcs.TryGetValue(packet.Guid, out var menuNpc))
+                return true;
+
+            if (!IsInInteractRange(connection.Player, menuNpc))
+                return true;
+
+            action(connection.Player);
+            return true;
+        }
         if (!_interactionManager.TryGet(packet.Id, out var interaction))
         {
             _logger.LogError("Invalid interaction. {interaction}", packet.Id);
@@ -59,5 +79,14 @@ public static class CommandPacketInteractionSelectHandler
         }
 
         return true;
+    }
+
+    // The select path resolves by guid, so without this a selection could land from across the map.
+    private static bool IsInInteractRange(Player player, Npc npc)
+    {
+        var playerPosition = new Vector3(player.Position.X, player.Position.Y, player.Position.Z);
+        var npcPosition = new Vector3(npc.Position.X, npc.Position.Y, npc.Position.Z);
+
+        return Vector3.Distance(playerPosition, npcPosition) <= npc.InteractRange;
     }
 }

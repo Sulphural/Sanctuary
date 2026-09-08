@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -30,6 +30,8 @@ public static class SelectQuestPacketHandler
             _logger.LogError("Failed to deserialize {packet}.", nameof(SelectQuestPacket));
             return false;
         }
+
+        _logger.LogTrace("Received {name} packet. ( {packet} )", nameof(SelectQuestPacket), packet);
 
         _questManager.SetActiveQuest(connection.Player, packet.QuestId);
         return true;

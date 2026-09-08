@@ -1,6 +1,8 @@
+﻿using System.Collections.Generic;
 using System.Numerics;
 
 using Sanctuary.Game.Entities;
+using Sanctuary.Game.Interactions;
 
 namespace Sanctuary.Game.Quests;
 
@@ -8,9 +10,11 @@ public interface IQuestManager
 {
     bool IsQuestNpc(ulong npcGuid);
 
+    List<NpcInteractionOption> GetInteractionOptions(Player player, Npc npc);
+
     void OnNpcInteract(Player player, Npc npc);
 
-    void OnCollectInteract(Player player, Npc npc);
+    void OnCollectionNodeGathered(Player player, CollectionNode node);
 
     void OnPlayerMoved(Player player);
 

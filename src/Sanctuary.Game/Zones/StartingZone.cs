@@ -20,6 +20,7 @@ public sealed class StartingZone : BaseZone
     private readonly IZoneManager _zoneManager;
     private readonly IResourceManager _resourceManager;
     private readonly IQuestManager _questManager;
+
     private readonly StartingZoneDefinition _zoneDefinition;
 
     public StartingZone(StartingZoneDefinition zoneDefinition, IServiceProvider serviceProvider)
@@ -91,8 +92,20 @@ public sealed class StartingZone : BaseZone
         _questManager.RestoreJournal(player);
 
         foreach (var npc in Npcs)
-            if (_questManager.IsQuestNpc(npc.Guid))
-                _questManager.RefreshQuestNotification(player, npc.Guid);
+        {
+            if (!_questManager.IsQuestNpc(npc.Guid))
+                continue;
+
+            // Without a cursor the client is never told the NPC is clickable: both relevance paths
+            // (here and Player's initial sweep) skip a CursorId of 0.
+            if (_resourceManager.Quests.TryGetNpcCursorId(npc.Guid, out var cursorId))
+                npc.CursorId = cursorId;
+
+            if (_resourceManager.Quests.TryGetNpcInteractRange(npc.Guid, out var interactRange))
+                npc.InteractRange = interactRange;
+
+            _questManager.RefreshQuestNotification(player, npc.Guid);
+        }
     }
 
     private void SendQuickChatData(Player player)

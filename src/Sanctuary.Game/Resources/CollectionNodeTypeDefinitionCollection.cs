@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -53,7 +53,9 @@ public sealed class CollectionNodeTypeDefinitionCollection : ObservableConcurren
 
                 var totalDropWeight = entry.DropTable.Sum(drop => (long)drop.Weight);
 
-                if (entry.ModelId <= 0 || entry.DropTable.Count == 0 ||
+                // An empty drop table is allowed: the node grants nothing and exists only to raise
+                // the gather event, which is how a quest objective collectible is modelled.
+                if (entry.ModelId <= 0 ||
                     entry.DropTable.Any(drop => drop.ItemDefinitionId <= 0 || drop.Weight <= 0) ||
                     totalDropWeight > int.MaxValue ||
                     entry.DropTable.Select(drop => drop.ItemDefinitionId).Distinct().Count() != entry.DropTable.Count ||

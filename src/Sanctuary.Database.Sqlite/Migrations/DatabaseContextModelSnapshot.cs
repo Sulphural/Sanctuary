@@ -15,7 +15,7 @@ namespace Sanctuary.Database.Sqlite.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.17");
+            modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
 
             modelBuilder.Entity("DbItemDbProfile", b =>
                 {
@@ -45,6 +45,9 @@ namespace Sanctuary.Database.Sqlite.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("ActiveProfileId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ActiveQuestId")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("ActiveTitleId")
@@ -89,7 +92,7 @@ namespace Sanctuary.Database.Sqlite.Migrations
 
                     b.Property<string>("FullName")
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasMaxLength(33)
+                        .HasMaxLength(32)
                         .HasColumnType("TEXT")
                         .HasComputedColumnSql("CONCAT_WS(' ', FirstName, NULLIF(LastName, ''))", true);
 
@@ -199,9 +202,6 @@ namespace Sanctuary.Database.Sqlite.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("GoalProgress")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("QuestId", "CharacterId");
