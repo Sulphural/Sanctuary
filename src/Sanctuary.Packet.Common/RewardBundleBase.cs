@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 using Sanctuary.Core.IO;
 
@@ -44,6 +44,6 @@ public sealed class RewardBundleBase : ISerializableType
         writer.Write(Entries.Count);
 
         foreach (var entry in Entries)
-            entry.Serialize(writer);
+            entry.Serialize(writer, Success);
     }
 }

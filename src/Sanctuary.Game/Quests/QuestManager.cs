@@ -464,7 +464,7 @@ public sealed class QuestManager : IQuestManager
 
     private void FillRewardBundle(RewardBundleBase bundle, QuestDefinition quest)
     {
-        bundle.Success = true;
+        bundle.Success = false;
         bundle.Unknown1 = quest.RewardCoins;
         bundle.RewardKind = quest.RewardExperience;
         bundle.Unknown3 = 0;
@@ -475,6 +475,7 @@ public sealed class QuestManager : IQuestManager
         foreach (var entry in BuildRewardItems(quest))
             bundle.Entries.Add(entry);
     }
+
     private List<RewardBundleEntryBase> BuildRewardItems(QuestDefinition quest)
     {
         var items = new List<RewardBundleEntryBase>();
@@ -960,7 +961,19 @@ public sealed class QuestManager : IQuestManager
             player.AwardXp(experience);
 
         if (coins > 0 || experience > 0)
-            player.SendTunneled(new QuestRewardBundlePacket { Coins = coins, Xp = experience });
+        {
+            var celebration = new QuestRewardBundlePacket();
+
+            celebration.RewardBundle.Success = false;
+            celebration.RewardBundle.Unknown1 = coins;
+            celebration.RewardBundle.RewardKind = experience;
+            celebration.RewardBundle.Unknown3 = 0;
+            celebration.RewardBundle.Multiplier = 1f;
+            celebration.RewardBundle.IconId = -1;
+            celebration.RewardBundle.NameId = -1;
+
+            player.SendTunneled(celebration);
+        }
 
         foreach (var itemDefinitionId in quest.RewardItems)
         {

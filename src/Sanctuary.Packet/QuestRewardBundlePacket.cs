@@ -1,6 +1,5 @@
-﻿using System.Collections.Generic;
-
 using Sanctuary.Core.IO;
+using Sanctuary.Packet.Common;
 
 namespace Sanctuary.Packet;
 
@@ -8,13 +7,7 @@ public class QuestRewardBundlePacket : RewardBasePacket, ISerializablePacket
 {
     public const byte SubOpCode = 1;
 
-    public List<RewardEntry> Entries = [];
-
-    public int Coins;
-    public int Xp;
-
-    public int IconId = -1;
-    public int NameId = -1;
+    public RewardBundleBase RewardBundle { get; } = new();
 
     public int Unknown15;
 
@@ -28,7 +21,9 @@ public class QuestRewardBundlePacket : RewardBasePacket, ISerializablePacket
 
         Write(writer);
 
-        RewardBundle.Write(writer, Entries, Coins, Xp, IconId, NameId, Unknown15);
+        RewardBundle.Serialize(writer);
+
+        writer.Write(Unknown15);
 
         return writer.Buffer;
     }
