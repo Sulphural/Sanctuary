@@ -4,8 +4,10 @@
 
 namespace Sanctuary.Database.Sqlite.Migrations
 {
+    /// <inheritdoc />
     public partial class AddCharacterQuests : Migration
     {
+        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<int>(
@@ -41,6 +43,7 @@ namespace Sanctuary.Database.Sqlite.Migrations
                 column: "CharacterId");
         }
 
+        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
