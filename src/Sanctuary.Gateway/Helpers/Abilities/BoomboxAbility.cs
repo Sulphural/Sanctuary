@@ -7,7 +7,7 @@ using Sanctuary.Game.Zones;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
 
-namespace Sanctuary.Gateway.Handlers.Abilities;
+namespace Sanctuary.Gateway.Helpers.Abilities;
 
 public sealed class BoomboxAbility(AbilityServices services) : ConsumableAbility(services)
 {
@@ -20,20 +20,20 @@ public sealed class BoomboxAbility(AbilityServices services) : ConsumableAbility
     public override bool Matches(ClientItemDefinition itemDefinition) =>
         _resourceManager.Consumables.Boomboxes.ContainsKey(itemDefinition.Id);
 
-    public override bool HandleAbility(GatewayConnection connection, AbilityPacketClientRequestStartAbility packet, int slot, ClientItem clientItem, ClientItemDefinition itemDefinition)
+    public override bool HandleAbility(Player player, AbilityPacketClientRequestStartAbility packet, int slot, ClientItem clientItem, ClientItemDefinition itemDefinition)
     {
-        if (connection.Player.IsItemOnCooldown(itemDefinition.Id))
-            return SendFailure(connection);
+        if (player.IsItemOnCooldown(itemDefinition.Id))
+            return SendFailure(player);
 
-        SpawnBoomboxNpc(connection, itemDefinition);
+        SpawnBoomboxNpc(player, itemDefinition);
 
-        connection.Player.StartItemCooldown(itemDefinition.Id, BoomboxDurationMs);
-        connection.Player.StartActionBarCooldown(ActionBarId, slot, itemDefinition.Icon.Id, itemDefinition.NameId, clientItem.Count, BoomboxDurationMs);
+        player.StartItemCooldown(itemDefinition.Id, BoomboxDurationMs);
+        player.StartActionBarCooldown(ActionBarId, slot, itemDefinition.Icon.Id, itemDefinition.NameId, clientItem.Count, BoomboxDurationMs);
 
         return true;
     }
 
-    private void SpawnBoomboxNpc(GatewayConnection connection, ClientItemDefinition itemDefinition)
+    private void SpawnBoomboxNpc(Player player, ClientItemDefinition itemDefinition)
     {
         _resourceManager.Consumables.Boomboxes.TryGetValue(itemDefinition.Id, out var boomboxDefinition);
 
@@ -41,15 +41,15 @@ public sealed class BoomboxAbility(AbilityServices services) : ConsumableAbility
         var effectId = boomboxDefinition?.EffectId ?? 0;
         var danceSequence = boomboxDefinition?.DanceSequence ?? [3501, 3502, 3503, 3504, 3505];
 
-        var leftDirection = Vector3.Transform(new Vector3(-1, 0, 0), connection.Player.Rotation);
+        var leftDirection = Vector3.Transform(new Vector3(-1, 0, 0), player.Rotation);
         var spawnPosition = new Vector4(
-            connection.Player.Position.X + leftDirection.X * 2.0f,
-            connection.Player.Position.Y + leftDirection.Y * 2.0f,
-            connection.Player.Position.Z + leftDirection.Z * 2.0f,
-            connection.Player.Position.W
+            player.Position.X + leftDirection.X * 2.0f,
+            player.Position.Y + leftDirection.Y * 2.0f,
+            player.Position.Z + leftDirection.Z * 2.0f,
+            player.Position.W
         );
 
-        var boomboxNpc = SpawnNpc(connection, spawnPosition, npc =>
+        var boomboxNpc = SpawnNpc(player, spawnPosition, npc =>
         {
             npc.NameId = 0;
             npc.ModelId = modelId;
@@ -63,10 +63,10 @@ public sealed class BoomboxAbility(AbilityServices services) : ConsumableAbility
             npc.IsInteractable = false;
         });
 
-        if (boomboxNpc is null || connection.Player.Zone is not StartingZone startingZone)
+        if (boomboxNpc is null || player.Zone is not StartingZone startingZone)
             return;
 
-        var poofRecipients = BroadcastSpawn(connection, boomboxNpc, spawnPosition, PoofEffectId);
+        var poofRecipients = BroadcastSpawn(player, boomboxNpc, spawnPosition, PoofEffectId);
 
         // Tag-attached so it can be stopped cleanly on despawn.
         var songTagId = 0;
@@ -83,8 +83,8 @@ public sealed class BoomboxAbility(AbilityServices services) : ConsumableAbility
                 SourceGuid = boomboxNpc.Guid,
             };
 
-            foreach (var player in poofRecipients)
-                player.SendTunneled(songEffect);
+            foreach (var recipient in poofRecipients)
+                recipient.SendTunneled(songEffect);
         }
 
         StartDanceLoop(startingZone, boomboxNpc, spawnPosition, danceSequence, songTagId, effectId);

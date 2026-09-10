@@ -7,30 +7,27 @@ using Sanctuary.Game.Resources.Definitions;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
 
-namespace Sanctuary.Gateway.Handlers.Abilities;
+namespace Sanctuary.Gateway.Helpers.Abilities;
 
 public sealed class SillyStringAbility(AbilityServices services) : ConsumableAbility(services)
 {
     public override bool Matches(ClientItemDefinition itemDefinition) =>
         _resourceManager.Consumables.PartyFavors.ContainsKey(itemDefinition.Id);
 
-    public override bool HandleAbility(GatewayConnection connection, AbilityPacketClientRequestStartAbility packet, int slot, ClientItem clientItem, ClientItemDefinition itemDefinition)
+    public override bool HandleAbility(Player player, AbilityPacketClientRequestStartAbility packet, int slot, ClientItem clientItem, ClientItemDefinition itemDefinition)
     {
         _resourceManager.Consumables.PartyFavors.TryGetValue(itemDefinition.Id, out var favor);
 
-        var player = connection.Player;
-        var zone = player.Zone;
-
         if (player.IsItemOnCooldown(itemDefinition.Id))
-            return SendFailure(connection);
+            return SendFailure(player);
 
         // Not aimable, so there's no selected target to honour. Skip last time's victim unless
         // they're the only one around.
-        var target = AbilityTargeting.FindNearestPlayer(zone, player, favor!.Range, player.LastSillyStringTarget)
-            ?? AbilityTargeting.FindNearestPlayer(zone, player, favor.Range);
+        var target = player.FindNearestPlayer(favor!.Range, player.LastSillyStringTarget)
+            ?? player.FindNearestPlayer(favor.Range);
 
         if (target is null)
-            return SendFailure(connection); // nobody nearby to spray - can isn't used
+            return SendFailure(player); // nobody nearby to spray - can isn't used
 
         player.LastSillyStringTarget = target.Guid;
 
@@ -73,7 +70,7 @@ public sealed class SillyStringAbility(AbilityServices services) : ConsumableAbi
 
         player.StartItemCooldown(itemDefinition.Id, favor.CooldownMs);
 
-        FinishActivation(connection, clientItem, itemDefinition, slot, favor.CooldownMs, IconTintId(clientItem, itemDefinition.Icon.TintId));
+        FinishActivation(player, clientItem, itemDefinition, slot, favor.CooldownMs, IconTintId(clientItem, itemDefinition.Icon.TintId));
 
         return true;
     }

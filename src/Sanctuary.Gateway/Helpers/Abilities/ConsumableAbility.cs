@@ -15,7 +15,7 @@ using Sanctuary.Game.Zones;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
 
-namespace Sanctuary.Gateway.Handlers.Abilities;
+namespace Sanctuary.Gateway.Helpers.Abilities;
 
 public sealed record AbilityServices(
     ILogger Logger,
@@ -36,7 +36,7 @@ public abstract class ConsumableAbility(AbilityServices services)
 
     public abstract bool Matches(ClientItemDefinition itemDefinition);
 
-    public abstract bool HandleAbility(GatewayConnection connection, AbilityPacketClientRequestStartAbility packet, int slot, ClientItem clientItem, ClientItemDefinition itemDefinition);
+    public abstract bool HandleAbility(Player player, AbilityPacketClientRequestStartAbility packet, int slot, ClientItem clientItem, ClientItemDefinition itemDefinition);
 
     protected static int NextEffectTagId() => Interlocked.Increment(ref _castFxTagCounter);
 
@@ -44,15 +44,15 @@ public abstract class ConsumableAbility(AbilityServices services)
     protected static int IconTintId(ClientItem clientItem, int defaultTintId) =>
         clientItem.Tint == 0 ? defaultTintId : clientItem.Tint;
 
-    protected bool ConsumeItem(GatewayConnection connection, ClientItem clientItem, ClientItemDefinition clientItemDefinition, int actionBarSlot)
+    protected bool ConsumeItem(Player player, ClientItem clientItem, ClientItemDefinition clientItemDefinition, int actionBarSlot)
     {
         using var dbContext = _dbContextFactory.CreateDbContext();
 
-        var characterId = GuidHelper.GetPlayerId(connection.Player.Guid);
+        var characterId = GuidHelper.GetPlayerId(player.Guid);
         var dbItem = dbContext.Items.SingleOrDefault(i => i.CharacterId == characterId && i.Id == clientItem.Id);
 
         if (dbItem is null)
-            return SendFailure(connection);
+            return SendFailure(player);
 
         dbItem.Count--;
 
@@ -62,29 +62,29 @@ public abstract class ConsumableAbility(AbilityServices services)
             dbContext.Items.Remove(dbItem);
 
         if (dbContext.SaveChanges() <= 0)
-            return SendFailure(connection);
+            return SendFailure(player);
 
         if (shouldDeleteItem)
         {
-            connection.Player.Items.Remove(clientItem);
-            connection.SendTunneled(new ClientUpdatePacketItemDelete { ItemGuid = clientItem.Id });
+            player.Items.Remove(clientItem);
+            player.SendTunneled(new ClientUpdatePacketItemDelete { ItemGuid = clientItem.Id });
 
             // A pending cooldown re-enable would fire after this and un-delete the slot.
-            connection.Player.CancelScheduledSlotPacket(ActionBarId, actionBarSlot);
+            player.CancelScheduledSlotPacket(ActionBarId, actionBarSlot);
 
             var slotPacket = new ClientUpdatePacketUpdateActionBarSlot { Data = { Id = ActionBarId, Slot = actionBarSlot } };
             slotPacket.Slot.IsEmpty = true;
 
-            if (connection.Player.ActionBarItemGuids.TryGetValue(ActionBarId, out var trackedItems))
+            if (player.ActionBarItemGuids.TryGetValue(ActionBarId, out var trackedItems))
                 trackedItems.Remove(actionBarSlot);
 
-            connection.SendTunneled(slotPacket);
+            player.SendTunneled(slotPacket);
         }
         else
         {
             clientItem.Count--;
 
-            connection.SendTunneled(new ClientUpdatePacketItemUpdate
+            player.SendTunneled(new ClientUpdatePacketItemUpdate
             {
                 ItemGuid = clientItem.Id,
                 Count = clientItem.Count,
@@ -108,28 +108,28 @@ public abstract class ConsumableAbility(AbilityServices services)
             slotPacket.Slot.ForceDismount = true;
             slotPacket.Slot.Unknown15 = 1000;
 
-            connection.SendTunneled(slotPacket);
+            player.SendTunneled(slotPacket);
         }
 
         return true;
     }
 
-    protected static void PlayEffect(GatewayConnection connection, int effectId, int delayMs = 0)
+    protected static void PlayEffect(Player player, int effectId, int delayMs = 0)
     {
         if (effectId == 0)
             return;
 
         var effectPacket = new PlayerUpdatePacketPlayCompositeEffect
         {
-            Guid = connection.Player.Guid,
+            Guid = player.Guid,
             CompositeEffectId = effectId,
             Clear = true
         };
 
         if (delayMs > 0)
-            connection.Player.SendTunneledToVisibleDelayed(effectPacket, delayMs, true);
+            player.SendTunneledToVisibleDelayed(effectPacket, delayMs, true);
         else
-            connection.Player.SendTunneledToVisible(effectPacket, true);
+            player.SendTunneledToVisible(effectPacket, true);
     }
 
     protected static void DespawnNpc(Npc npc, int effectId)
@@ -150,9 +150,9 @@ public abstract class ConsumableAbility(AbilityServices services)
         npc.Dispose();
     }
 
-    protected static Npc? SpawnNpc(GatewayConnection connection, Vector4 position, Action<Npc> configure)
+    protected static Npc? SpawnNpc(Player player, Vector4 position, Action<Npc> configure)
     {
-        if (connection.Player.Zone is not StartingZone startingZone)
+        if (player.Zone is not StartingZone startingZone)
             return null;
 
         if (!startingZone.TryCreateNpc(out var npc))
@@ -162,14 +162,14 @@ public abstract class ConsumableAbility(AbilityServices services)
 
         // Visible must be set before UpdatePosition so the zone tile system sends AddNpc to players in range.
         npc.Visible = true;
-        npc.UpdatePosition(position, connection.Player.Rotation);
+        npc.UpdatePosition(position, player.Rotation);
 
         return npc;
     }
 
     // SpawnNpc already sent AddNpc to everyone in tile range, so this only plays the poof and
     // covers the spawner if they ended up outside the NPC's tiles. Returns who got the spawn.
-    protected static List<Player> BroadcastSpawn(GatewayConnection connection, Npc npc, Vector4 position, int poofEffectId)
+    protected static List<Player> BroadcastSpawn(Player player, Npc npc, Vector4 position, int poofEffectId)
     {
         var poofEffect = new PlayerUpdatePacketPlayCompositeEffect
         {
@@ -181,36 +181,36 @@ public abstract class ConsumableAbility(AbilityServices services)
 
         var recipients = npc.VisiblePlayers.Values.ToList();
 
-        if (!npc.VisiblePlayers.ContainsKey(connection.Player.Guid))
+        if (!npc.VisiblePlayers.ContainsKey(player.Guid))
         {
-            connection.Player.SendTunneled(npc.GetAddNpcPacket());
-            recipients.Insert(0, connection.Player);
+            player.SendTunneled(npc.GetAddNpcPacket());
+            recipients.Insert(0, player);
         }
 
-        foreach (var player in recipients)
-            player.SendTunneled(poofEffect);
+        foreach (var recipient in recipients)
+            recipient.SendTunneled(poofEffect);
 
         return recipients;
     }
 
     // internal so the handler can fail its own request validation the same way.
-    internal static bool SendFailure(GatewayConnection connection)
+    internal static bool SendFailure(Player player)
     {
-        connection.SendTunneled(new AbilityPacketFailed { StringId = 3079 });
+        player.SendTunneled(new AbilityPacketFailed { StringId = 3079 });
 
         return true;
     }
 
-    protected void FinishActivation(GatewayConnection connection, ClientItem clientItem, ClientItemDefinition itemDefinition, int slot, int cooldownMs, int iconTintId = 0)
+    protected void FinishActivation(Player player, ClientItem clientItem, ClientItemDefinition itemDefinition, int slot, int cooldownMs, int iconTintId = 0)
     {
         var count = clientItem.Count;
         var hasItemLeft = !itemDefinition.SingleUse || count > 1;
 
         if (itemDefinition.SingleUse)
-            ConsumeItem(connection, clientItem, itemDefinition, slot);
+            ConsumeItem(player, clientItem, itemDefinition, slot);
 
         if (hasItemLeft)
-            connection.Player.StartActionBarCooldown(ActionBarId, slot, itemDefinition.Icon.Id, itemDefinition.NameId,
+            player.StartActionBarCooldown(ActionBarId, slot, itemDefinition.Icon.Id, itemDefinition.NameId,
                 itemDefinition.SingleUse ? count - 1 : count, cooldownMs, iconTintId);
     }
 }

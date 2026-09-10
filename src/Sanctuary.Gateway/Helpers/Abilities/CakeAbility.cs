@@ -1,43 +1,44 @@
 using System;
 using System.Numerics;
 
+using Sanctuary.Game.Entities;
 using Sanctuary.Game.Resources.Definitions;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
 
-namespace Sanctuary.Gateway.Handlers.Abilities;
+namespace Sanctuary.Gateway.Helpers.Abilities;
 
 public sealed class CakeAbility(AbilityServices services) : ConsumableAbility(services)
 {
     public override bool Matches(ClientItemDefinition itemDefinition) =>
         _resourceManager.Consumables.Cakes.ContainsKey(itemDefinition.Id);
 
-    public override bool HandleAbility(GatewayConnection connection, AbilityPacketClientRequestStartAbility packet, int slot, ClientItem clientItem, ClientItemDefinition itemDefinition)
+    public override bool HandleAbility(Player player, AbilityPacketClientRequestStartAbility packet, int slot, ClientItem clientItem, ClientItemDefinition itemDefinition)
     {
         _resourceManager.Consumables.Cakes.TryGetValue(itemDefinition.Id, out var cakeDefinition);
 
-        if (connection.Player.IsItemOnCooldown(itemDefinition.Id))
-            return SendFailure(connection);
+        if (player.IsItemOnCooldown(itemDefinition.Id))
+            return SendFailure(player);
 
-        SpawnCakeNpc(connection, cakeDefinition!);
+        SpawnCakeNpc(player, cakeDefinition!);
 
-        connection.Player.StartItemCooldown(itemDefinition.Id, cakeDefinition!.CooldownMs);
-        connection.Player.StartActionBarCooldown(ActionBarId, slot, itemDefinition.Icon.Id, itemDefinition.NameId, clientItem.Count, cakeDefinition.CooldownMs);
+        player.StartItemCooldown(itemDefinition.Id, cakeDefinition!.CooldownMs);
+        player.StartActionBarCooldown(ActionBarId, slot, itemDefinition.Icon.Id, itemDefinition.NameId, clientItem.Count, cakeDefinition.CooldownMs);
 
         return true;
     }
 
-    private void SpawnCakeNpc(GatewayConnection connection, CakeItemDefinition cakeDefinition)
+    private void SpawnCakeNpc(Player player, CakeItemDefinition cakeDefinition)
     {
-        var forwardDirection = Vector3.Transform(new Vector3(0, 0, 1), connection.Player.Rotation);
+        var forwardDirection = Vector3.Transform(new Vector3(0, 0, 1), player.Rotation);
         var spawnPosition = new Vector4(
-            connection.Player.Position.X + forwardDirection.X * 1.5f,
-            connection.Player.Position.Y + forwardDirection.Y * 1.5f,
-            connection.Player.Position.Z + forwardDirection.Z * 1.5f,
-            connection.Player.Position.W
+            player.Position.X + forwardDirection.X * 1.5f,
+            player.Position.Y + forwardDirection.Y * 1.5f,
+            player.Position.Z + forwardDirection.Z * 1.5f,
+            player.Position.W
         );
 
-        var cakeNpc = SpawnNpc(connection, spawnPosition, npc =>
+        var cakeNpc = SpawnNpc(player, spawnPosition, npc =>
         {
             npc.NameId = cakeDefinition.NameId;
             npc.ModelId = cakeDefinition.ModelId;
@@ -100,7 +101,7 @@ public sealed class CakeAbility(AbilityServices services) : ConsumableAbility(se
             };
         }
 
-        BroadcastSpawn(connection, cakeNpc, spawnPosition, cakeDefinition.SpawnPoofEffectId);
+        BroadcastSpawn(player, cakeNpc, spawnPosition, cakeDefinition.SpawnPoofEffectId);
 
         var despawnTime = DateTimeOffset.UtcNow.AddMilliseconds(cakeDefinition.LifetimeMs);
 

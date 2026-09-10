@@ -1,7 +1,8 @@
+using Sanctuary.Game.Entities;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
 
-namespace Sanctuary.Gateway.Handlers.Abilities;
+namespace Sanctuary.Gateway.Helpers.Abilities;
 
 // Transform foods (dog/cat/bat treats). Random ones (Jack-O-Lantern) roll in HandleAbility rather
 // than Matches, so every use is a fresh roll.
@@ -15,7 +16,7 @@ public sealed class TransformFoodAbility(AbilityServices services) : ConsumableA
         return _resourceManager.Consumables.Transformations.ContainsKey(itemDefinition.ActivatableAbilityId);
     }
 
-    public override bool HandleAbility(GatewayConnection connection, AbilityPacketClientRequestStartAbility packet, int slot, ClientItem clientItem, ClientItemDefinition itemDefinition)
+    public override bool HandleAbility(Player player, AbilityPacketClientRequestStartAbility packet, int slot, ClientItem clientItem, ClientItemDefinition itemDefinition)
     {
         var transformAbilityId = itemDefinition.ActivatableAbilityId;
 
@@ -24,17 +25,17 @@ public sealed class TransformFoodAbility(AbilityServices services) : ConsumableA
 
         _resourceManager.Consumables.Transformations.TryGetValue(transformAbilityId, out var transform);
 
-        if (connection.Player.IsItemOnCooldown(itemDefinition.Id))
-            return SendFailure(connection);
+        if (player.IsItemOnCooldown(itemDefinition.Id))
+            return SendFailure(player);
 
-        if (connection.Player.TemporaryAppearance != 0)
-            return SendFailure(connection);
+        if (player.TemporaryAppearance != 0)
+            return SendFailure(player);
 
-        connection.Player.ApplyTemporaryAppearance(transform!.ModelId, transform.DurationMs, transform.CompositeEffectId);
+        player.ApplyTemporaryAppearance(transform!.ModelId, transform.DurationMs, transform.CompositeEffectId);
 
-        connection.Player.StartItemCooldown(itemDefinition.Id, transform.CooldownMs);
+        player.StartItemCooldown(itemDefinition.Id, transform.CooldownMs);
 
-        FinishActivation(connection, clientItem, itemDefinition, slot, transform.CooldownMs);
+        FinishActivation(player, clientItem, itemDefinition, slot, transform.CooldownMs);
 
         return true;
     }

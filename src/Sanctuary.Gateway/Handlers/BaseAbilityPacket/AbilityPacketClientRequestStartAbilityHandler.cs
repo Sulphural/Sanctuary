@@ -7,7 +7,8 @@ using Microsoft.Extensions.Logging;
 
 using Sanctuary.Database;
 using Sanctuary.Game;
-using Sanctuary.Gateway.Handlers.Abilities;
+using Sanctuary.Game.Entities;
+using Sanctuary.Gateway.Helpers.Abilities;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common.Attributes;
 
@@ -54,37 +55,37 @@ public static class AbilityPacketClientRequestStartAbilityHandler
         }
 
         if (packet.Data.Id == ConsumableAbility.ActionBarId)
-            return HandleItemAbility(connection, packet);
+            return HandleItemAbility(connection.Player, packet);
 
-        return ConsumableAbility.SendFailure(connection);
+        return ConsumableAbility.SendFailure(connection.Player);
     }
 
-    private static bool HandleItemAbility(GatewayConnection connection, AbilityPacketClientRequestStartAbility packet)
+    private static bool HandleItemAbility(Player player, AbilityPacketClientRequestStartAbility packet)
     {
-        connection.Player.ActionBars.TryGetValue(ConsumableAbility.ActionBarId, out var actionBar);
+        player.ActionBars.TryGetValue(ConsumableAbility.ActionBarId, out var actionBar);
 
         if (actionBar is null || !actionBar.Slots.TryGetValue(packet.Data.Slot, out var slot) || slot.IsEmpty)
-            return ConsumableAbility.SendFailure(connection);
+            return ConsumableAbility.SendFailure(player);
 
-        if (!connection.Player.ActionBarItemGuids.TryGetValue(ConsumableAbility.ActionBarId, out var slotItemGuids) ||
+        if (!player.ActionBarItemGuids.TryGetValue(ConsumableAbility.ActionBarId, out var slotItemGuids) ||
             !slotItemGuids.TryGetValue(packet.Data.Slot, out var itemGuid))
-            return ConsumableAbility.SendFailure(connection);
+            return ConsumableAbility.SendFailure(player);
 
-        var clientItem = connection.Player.Items.FirstOrDefault(x => x.Id == itemGuid);
+        var clientItem = player.Items.FirstOrDefault(x => x.Id == itemGuid);
 
         if (clientItem is null)
-            return ConsumableAbility.SendFailure(connection);
+            return ConsumableAbility.SendFailure(player);
 
         if (!_resourceManager.ClientItemDefinitions.TryGetValue(clientItem.Definition, out var itemDefinition) ||
             itemDefinition.ActivatableAbilityId == 0)
-            return ConsumableAbility.SendFailure(connection);
+            return ConsumableAbility.SendFailure(player);
 
         foreach (var ability in _consumableAbilities)
         {
             if (ability.Matches(itemDefinition))
-                return ability.HandleAbility(connection, packet, packet.Data.Slot, clientItem, itemDefinition);
+                return ability.HandleAbility(player, packet, packet.Data.Slot, clientItem, itemDefinition);
         }
 
-        return ConsumableAbility.SendFailure(connection);
+        return ConsumableAbility.SendFailure(player);
     }
 }

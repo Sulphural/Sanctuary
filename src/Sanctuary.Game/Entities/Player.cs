@@ -285,6 +285,31 @@ public sealed class Player : ClientPcData, IEntity
         }
     }
 
+    // Nearest other player in the zone within range, excluding excludeGuid if given.
+    public Player? FindNearestPlayer(float range, ulong excludeGuid = 0)
+    {
+        Player? nearest = null;
+        var nearestDistance = range * range;
+
+        foreach (var candidate in Zone.Players)
+        {
+            if (candidate.Guid == Guid || candidate.Guid == excludeGuid)
+                continue;
+
+            var deltaX = candidate.Position.X - Position.X;
+            var deltaZ = candidate.Position.Z - Position.Z;
+            var distance = deltaX * deltaX + deltaZ * deltaZ;
+
+            if (distance >= nearestDistance)
+                continue;
+
+            nearestDistance = distance;
+            nearest = candidate;
+        }
+
+        return nearest;
+    }
+
     private void UpdateZoneTile()
     {
         var newZoneTile = Zone.GetTileFromPosition(Position);

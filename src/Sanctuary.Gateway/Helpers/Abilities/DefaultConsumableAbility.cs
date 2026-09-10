@@ -1,7 +1,8 @@
+using Sanctuary.Game.Entities;
 using Sanctuary.Packet;
 using Sanctuary.Packet.Common;
 
-namespace Sanctuary.Gateway.Handlers.Abilities;
+namespace Sanctuary.Gateway.Helpers.Abilities;
 
 // Catch-all for items no other ability claims. Registered last. These items have no cooldown
 // to show a radial for, so it just plays their effect and eats them.
@@ -9,12 +10,12 @@ public sealed class DefaultConsumableAbility(AbilityServices services) : Consuma
 {
     public override bool Matches(ClientItemDefinition itemDefinition) => true;
 
-    public override bool HandleAbility(GatewayConnection connection, AbilityPacketClientRequestStartAbility packet, int slot, ClientItem clientItem, ClientItemDefinition itemDefinition)
+    public override bool HandleAbility(Player player, AbilityPacketClientRequestStartAbility packet, int slot, ClientItem clientItem, ClientItemDefinition itemDefinition)
     {
-        PlayEffect(connection, itemDefinition.CompositeEffectId);
+        PlayEffect(player, itemDefinition.CompositeEffectId);
 
         if (itemDefinition.SingleUse)
-            return ConsumeItem(connection, clientItem, itemDefinition, slot);
+            return ConsumeItem(player, clientItem, itemDefinition, slot);
 
         return true;
     }
