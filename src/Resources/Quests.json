@@ -138,18 +138,7 @@
         "DescriptionId": 74456,
         "Type": 2,
         "RequiredCount": 8,
-        "CollectModelId": 584,
-        "CollectNameId": 74449,
-        "CollectSpawns": [
-          [-1090.0, 5.40, 384.0],
-          [-1072.0, 5.30, 348.0],
-          [-938.0, 4.75, 230.0],
-          [-1000.0, 6.40, 202.0],
-          [-1005.0, 6.40, 198.0],
-          [-1099.0, 5.19, 225.0],
-          [-1115.0, 5.17, 306.0],
-          [-1052.0, 4.63, 307.0]
-        ]
+        "CollectNodeType": "hastis-homework"
       },
       {
         "NameId": 74455,
@@ -551,29 +540,13 @@
         "NameId": 70221,
         "Type": 2,
         "RequiredCount": 5,
-        "CollectModelId": 197,
-        "CollectNameId": 2149,
-        "CollectSpawns": [
-          [-595.0, 1.0, 1225.0],
-          [-438.0, 4.0, 1186.0],
-          [-503.0, 1.0, 1078.0],
-          [-399.0, 5.0, 1092.0],
-          [-440.0, 1.0, 1310.0]
-        ]
+        "CollectNodeType": "smashing-hammers"
       },
       {
         "NameId": 70227,
         "Type": 2,
         "RequiredCount": 5,
-        "CollectModelId": 196,
-        "CollectNameId": 3307,
-        "CollectSpawns": [
-          [-608.0, 1.0, 1213.0],
-          [-425.0, 4.0, 1174.0],
-          [-491.0, 1.0, 1066.0],
-          [-387.0, 5.0, 1080.0],
-          [-428.0, 1.0, 1323.0]
-        ]
+        "CollectNodeType": "smashing-chisels"
       },
       {
         "NameId": 70230,
@@ -604,13 +577,7 @@
         "NameId": 70289,
         "Type": 2,
         "RequiredCount": 3,
-        "CollectModelId": 84,
-        "CollectNameId": 21364,
-        "CollectSpawns": [
-          [-535.0, 0.5, 1350.0],
-          [-550.0, 0.5, 1365.0],
-          [-525.0, 0.5, 1355.0]
-        ]
+        "CollectNodeType": "box-o-rocks"
       },
       {
         "NameId": 70291,
@@ -681,15 +648,7 @@
         "NameId": 400357,
         "Type": 2,
         "RequiredCount": 5,
-        "CollectModelId": 611,
-        "CollectNameId": 21936,
-        "CollectSpawns": [
-          [-245.0, -29.09, -1166.0],
-          [-252.0, -30.24, -1173.0],
-          [-268.0, -21.43, -1159.0],
-          [-226.0, -24.65, -1151.0],
-          [-235.0, -30.5, -1183.0]
-        ]
+        "CollectNodeType": "tin-ore"
       },
       {
         "NameId": 400426,

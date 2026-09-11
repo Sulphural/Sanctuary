@@ -133,8 +133,14 @@ public class QuestDefinitionCollection
             if (!goalNameIds.Add(goal.NameId))
                 _logger.LogWarning("Duplicate goal NameId {nameId} on quest {id} in \"{file}\".", goal.NameId, quest.QuestId, filePath);
 
-            if (goal.Type == QuestGoalType.Collect && goal.RequiredCount <= 0)
-                goal.RequiredCount = goal.CollectSpawns.Count;
+            if (goal.Type == QuestGoalType.Collect)
+            {
+                if (string.IsNullOrEmpty(goal.CollectNodeType))
+                    _logger.LogWarning("Collect goal on quest {id} has no CollectNodeType in \"{file}\"; it can never be credited.", quest.QuestId, filePath);
+
+                if (goal.RequiredCount <= 0)
+                    _logger.LogWarning("Collect goal on quest {id} has no RequiredCount in \"{file}\"; it can never be completed.", quest.QuestId, filePath);
+            }
         }
     }
 }

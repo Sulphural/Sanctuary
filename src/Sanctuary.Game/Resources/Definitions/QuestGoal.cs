@@ -42,14 +42,11 @@ public sealed class QuestGoal
     public List<int> TargetDialogueIds { get; set; } = [];
     public List<int> TargetResponseIds { get; set; } = [];
 
-    // 0 = CollectSpawns.Count.
     public int RequiredCount { get; set; }
 
-    public int CollectModelId { get; set; }
-    public int CollectNameId { get; set; }
-
-    // [x, y, z] each.
-    public List<float[]> CollectSpawns { get; set; } = [];
+    // A CollectionNodeTypes.json key. Reuses the existing collection node system for pickups
+    // instead of quests owning their own spawn points.
+    public string CollectNodeType { get; set; } = string.Empty;
 
     // [x, y, z]. The proximity check is 2D, so the Y only feeds the map pin.
     public float[] ReachPosition { get; set; } = [];
