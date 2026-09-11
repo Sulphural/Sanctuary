@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -45,6 +46,17 @@ public static class ClientPathBasePacketHandler
         var reply = new ClientPathReplyPacket { RequestId = request.RequestId, ResultType = request.Mode };
 
         reply.Path.Add(request.Start);
+
+        var pathfinder = connection.Player.Zone.Pathfinder;
+        if (pathfinder is not null)
+        {
+            var start = new Vector3(request.Start.X, request.Start.Y, request.Start.Z);
+            var goal = new Vector3(request.End.X, request.End.Y, request.End.Z);
+
+            foreach (var node in pathfinder.FindPath(start, goal))
+                reply.Path.Add(new Vector4(node.Position.X, node.Position.Y, node.Position.Z, 1f));
+        }
+
         reply.Path.Add(request.End);
 
         connection.Player.SendTunneled(reply);

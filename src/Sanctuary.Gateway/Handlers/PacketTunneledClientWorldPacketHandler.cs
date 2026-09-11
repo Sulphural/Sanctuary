@@ -48,6 +48,7 @@ public static class PacketTunneledClientWorldPacketHandler
             BaseGuildPacket.OpCode => BaseGuildPacketHandler.HandlePacket(connection, reader),
             BaseFotomatPacket.OpCode => BaseFotomatPacketHandler.HandlePacket(connection, reader),
             WallOfDataBasePacket.OpCode => WallOfDataBasePacketHandler.HandlePacket(connection, reader),
+            TakeMeThereRequestPacket.OpCode => TakeMeThereRequestPacketHandler.HandlePacket(connection, packet.Payload),
             _ => false
         };
 
