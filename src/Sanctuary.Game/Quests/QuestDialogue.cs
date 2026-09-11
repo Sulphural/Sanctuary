@@ -40,7 +40,7 @@ public static class QuestDialogue
         {
             Guid = npcGuid,
             AnimationId = TalkAnimationId,
-            PlayType = SetBaseAnimation
+            Flags = SetBaseAnimation
         });
 
         _ = Task.Run(async () =>
@@ -65,7 +65,7 @@ public static class QuestDialogue
         {
             Guid = npcGuid,
             AnimationId = IdleAnimationId,
-            PlayType = SetBaseAnimation
+            Flags = SetBaseAnimation
         });
     }
 

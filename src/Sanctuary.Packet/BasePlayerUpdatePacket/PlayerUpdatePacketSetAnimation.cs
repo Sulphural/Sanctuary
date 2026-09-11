@@ -9,7 +9,9 @@ public class PlayerUpdatePacketSetAnimation : BasePlayerUpdatePacket, ISerializa
     public ulong Guid;
     public int AnimationId;
     public int Unknown;
-    public byte PlayType = 2;
+
+    // Bit 0 set = set the entity's base/idle animation, otherwise play it now.
+    public byte Flags;
 
     public PlayerUpdatePacketSetAnimation() : base(OpCode)
     {
@@ -24,7 +26,7 @@ public class PlayerUpdatePacketSetAnimation : BasePlayerUpdatePacket, ISerializa
         writer.Write(Guid);
         writer.Write(AnimationId);
         writer.Write(Unknown);
-        writer.Write(PlayType);
+        writer.Write(Flags);
 
         return writer.Buffer;
     }
