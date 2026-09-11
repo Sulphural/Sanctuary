@@ -26,6 +26,8 @@ public sealed class QuestDefinition
 
     public List<int> RewardItems { get; set; } = [];
 
+    public int RewardCollectionId { get; set; }
+
     public int PrerequisiteQuestId { get; set; }
     public int NextQuestId { get; set; }
 

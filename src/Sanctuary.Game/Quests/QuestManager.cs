@@ -472,18 +472,18 @@ public sealed class QuestManager : IQuestManager
         bundle.IconId = -1;
         bundle.NameId = -1;
 
-        foreach (var entry in BuildRewardItems(quest))
+        foreach (var entry in BuildRewardEntries(quest))
             bundle.Entries.Add(entry);
     }
 
-    private List<RewardBundleEntryBase> BuildRewardItems(QuestDefinition quest)
+    private List<RewardBundleEntryBase> BuildRewardEntries(QuestDefinition quest)
     {
-        var items = new List<RewardBundleEntryBase>();
+        var entries = new List<RewardBundleEntryBase>();
         foreach (var definitionId in quest.RewardItems)
         {
             if (_resourceManager.ClientItemDefinitions.TryGetValue(definitionId, out var itemDef))
             {
-                items.Add(new RewardBundleEntryItem
+                entries.Add(new RewardBundleEntryItem
                 {
                     IconId = itemDef.Icon.Id,
                     NameId = itemDef.NameId,
@@ -491,7 +491,20 @@ public sealed class QuestManager : IQuestManager
                 });
             }
         }
-        return items;
+
+        if (quest.RewardCollectionId != 0 &&
+            _resourceManager.Collections.TryGetValue(quest.RewardCollectionId, out var collectionDef))
+        {
+            entries.Add(new RewardBundleEntryCollectionAdd
+            {
+                IconId = collectionDef.IconId,
+                TintId = collectionDef.IconTintId,
+                NameId = collectionDef.NameId,
+                CollectionId = collectionDef.Id
+            });
+        }
+
+        return entries;
     }
 
     private bool TryCreditCountedTalk(Player player, QuestDefinition quest, int goalIndex, Npc npc)
@@ -960,17 +973,35 @@ public sealed class QuestManager : IQuestManager
         if (experience > 0)
             player.AwardXp(experience);
 
-        if (coins > 0 || experience > 0)
+        var grantedCollection = quest.RewardCollectionId != 0 &&
+            _resourceManager.Collections.TryGetValue(quest.RewardCollectionId, out var rewardedCollection)
+                ? rewardedCollection
+                : null;
+
+        if (coins > 0 || experience > 0 || grantedCollection is not null)
         {
             var celebration = new QuestRewardBundlePacket();
 
-            celebration.RewardBundle.Success = false;
+            // Success also gates whether each entry's tail is written; only the actual
+            // collection id needs one here, so only flip it when there is a collection to report.
+            celebration.RewardBundle.Success = grantedCollection is not null;
             celebration.RewardBundle.Unknown1 = coins;
             celebration.RewardBundle.RewardKind = experience;
             celebration.RewardBundle.Unknown3 = 0;
             celebration.RewardBundle.Multiplier = 1f;
             celebration.RewardBundle.IconId = -1;
             celebration.RewardBundle.NameId = -1;
+
+            if (grantedCollection is not null)
+            {
+                celebration.RewardBundle.Entries.Add(new RewardBundleEntryCollectionAdd
+                {
+                    IconId = grantedCollection.IconId,
+                    TintId = grantedCollection.IconTintId,
+                    NameId = grantedCollection.NameId,
+                    CollectionId = grantedCollection.Id
+                });
+            }
 
             player.SendTunneled(celebration);
         }

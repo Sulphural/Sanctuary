@@ -23,7 +23,7 @@ CLIENT_MANIFEST_URL = "https://opensourcefreerealms.com/clientmanifest.xml"
 DOWNLOAD_CHUNK_SIZE = 1024 * 1024
 DOWNLOAD_WORKERS = 16
 DEFAULT_LAUNCH_ARGS = [
-    "AssetDelivery:IndirectServerAddress=http://osfr.editz.dev/assets",
+    "AssetDelivery:IndirectServerAddress=http://opensourcefreerealms.com/assets",
     "Portrait:UploadUrl=http://127.0.0.1:20040/image",
 ]
 
@@ -234,7 +234,7 @@ def run_client_for_login(client_folder, address, port, username, password):
     print("  python run_client.py -g 1")
     print()
 
-    api_server_port = 5000
+    api_server_port = 20040
     try:
         session = get_session(address, api_server_port, username, password)
     except requests.RequestException as e:
