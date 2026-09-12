@@ -65,7 +65,7 @@
     { "AbilityId": 1969, "CompositeEffectId": 1107,  "Comment": "Pixiedust Pie" },
     { "AbilityId": 1970, "CompositeEffectId": 630,   "Comment": "Frosty Flakes" },
     { "AbilityId": 1973, "CompositeEffectId": 15173, "Comment": "Scrumptious Soup" },
-    { "AbilityId": 2004, "CompositeEffectId": 4013,  "Comment": "Steaming Pretzels" },
+    { "AbilityId": 2004, "CompositeEffectId": 15173, "Comment": "Steaming Pretzels" },
     { "AbilityId": 1964, "CompositeEffectId": 5265,  "Comment": "Graveyard Flambe (shadow flames)" },
     { "AbilityId": 660,  "CompositeEffectId": 5343, "QuickChatId": 3340, "EffectDelayMs": 300, "Comment": "Can of Beans" }
   ],
