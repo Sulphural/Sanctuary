@@ -21,7 +21,7 @@
   "Cakes": [
     {
       "ItemId": 17597, "Type": "ScaredyCake", "CooldownMs": 60000, "InteractCooldownMs": 5000,
-      "ModelId": 1724, "NameId": 16634, "SpawnEffectIds": [21], "DespawnEffectId": 21, "LifetimeMs": 60000,
+      "ModelId": 1724, "NameId": 16634, "SpawnEffectIds": [21], "LifetimeMs": 60000,
       "ScareGroups": [
         [5455,  5165,  15923],
         [15744, 5118,  15959]
@@ -31,7 +31,7 @@
     },
     {
       "ItemId": 69819, "Type": "ScaredyCake", "CooldownMs": 60000, "InteractCooldownMs": 5000,
-      "ModelId": 1724, "NameId": 16634, "SpawnEffectIds": [21], "DespawnEffectId": 21, "LifetimeMs": 60000,
+      "ModelId": 1724, "NameId": 16634, "SpawnEffectIds": [21], "LifetimeMs": 60000,
       "ScareGroups": [
         [5455,  5165,  15923],
         [15744, 5118,  15959]
@@ -41,7 +41,7 @@
     },
     {
       "ItemId": 7974, "Type": "BossCake", "CooldownMs": 60000, "InteractCooldownMs": 5000, "ModelId": 2090, "NameId": 30109,
-      "OneShotAnimation": 2001, "SpawnEffectIds": [16372, 16441], "DespawnEffectId": 0, "LifetimeMs": 60000, "TransformAbilityIds": [4370, 4371, 4372],
+      "OneShotAnimation": 2001, "SpawnEffectIds": [16372, 16441], "LifetimeMs": 60000, "TransformAbilityIds": [4370, 4371, 4372],
       "Comment": "Boss Birthday Cake"
     }
   ],

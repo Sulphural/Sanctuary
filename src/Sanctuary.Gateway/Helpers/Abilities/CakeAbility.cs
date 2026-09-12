@@ -140,7 +140,7 @@ public sealed class CakeAbility(AbilityServices services) : ConsumableAbility(se
 
             if (now >= despawnTime)
             {
-                DespawnNpc(cakeNpc, cakeDefinition.DespawnEffectId);
+                DespawnNpc(cakeNpc, 0);
                 return;
             }
 

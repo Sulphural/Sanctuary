@@ -10,7 +10,6 @@ public class CakeItemDefinition
     public int CursorId { get; set; } = 5;
     public int Animation { get; set; } = 1;
     public int[] SpawnEffectIds { get; set; } = [21];
-    public int DespawnEffectId { get; set; } = 21;
     public int LifetimeMs { get; set; } = 60000;
     public int InteractCooldownMs { get; set; } = 2000;
 
