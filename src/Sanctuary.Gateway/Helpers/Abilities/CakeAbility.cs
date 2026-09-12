@@ -54,12 +54,19 @@ public sealed class CakeAbility(AbilityServices services) : ConsumableAbility(se
         if (cakeNpc is null)
             return;
 
+        var interactReadyTime = DateTimeOffset.MinValue;
+
         if (cakeDefinition.Type == CakeItemType.BossCake)
         {
             var lastTransform = -1;
 
             cakeNpc.InteractAction = player =>
             {
+                if (DateTimeOffset.UtcNow < interactReadyTime)
+                    return;
+
+                interactReadyTime = DateTimeOffset.UtcNow.AddMilliseconds(cakeDefinition.InteractCooldownMs);
+
                 lastTransform = RollExcluding(cakeDefinition.TransformAbilityIds.Length, lastTransform);
                 var abilityId = cakeDefinition.TransformAbilityIds[lastTransform];
 
@@ -69,15 +76,14 @@ public sealed class CakeAbility(AbilityServices services) : ConsumableAbility(se
         }
         else
         {
-            var scareReadyTime = DateTimeOffset.MinValue;
             var lastRoll = -1;
 
             cakeNpc.InteractAction = player =>
             {
-                if (DateTimeOffset.UtcNow < scareReadyTime)
+                if (DateTimeOffset.UtcNow < interactReadyTime)
                     return;
 
-                scareReadyTime = DateTimeOffset.UtcNow.AddMilliseconds(cakeDefinition.ScareCooldownMs);
+                interactReadyTime = DateTimeOffset.UtcNow.AddMilliseconds(cakeDefinition.InteractCooldownMs);
 
                 // Every scare group and transform is equally likely, except the one that played last.
                 var roll = RollExcluding(cakeDefinition.ScareGroups.Length + cakeDefinition.TransformAbilityIds.Length, lastRoll);
@@ -108,7 +114,21 @@ public sealed class CakeAbility(AbilityServices services) : ConsumableAbility(se
             };
         }
 
-        BroadcastSpawn(player, cakeNpc, spawnPosition, cakeDefinition.SpawnPoofEffectId);
+        var spawnRecipients = BroadcastSpawn(player, cakeNpc, spawnPosition, cakeDefinition.SpawnEffectIds[0]);
+
+        for (var i = 1; i < cakeDefinition.SpawnEffectIds.Length; i++)
+        {
+            var spawnEffect = new PlayerUpdatePacketPlayCompositeEffect
+            {
+                Guid = cakeNpc.Guid,
+                CompositeEffectId = cakeDefinition.SpawnEffectIds[i],
+                Position = spawnPosition,
+                Clear = false
+            };
+
+            foreach (var recipient in spawnRecipients)
+                recipient.SendTunneled(spawnEffect);
+        }
 
         var despawnTime = DateTimeOffset.UtcNow.AddMilliseconds(cakeDefinition.LifetimeMs);
         var nextOneShotTime = NextOneShotTime(cakeDefinition);
@@ -120,7 +140,7 @@ public sealed class CakeAbility(AbilityServices services) : ConsumableAbility(se
 
             if (now >= despawnTime)
             {
-                DespawnNpc(cakeNpc, cakeDefinition.SpawnPoofEffectId);
+                DespawnNpc(cakeNpc, cakeDefinition.DespawnEffectId);
                 return;
             }
 
