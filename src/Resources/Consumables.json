@@ -43,6 +43,11 @@
       "ItemId": 69839, "Type": "BossCake", "CooldownMs": 30000, "ModelId": 1724, "NameId": 16635,
       "SpawnPoofEffectId": 21, "LifetimeMs": 60000, "TransformAbilityIds": [4370, 4371, 4372, 4373],
       "Comment": "Bat Cupcake"
+    },
+    {
+      "ItemId": 7974, "Type": "BossCake", "CooldownMs": 60000, "ModelId": 2090, "NameId": 30109,
+      "OneShotAnimation": 2001, "SpawnPoofEffectId": 21, "LifetimeMs": 60000, "TransformAbilityIds": [4370, 4371, 4372],
+      "Comment": "Boss Birthday Cake"
     }
   ],
 

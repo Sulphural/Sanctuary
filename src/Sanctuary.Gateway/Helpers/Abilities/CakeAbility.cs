@@ -111,12 +111,53 @@ public sealed class CakeAbility(AbilityServices services) : ConsumableAbility(se
         BroadcastSpawn(player, cakeNpc, spawnPosition, cakeDefinition.SpawnPoofEffectId);
 
         var despawnTime = DateTimeOffset.UtcNow.AddMilliseconds(cakeDefinition.LifetimeMs);
+        var nextOneShotTime = NextOneShotTime(cakeDefinition);
+        DateTimeOffset? oneShotEndTime = null;
 
         cakeNpc.UpdateEverySecondAction = () =>
         {
-            if (DateTimeOffset.UtcNow >= despawnTime)
+            var now = DateTimeOffset.UtcNow;
+
+            if (now >= despawnTime)
+            {
                 DespawnNpc(cakeNpc, cakeDefinition.SpawnPoofEffectId);
+                return;
+            }
+
+            if (cakeDefinition.OneShotAnimation == 0)
+                return;
+
+            if (oneShotEndTime is not null)
+            {
+                if (now < oneShotEndTime)
+                    return;
+
+                SetCakeAnimation(cakeNpc, cakeDefinition.Animation);
+                oneShotEndTime = null;
+                nextOneShotTime = NextOneShotTime(cakeDefinition);
+            }
+            else if (now >= nextOneShotTime)
+            {
+                SetCakeAnimation(cakeNpc, cakeDefinition.OneShotAnimation);
+                oneShotEndTime = now.AddMilliseconds(cakeDefinition.OneShotAnimationMs);
+            }
         };
+    }
+
+    private static DateTimeOffset NextOneShotTime(CakeItemDefinition cakeDefinition) =>
+        DateTimeOffset.UtcNow.AddMilliseconds(cakeDefinition.OneShotIntervalMs + Random.Shared.Next(cakeDefinition.OneShotIntervalMs + 1));
+
+    private static void SetCakeAnimation(Npc cakeNpc, int animationId)
+    {
+        var packet = new PlayerUpdatePacketSetAnimation
+        {
+            Guid = cakeNpc.Guid,
+            AnimationId = animationId,
+            Flags = 1
+        };
+
+        foreach (var viewer in cakeNpc.VisiblePlayers.Values)
+            viewer.SendTunneled(packet);
     }
 
     private static int RollExcluding(int count, int previous)
