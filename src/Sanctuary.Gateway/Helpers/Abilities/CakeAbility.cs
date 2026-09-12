@@ -56,9 +56,12 @@ public sealed class CakeAbility(AbilityServices services) : ConsumableAbility(se
 
         if (cakeDefinition.Type == CakeItemType.BossCake)
         {
+            var lastTransform = -1;
+
             cakeNpc.InteractAction = player =>
             {
-                var abilityId = cakeDefinition.TransformAbilityIds[Random.Shared.Next(cakeDefinition.TransformAbilityIds.Length)];
+                lastTransform = RollExcluding(cakeDefinition.TransformAbilityIds.Length, lastTransform);
+                var abilityId = cakeDefinition.TransformAbilityIds[lastTransform];
 
                 if (_resourceManager.Consumables.Transformations.TryGetValue(abilityId, out var transform))
                     player.ApplyTemporaryAppearance(transform.ModelId, transform.DurationMs, transform.CompositeEffectId);
@@ -67,6 +70,7 @@ public sealed class CakeAbility(AbilityServices services) : ConsumableAbility(se
         else
         {
             var scareReadyTime = DateTimeOffset.MinValue;
+            var lastRoll = -1;
 
             cakeNpc.InteractAction = player =>
             {
@@ -75,8 +79,9 @@ public sealed class CakeAbility(AbilityServices services) : ConsumableAbility(se
 
                 scareReadyTime = DateTimeOffset.UtcNow.AddMilliseconds(cakeDefinition.ScareCooldownMs);
 
-                // Every scare group and transform is equally likely.
-                var roll = Random.Shared.Next(cakeDefinition.ScareGroups.Length + cakeDefinition.TransformAbilityIds.Length);
+                // Every scare group and transform is equally likely, except the one that played last.
+                var roll = RollExcluding(cakeDefinition.ScareGroups.Length + cakeDefinition.TransformAbilityIds.Length, lastRoll);
+                lastRoll = roll;
 
                 if (roll < cakeDefinition.ScareGroups.Length)
                 {
@@ -112,5 +117,15 @@ public sealed class CakeAbility(AbilityServices services) : ConsumableAbility(se
             if (DateTimeOffset.UtcNow >= despawnTime)
                 DespawnNpc(cakeNpc, cakeDefinition.SpawnPoofEffectId);
         };
+    }
+
+    private static int RollExcluding(int count, int previous)
+    {
+        if (count <= 1 || previous < 0)
+            return Random.Shared.Next(count);
+
+        var roll = Random.Shared.Next(count - 1);
+
+        return roll >= previous ? roll + 1 : roll;
     }
 }
