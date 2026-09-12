@@ -80,14 +80,16 @@ public sealed class CakeAbility(AbilityServices services) : ConsumableAbility(se
 
                 if (roll < cakeDefinition.ScareGroups.Length)
                 {
-                    foreach (var effectId in cakeDefinition.ScareGroups[roll])
+                    var scareEffects = cakeDefinition.ScareGroups[roll];
+
+                    for (var i = 0; i < scareEffects.Length; i++)
                     {
                         player.SendTunneledToVisible(new PlayerUpdatePacketPlayCompositeEffect
                         {
                             Guid = cakeNpc.Guid,
-                            CompositeEffectId = effectId,
+                            CompositeEffectId = scareEffects[i],
                             Position = cakeNpc.Position,
-                            Clear = true
+                            Clear = i == 0
                         }, true);
                     }
                 }
